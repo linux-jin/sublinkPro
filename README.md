@@ -14,9 +14,8 @@
     <img src="https://img.shields.io/github/release-date/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Release%20Date" alt="Release Date"/>
   </p>
   <p>
-    <img src="https://img.shields.io/docker/v/zerodeng/sublink-pro/latest?style=flat-square&logo=docker&logoColor=white&label=Docker%20Stable" alt="Docker Stable Version"/>
-    <img src="https://img.shields.io/docker/pulls/zerodeng/sublink-pro?style=flat-square&logo=docker&logoColor=white&label=Docker%20Pulls" alt="Docker Pulls"/>
-    <img src="https://img.shields.io/docker/image-size/zerodeng/sublink-pro/latest?style=flat-square&logo=docker&logoColor=white&label=Image%20Size" alt="Docker Image Size"/>
+    <img src="https://img.shields.io/badge/GHCR-ghcr.io%2Flinux--jin%2Fsublink--pro-2088FF?style=flat-square&logo=github&logoColor=white" alt="GHCR Image"/>
+    <img src="https://img.shields.io/github/actions/workflow/status/linux-jin/sublinkPro/build-release.yml?branch=main&style=flat-square&logo=githubactions&label=Container%20Build" alt="Container Build"/>
   </p>
   <p>
     <img src="https://img.shields.io/github/stars/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Stars" alt="GitHub Stars"/>
@@ -91,7 +90,7 @@ Create `docker-compose.yml`:
 ```yaml
 services:
   sublinkpro:
-    image: zerodeng/sublink-pro
+    image: ghcr.io/linux-jin/sublink-pro
     container_name: sublinkpro
     ports:
       - "8000:8000"

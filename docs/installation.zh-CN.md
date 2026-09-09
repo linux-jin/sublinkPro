@@ -19,8 +19,8 @@
 ```yaml
 services:
   sublinkpro:
-    # image: zerodeng/sublink-pro:dev # 开发版（功能尝鲜使用）
-    image: zerodeng/sublink-pro # 稳定版
+    # image: ghcr.io/linux-jin/sublink-pro:dev # 开发版（功能尝鲜使用）
+    image: ghcr.io/linux-jin/sublink-pro # 稳定版
     container_name: sublinkpro
     ports:
       - "8000:8000"
@@ -36,7 +36,7 @@ services:
 ```yaml
 services:
   sublinkpro:
-    image: zerodeng/sublink-pro
+    image: ghcr.io/linux-jin/sublink-pro
     container_name: sublinkpro
     ports:
       - "8000:8000"
@@ -79,7 +79,7 @@ docker run --name sublinkpro -p 8000:8000 \
   -v $PWD/db:/app/db \
   -v $PWD/template:/app/template \
   -v $PWD/logs:/app/logs \
-  -d zerodeng/sublink-pro
+  -d ghcr.io/linux-jin/sublink-pro
 ```
 
 </details>
@@ -92,7 +92,7 @@ docker run --name sublinkpro -p 8000:8000 \
   -v $PWD/db:/app/db \
   -v $PWD/template:/app/template \
   -v $PWD/logs:/app/logs \
-  -d zerodeng/sublink-pro:dev
+  -d ghcr.io/linux-jin/sublink-pro:dev
 ```
 
 </details>
@@ -164,14 +164,14 @@ docker stop sublinkpro
 docker rm sublinkpro
 
 # 拉取最新镜像
-docker pull zerodeng/sublink-pro
+docker pull ghcr.io/linux-jin/sublink-pro
 
 # 重新启动容器（使用与安装时相同的参数）
 docker run --name sublinkpro -p 8000:8000 \
   -v $PWD/db:/app/db \
   -v $PWD/template:/app/template \
   -v $PWD/logs:/app/logs \
-  -d zerodeng/sublink-pro
+  -d ghcr.io/linux-jin/sublink-pro
 
 # （可选）清理旧镜像
 docker image prune -f
@@ -207,7 +207,7 @@ docker run -d \
 ```yaml
 services:
   sublinkpro:
-    image: zerodeng/sublink-pro
+    image: ghcr.io/linux-jin/sublink-pro
     container_name: sublinkpro
     ports:
       - "8000:8000"

@@ -19,8 +19,8 @@ Create `docker-compose.yml`:
 ```yaml
 services:
   sublinkpro:
-    # image: zerodeng/sublink-pro:dev # Development version, for trying new features
-    image: zerodeng/sublink-pro # Stable version
+    # image: ghcr.io/linux-jin/sublink-pro:dev # Development version, for trying new features
+    image: ghcr.io/linux-jin/sublink-pro # Stable version
     container_name: sublinkpro
     ports:
       - "8000:8000"
@@ -36,7 +36,7 @@ Optional Sub-Store sidecar for expanded subscription output formats:
 ```yaml
 services:
   sublinkpro:
-    image: zerodeng/sublink-pro
+    image: ghcr.io/linux-jin/sublink-pro
     container_name: sublinkpro
     ports:
       - "8000:8000"
@@ -79,7 +79,7 @@ docker run --name sublinkpro -p 8000:8000 \
   -v $PWD/db:/app/db \
   -v $PWD/template:/app/template \
   -v $PWD/logs:/app/logs \
-  -d zerodeng/sublink-pro
+  -d ghcr.io/linux-jin/sublink-pro
 ```
 
 </details>
@@ -92,7 +92,7 @@ docker run --name sublinkpro -p 8000:8000 \
   -v $PWD/db:/app/db \
   -v $PWD/template:/app/template \
   -v $PWD/logs:/app/logs \
-  -d zerodeng/sublink-pro:dev
+  -d ghcr.io/linux-jin/sublink-pro:dev
 ```
 
 </details>
@@ -165,14 +165,14 @@ docker stop sublinkpro
 docker rm sublinkpro
 
 # Pull the latest image
-docker pull zerodeng/sublink-pro
+docker pull ghcr.io/linux-jin/sublink-pro
 
 # Start the container again with the same parameters used during installation
 docker run --name sublinkpro -p 8000:8000 \
   -v $PWD/db:/app/db \
   -v $PWD/template:/app/template \
   -v $PWD/logs:/app/logs \
-  -d zerodeng/sublink-pro
+  -d ghcr.io/linux-jin/sublink-pro
 
 # Optional: clean old images
 docker image prune -f
@@ -208,7 +208,7 @@ Add the Watchtower service to your `docker-compose.yml`:
 ```yaml
 services:
   sublinkpro:
-    image: zerodeng/sublink-pro
+    image: ghcr.io/linux-jin/sublink-pro
     container_name: sublinkpro
     ports:
       - "8000:8000"

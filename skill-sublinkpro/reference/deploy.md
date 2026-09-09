@@ -14,7 +14,7 @@ main `SKILL.md`.
 
 ## Defaults & key facts
 
-- **Image:** `zerodeng/sublink-pro` (stable) or `zerodeng/sublink-pro:dev` (dev/preview builds).
+- **Image:** `ghcr.io/linux-jin/sublink-pro` (stable) or `ghcr.io/linux-jin/sublink-pro:dev` (dev/preview builds).
 - **Port:** `8000` (web UI + API).
 - **Default login:** `admin` / `123456` — tell the user to change it immediately.
 - **Data directories** (persist across upgrades; removing them is destructive):
@@ -57,10 +57,10 @@ docker run --name sublinkpro -p 8000:8000 \
   -v $PWD/db:/app/db \
   -v $PWD/template:/app/template \
   -v $PWD/logs:/app/logs \
-  -d zerodeng/sublink-pro
+  -d ghcr.io/linux-jin/sublink-pro
 ```
 
-Dev/preview build: replace the image with `zerodeng/sublink-pro:dev`.
+Dev/preview build: replace the image with `ghcr.io/linux-jin/sublink-pro:dev`.
 
 ---
 
@@ -71,7 +71,7 @@ Dev/preview build: replace the image with `zerodeng/sublink-pro:dev`.
 ```yaml
 services:
   sublinkpro:
-    image: zerodeng/sublink-pro
+    image: ghcr.io/linux-jin/sublink-pro
     container_name: sublinkpro
     ports:
       - "8000:8000"
@@ -97,7 +97,7 @@ wants; every one is optional and has a sensible default. Field meanings are from
 ```yaml
 services:
   sublinkpro:
-    image: zerodeng/sublink-pro
+    image: ghcr.io/linux-jin/sublink-pro
     container_name: sublinkpro
     ports:
       - "8000:8000"                  # change left side to remap host port, e.g. "9000:8000"
@@ -248,7 +248,7 @@ commands. Prefix docker/compose commands with their existing SSH access:
 ```bash
 ssh user@host 'docker run --name sublinkpro -p 8000:8000 \
   -v $PWD/db:/app/db -v $PWD/template:/app/template -v $PWD/logs:/app/logs \
-  -d zerodeng/sublink-pro'
+  -d ghcr.io/linux-jin/sublink-pro'
 ```
 
 For compose, write the file remotely then bring it up:
@@ -304,11 +304,11 @@ docker run:
 
 ```bash
 docker stop sublinkpro && docker rm sublinkpro
-docker pull zerodeng/sublink-pro
+docker pull ghcr.io/linux-jin/sublink-pro
 # re-run the SAME docker run command used at install (same -v mounts!)
 docker run --name sublinkpro -p 8000:8000 \
   -v $PWD/db:/app/db -v $PWD/template:/app/template -v $PWD/logs:/app/logs \
-  -d zerodeng/sublink-pro
+  -d ghcr.io/linux-jin/sublink-pro
 docker image prune -f        # optional
 ```
 
@@ -324,7 +324,7 @@ alone keeps the data.
 ```bash
 # docker run install:
 docker stop sublinkpro && docker rm sublinkpro
-docker rmi zerodeng/sublink-pro            # optional: remove image
+docker rmi ghcr.io/linux-jin/sublink-pro            # optional: remove image
 # rm -rf ./db ./template ./logs            # DESTRUCTIVE — only if user confirms
 
 # docker-compose install:
