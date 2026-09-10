@@ -501,15 +501,17 @@ export default function ProfileSection() {
                             primary={<Typography variant="body2">{t('profile.actions.personalCenter')}</Typography>}
                           />
                         </ListItemButton>
-                        <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} onClick={handleBackup}>
-                          <ListItemIcon>
-                            <IconDatabaseExport stroke={1.5} size="20px" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primaryTypographyProps={{ component: 'div' }}
-                            primary={<Typography variant="body2">{t('profile.actions.backup')}</Typography>}
-                          />
-                        </ListItemButton>
+                        {user?.role === 'admin' && (
+                          <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} onClick={handleBackup}>
+                            <ListItemIcon>
+                              <IconDatabaseExport stroke={1.5} size="20px" />
+                            </ListItemIcon>
+                            <ListItemText
+                              primaryTypographyProps={{ component: 'div' }}
+                              primary={<Typography variant="body2">{t('profile.actions.backup')}</Typography>}
+                            />
+                          </ListItemButton>
+                        )}
                         <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} onClick={handleClearIPCache} disabled={ipCacheLoading}>
                           <ListItemIcon>
                             <IconDatabaseOff stroke={1.5} size="20px" />
