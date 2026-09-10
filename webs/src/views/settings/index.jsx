@@ -59,7 +59,7 @@ export default function UserSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = [user?.role, ...(user?.roles || [])].some((role) => String(role || '').toLowerCase() === 'admin');
   const [tabValue, setTabValue] = useState(() => {
     // 只在首次加载时读取 URL 参数
     const tab = searchParams.get('tab');
