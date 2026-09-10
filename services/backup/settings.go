@@ -234,7 +234,7 @@ func normalizeAndValidateConfig(cfg Config, requireURL bool) (Config, error) {
 func validateCronExpression(expr string) error {
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	if _, err := parser.Parse(expr); err != nil {
-		return fmt.Errorf("Cron 表达式无效: %w", err)
+		return fmt.Errorf("cron 表达式无效: %w", err)
 	}
 	return nil
 }
