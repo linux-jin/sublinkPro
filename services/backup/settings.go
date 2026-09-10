@@ -4,11 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"sublink/models"
+
+	"github.com/robfig/cron/v3"
 )
 
 const (
@@ -19,10 +22,14 @@ const (
 	settingTimeoutSeconds    = "backup_webdav_timeout_seconds"
 	settingAllowHTTP         = "backup_webdav_allow_insecure_http"
 	settingAllowPrivate      = "backup_webdav_allow_private_network"
+	settingScheduleEnabled   = "backup_webdav_schedule_enabled"
+	settingCronExpr          = "backup_webdav_cron_expr"
 	defaultRemotePath        = "SublinkPro"
 	defaultTimeoutSeconds    = 60
 	maxTimeoutSeconds        = 600
 )
+
+var cronSpacePattern = regexp.MustCompile(`\s+`)
 
 // Config contains the effective WebDAV connection settings. Password is never serialized.
 type Config struct {
@@ -33,6 +40,8 @@ type Config struct {
 	TimeoutSeconds      int    `json:"timeoutSeconds"`
 	AllowInsecureHTTP   bool   `json:"allowInsecureHttp"`
 	AllowPrivateNetwork bool   `json:"allowPrivateNetwork"`
+	ScheduleEnabled     bool   `json:"scheduleEnabled"`
+	CronExpr            string `json:"cronExpr"`
 }
 
 // PublicConfig is safe to return to clients.
@@ -46,6 +55,8 @@ type PublicConfig struct {
 	TimeoutSeconds      int    `json:"timeoutSeconds"`
 	AllowInsecureHTTP   bool   `json:"allowInsecureHttp"`
 	AllowPrivateNetwork bool   `json:"allowPrivateNetwork"`
+	ScheduleEnabled     bool   `json:"scheduleEnabled"`
+	CronExpr            string `json:"cronExpr"`
 }
 
 // ConfigUpdate is accepted from the settings API. An empty Password preserves the saved password.
@@ -58,6 +69,8 @@ type ConfigUpdate struct {
 	TimeoutSeconds      int    `json:"timeoutSeconds"`
 	AllowInsecureHTTP   bool   `json:"allowInsecureHttp"`
 	AllowPrivateNetwork bool   `json:"allowPrivateNetwork"`
+	ScheduleEnabled     bool   `json:"scheduleEnabled"`
+	CronExpr            string `json:"cronExpr"`
 }
 
 func LoadConfig() (Config, error) {
@@ -78,6 +91,8 @@ func LoadConfig() (Config, error) {
 		TimeoutSeconds:      settingInt(settingTimeoutSeconds, defaultTimeoutSeconds),
 		AllowInsecureHTTP:   settingBool(settingAllowHTTP, false),
 		AllowPrivateNetwork: settingBool(settingAllowPrivate, false),
+		ScheduleEnabled:     settingBool(settingScheduleEnabled, false),
+		CronExpr:            settingValue(settingCronExpr),
 	}
 	if cfg.RemotePath == "" {
 		cfg.RemotePath = defaultRemotePath
@@ -106,6 +121,8 @@ func ResolveConfig(update ConfigUpdate) (Config, error) {
 		TimeoutSeconds:      update.TimeoutSeconds,
 		AllowInsecureHTTP:   update.AllowInsecureHTTP,
 		AllowPrivateNetwork: update.AllowPrivateNetwork,
+		ScheduleEnabled:     update.ScheduleEnabled,
+		CronExpr:            update.CronExpr,
 	}
 	return normalizeAndValidateConfig(cfg, true)
 }
@@ -130,6 +147,8 @@ func SaveConfig(cfg Config) error {
 		{settingTimeoutSeconds, strconv.Itoa(cfg.TimeoutSeconds)},
 		{settingAllowHTTP, strconv.FormatBool(cfg.AllowInsecureHTTP)},
 		{settingAllowPrivate, strconv.FormatBool(cfg.AllowPrivateNetwork)},
+		{settingScheduleEnabled, strconv.FormatBool(cfg.ScheduleEnabled)},
+		{settingCronExpr, cfg.CronExpr},
 	}
 	for _, item := range values {
 		if err := models.SetSetting(item.key, item.value); err != nil {
@@ -150,6 +169,8 @@ func ToPublicConfig(cfg Config) PublicConfig {
 		TimeoutSeconds:      cfg.TimeoutSeconds,
 		AllowInsecureHTTP:   cfg.AllowInsecureHTTP,
 		AllowPrivateNetwork: cfg.AllowPrivateNetwork,
+		ScheduleEnabled:     cfg.ScheduleEnabled,
+		CronExpr:            cfg.CronExpr,
 	}
 }
 
@@ -178,6 +199,15 @@ func normalizeAndValidateConfig(cfg Config, requireURL bool) (Config, error) {
 	if err := validateRemotePath(cfg.RemotePath); err != nil {
 		return Config{}, err
 	}
+	cfg.CronExpr = cleanCronExpression(cfg.CronExpr)
+	if cfg.ScheduleEnabled && cfg.CronExpr == "" {
+		return Config{}, errors.New("启用定时备份时必须填写 Cron 表达式")
+	}
+	if cfg.CronExpr != "" {
+		if err := validateCronExpression(cfg.CronExpr); err != nil {
+			return Config{}, err
+		}
+	}
 	if cfg.BaseURL == "" {
 		if requireURL {
 			return Config{}, errors.New("WebDAV 地址不能为空")
@@ -199,6 +229,19 @@ func normalizeAndValidateConfig(cfg Config, requireURL bool) (Config, error) {
 		return Config{}, errors.New("WebDAV 地址不能包含账号、查询参数或锚点")
 	}
 	return cfg, nil
+}
+
+func validateCronExpression(expr string) error {
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	if _, err := parser.Parse(expr); err != nil {
+		return fmt.Errorf("Cron 表达式无效: %w", err)
+	}
+	return nil
+}
+
+func cleanCronExpression(cronExpr string) string {
+	cleaned := strings.TrimSpace(cronExpr)
+	return cronSpacePattern.ReplaceAllString(cleaned, " ")
 }
 
 func validateRemotePath(value string) error {
@@ -263,5 +306,7 @@ func PreservedSettingKeys() []string {
 		settingTimeoutSeconds,
 		settingAllowHTTP,
 		settingAllowPrivate,
+		settingScheduleEnabled,
+		settingCronExpr,
 	}
 }

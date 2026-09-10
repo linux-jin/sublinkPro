@@ -1058,7 +1058,8 @@
         "label": "连接状态",
         "configured": "已配置",
         "notConfigured": "未配置",
-        "passwordSaved": "密码已加密保存"
+        "passwordSaved": "密码已加密保存",
+        "scheduleEnabled": "定时备份已启用"
       },
       "form": {
         "baseUrl": "WebDAV 地址",
@@ -1073,6 +1074,9 @@
         "timeoutSeconds": "请求超时（秒）",
         "allowInsecureHttp": "允许不安全的 HTTP WebDAV",
         "allowPrivateNetwork": "允许访问私有网络或本机地址"
+        ,"scheduleEnabled": "启用定时备份",
+        "scheduleHelper": "按 Cron 表达式自动生成系统备份并上传到 WebDAV。当前仅 SQLite 部署支持定时备份。",
+        "cronExpr": "备份计划"
       },
       "actions": {
         "refreshSettings": "刷新设置",
@@ -3543,6 +3547,7 @@
       "subUpdate": "订阅更新",
       "tagRule": "标签规则",
       "dbMigration": "数据迁移"
+      ,"webdavBackup": "WebDAV 备份"
     },
     "trigger": {
       "manual": "手动",

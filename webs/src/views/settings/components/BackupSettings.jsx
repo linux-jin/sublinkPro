@@ -9,6 +9,7 @@ import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
 import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -38,6 +39,7 @@ import {
   updateWebDAVBackupSettings,
   uploadWebDAVBackup
 } from 'api/settings';
+import CronExpressionGenerator, { validateCronExpression } from 'components/CronExpressionGenerator';
 import { useTaskProgress } from 'contexts/TaskProgressContext';
 
 const defaultConfig = {
@@ -49,7 +51,9 @@ const defaultConfig = {
   remotePath: 'SublinkPro',
   timeoutSeconds: 60,
   allowInsecureHttp: false,
-  allowPrivateNetwork: false
+  allowPrivateNetwork: false,
+  scheduleEnabled: false,
+  cronExpr: '0 3 * * *'
 };
 
 function messageFromError(t, error, fallbackKey) {
@@ -151,7 +155,9 @@ export default function BackupSettings({ showMessage }) {
     remotePath: form.remotePath.trim(),
     timeoutSeconds: Number(form.timeoutSeconds) || 60,
     allowInsecureHttp: Boolean(form.allowInsecureHttp),
-    allowPrivateNetwork: Boolean(form.allowPrivateNetwork)
+    allowPrivateNetwork: Boolean(form.allowPrivateNetwork),
+    scheduleEnabled: Boolean(form.scheduleEnabled),
+    cronExpr: form.cronExpr || ''
   });
 
   const handleSave = async () => {
@@ -212,6 +218,7 @@ export default function BackupSettings({ showMessage }) {
   };
 
   const busy = saving || testing || uploading || restoring;
+  const scheduleInvalid = Boolean(form.scheduleEnabled) && !validateCronExpression(form.cronExpr || '');
 
   return (
     <Card variant="outlined">
@@ -249,6 +256,9 @@ export default function BackupSettings({ showMessage }) {
                 label={config.configured ? t('settings.backup.status.configured') : t('settings.backup.status.notConfigured')}
               />
               {config.hasPassword && <Chip size="small" variant="outlined" label={t('settings.backup.status.passwordSaved')} />}
+              {config.scheduleEnabled && (
+                <Chip size="small" color="info" variant="outlined" label={t('settings.backup.status.scheduleEnabled')} />
+              )}
             </Stack>
 
             <TextField
@@ -323,12 +333,40 @@ export default function BackupSettings({ showMessage }) {
               }
               label={t('settings.backup.form.allowInsecureHttp')}
             />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={form.scheduleEnabled}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      scheduleEnabled: event.target.checked,
+                      cronExpr: event.target.checked && !prev.cronExpr ? '0 3 * * *' : prev.cronExpr
+                    }))
+                  }
+                />
+              }
+              label={t('settings.backup.form.scheduleEnabled')}
+            />
+            <Collapse in={Boolean(form.scheduleEnabled)}>
+              <Stack spacing={1.5}>
+                <Typography variant="body2" color="text.secondary">
+                  {t('settings.backup.form.scheduleHelper')}
+                </Typography>
+                <CronExpressionGenerator
+                  value={form.cronExpr || '0 3 * * *'}
+                  onChange={(value) => setForm((prev) => ({ ...prev, cronExpr: value }))}
+                  label={t('settings.backup.form.cronExpr')}
+                  error={scheduleInvalid}
+                />
+              </Stack>
+            </Collapse>
 
             <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap">
-              <Button variant="outlined" startIcon={<SaveIcon />} onClick={handleSave} disabled={busy}>
+              <Button variant="outlined" startIcon={<SaveIcon />} onClick={handleSave} disabled={busy || scheduleInvalid}>
                 {saving ? t('settings.backup.actions.saving') : t('settings.backup.actions.save')}
               </Button>
-              <Button variant="outlined" startIcon={<ScienceIcon />} onClick={handleTest} disabled={busy}>
+              <Button variant="outlined" startIcon={<ScienceIcon />} onClick={handleTest} disabled={busy || scheduleInvalid}>
                 {testing ? t('settings.backup.actions.testing') : t('settings.backup.actions.test')}
               </Button>
               <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={handleUpload} disabled={busy || !config.configured}>

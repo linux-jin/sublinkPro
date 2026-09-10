@@ -270,3 +270,28 @@ func TestIsPublicWebDAVIPRejectsSpecialUseRanges(t *testing.T) {
 		}
 	}
 }
+
+func TestWebDAVScheduleValidation(t *testing.T) {
+	_, err := normalizeAndValidateConfig(Config{BaseURL: "https://dav.example.com", RemotePath: "backup", ScheduleEnabled: true}, true)
+	if err == nil {
+		t.Fatal("expected error when schedule enabled without cron")
+	}
+	cfg, err := normalizeAndValidateConfig(Config{BaseURL: "https://dav.example.com", RemotePath: "backup", ScheduleEnabled: true, CronExpr: "0  3 * * *"}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.CronExpr != "0 3 * * *" {
+		t.Fatalf("cron not cleaned: %q", cfg.CronExpr)
+	}
+	_, err = normalizeAndValidateConfig(Config{BaseURL: "https://dav.example.com", RemotePath: "backup", ScheduleEnabled: true, CronExpr: "not-a-cron"}, true)
+	if err == nil {
+		t.Fatal("expected invalid cron error")
+	}
+	cfg, err = normalizeAndValidateConfig(Config{RemotePath: "backup", ScheduleEnabled: false, CronExpr: ""}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ScheduleEnabled {
+		t.Fatal("schedule should remain disabled")
+	}
+}

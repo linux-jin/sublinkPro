@@ -1059,6 +1059,7 @@
         "configured": "Configured",
         "notConfigured": "Not configured",
         "passwordSaved": "Password encrypted and saved"
+        ,"scheduleEnabled": "Scheduled backup enabled"
       },
       "form": {
         "baseUrl": "WebDAV URL",
@@ -1073,6 +1074,9 @@
         "timeoutSeconds": "Request timeout (seconds)",
         "allowInsecureHttp": "Allow insecure HTTP WebDAV",
         "allowPrivateNetwork": "Allow private-network or local addresses"
+        ,"scheduleEnabled": "Enable scheduled backup",
+        "scheduleHelper": "Automatically create a system backup and upload it to WebDAV on a cron schedule. Scheduled backups currently support SQLite deployments only.",
+        "cronExpr": "Backup schedule"
       },
       "actions": {
         "refreshSettings": "Refresh settings",
@@ -3543,6 +3547,7 @@
       "subUpdate": "Subscription update",
       "tagRule": "Tag rule",
       "dbMigration": "Database migration"
+      ,"webdavBackup": "WebDAV backup"
     },
     "trigger": {
       "manual": "Manual",

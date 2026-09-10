@@ -10,8 +10,9 @@ SublinkPro can upload its existing system backup directly to WebDAV and restore 
 2. Enter the WebDAV URL, username, password or app password, and remote directory.
 3. Select **Test connection** to confirm that the account can read the remote directory. Missing directories are created during upload when possible.
 4. Select **Save settings**.
-5. Select **Back up to WebDAV now** to create and upload a ZIP.
-6. Choose a ZIP from the remote backup list and confirm the overwrite warning to restore it.
+5. Optionally enable **scheduled backup** and choose a 5-field cron expression, for example `0 3 * * *` for 03:00 every day.
+6. Select **Back up to WebDAV now** to create and upload a ZIP immediately.
+7. Choose a ZIP from the remote backup list and confirm the overwrite warning to restore it.
 
 Example WebDAV URL:
 
@@ -35,7 +36,17 @@ The ZIP contains the same data as the local System Backup action in the avatar m
 - `template/`: the template directory;
 - the re-downloadable `GeoLite2-City.mmdb` file is excluded.
 
-WebDAV system backup currently supports SQLite only. With MySQL or PostgreSQL, **Back up to WebDAV now** is rejected because the local data directory does not contain business data from the remote database server.
+WebDAV system backup currently supports SQLite only. With MySQL or PostgreSQL, **Back up to WebDAV now** and scheduled backups are rejected because the local data directory does not contain business data from the remote database server.
+
+## Scheduled backup
+
+When scheduled backup is enabled, SublinkPro registers a system cron job that creates the same ZIP used by the manual upload action and sends it to the configured WebDAV directory.
+
+- The schedule uses a standard 5-field cron expression (`minute hour day month weekday`).
+- Saving WebDAV settings hot-reloads the job without restarting the process.
+- Restoring a backup preserves the current instance's WebDAV connection and schedule settings.
+- Overlapping runs are skipped if a previous scheduled backup is still uploading.
+- Progress appears in the task center as a `webdav_backup` task.
 
 ## Restore behavior
 
@@ -61,4 +72,4 @@ Back up the current instance before restoring. Progress and results are availabl
 
 ## Current scope
 
-The current release supports manual connection testing, upload, listing, and restore. Scheduled backups, remote deletion, and automatic retention policies are not included yet.
+The current release supports manual connection testing, upload, listing, restore, and scheduled backups. Remote deletion and automatic retention policies are not included yet.

@@ -12,6 +12,7 @@ import (
 	"sublink/models"
 	"sublink/services"
 	backupservice "sublink/services/backup"
+	"sublink/services/scheduler"
 	"sublink/utils"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,8 @@ type webDAVConfigRequest struct {
 	TimeoutSeconds      int    `json:"timeoutSeconds"`
 	AllowInsecureHTTP   bool   `json:"allowInsecureHttp"`
 	AllowPrivateNetwork bool   `json:"allowPrivateNetwork"`
+	ScheduleEnabled     bool   `json:"scheduleEnabled"`
+	CronExpr            string `json:"cronExpr"`
 }
 
 type webDAVRestoreRequest struct {
@@ -90,6 +93,10 @@ func UpdateWebDAVBackupSettings(c *gin.Context) {
 		utils.FailWithI18n(c, "保存 WebDAV 设置失败: "+err.Error(), "settings.backup.api.saveFailed", map[string]any{"message": err.Error()})
 		return
 	}
+	if err := scheduler.GetSchedulerManager().UpdateWebDAVBackupJob(cfg.CronExpr, cfg.ScheduleEnabled && cfg.BaseURL != ""); err != nil {
+		utils.FailWithI18n(c, "保存 WebDAV 设置失败: "+err.Error(), "settings.backup.api.saveFailed", map[string]any{"message": err.Error()})
+		return
+	}
 	utils.OkDetailedI18n(c, "WebDAV 设置已保存", backupservice.ToPublicConfig(cfg), "settings.backup.api.saved", nil)
 }
 
@@ -128,19 +135,7 @@ func UploadWebDAVBackup(c *gin.Context) {
 		utils.FailWithI18n(c, "读取 WebDAV 设置失败: "+err.Error(), "settings.backup.api.loadFailed", map[string]any{"message": err.Error()})
 		return
 	}
-	client, err := backupservice.NewClient(cfg)
-	if err != nil {
-		utils.FailWithI18n(c, "WebDAV 未配置: "+err.Error(), "settings.backup.api.notConfigured", map[string]any{"message": err.Error()})
-		return
-	}
-	archive, err := backupservice.CreateArchiveFile(c.Request.Context())
-	if err != nil {
-		utils.FailWithI18n(c, "创建备份失败: "+err.Error(), "settings.backup.api.archiveFailed", map[string]any{"message": err.Error()})
-		return
-	}
-	defer func() { _ = os.Remove(archive.Path) }()
-
-	remote, err := client.Upload(c.Request.Context(), archive)
+	remote, err := backupservice.CreateAndUpload(c.Request.Context(), cfg)
 	if err != nil {
 		utils.FailWithI18n(c, "上传 WebDAV 备份失败: "+err.Error(), "settings.backup.api.uploadFailed", map[string]any{"message": err.Error()})
 		return
