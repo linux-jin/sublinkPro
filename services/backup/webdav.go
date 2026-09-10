@@ -89,7 +89,12 @@ func NewClient(cfg Config) (*Client, error) {
 		http: &http.Client{
 			Timeout:   cfg.Timeout(),
 			Transport: transport,
-			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) > 0 && strings.EqualFold(via[0].Method, "MKCOL") {
+					// Many WebDAV servers, including TeraCLOUD, canonicalize collections
+					// with a trailing slash. Do not convert MKCOL into GET.
+					return http.ErrUseLastResponse
+				}
 				return errors.New("WebDAV 重定向已被拒绝")
 			},
 		},
@@ -178,14 +183,14 @@ func (c *Client) Test(ctx context.Context) error {
 func (c *Client) EnsureDirectory(ctx context.Context) error {
 	segments := strings.Split(c.config.RemotePath, "/")
 	for index := range segments {
-		target := c.urlForSegments(segments[:index+1]...)
+		target := strings.TrimRight(c.urlForSegments(segments[:index+1]...), "/") + "/"
 		resp, err := c.request(ctx, "MKCOL", target, nil, nil, 0)
 		if err != nil {
 			return err
 		}
 		status := resp.StatusCode
 		_ = resp.Body.Close()
-		if status == http.StatusCreated || status == http.StatusMethodNotAllowed || status == http.StatusOK || status == http.StatusNoContent {
+		if isSuccessfulMKCOL(status) {
 			continue
 		}
 		if status == http.StatusConflict {
@@ -307,6 +312,17 @@ func (c *Client) statusError(resp *http.Response, action string) error {
 		return fmt.Errorf("%s失败：远程路径不存在", action)
 	default:
 		return fmt.Errorf("%s失败 (HTTP %d)", action, resp.StatusCode)
+	}
+}
+
+func isSuccessfulMKCOL(status int) bool {
+	switch status {
+	case http.StatusCreated, http.StatusOK, http.StatusNoContent, http.StatusMethodNotAllowed,
+		http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
+		http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+		return true
+	default:
+		return false
 	}
 }
 

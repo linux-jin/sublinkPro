@@ -176,6 +176,40 @@ func TestWebDAVClientDoesNotFollowRedirects(t *testing.T) {
 	}
 }
 
+func TestWebDAVEnsureDirectoryAcceptsCollectionRedirect(t *testing.T) {
+	var mkcolTargets []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "MKCOL" {
+			mkcolTargets = append(mkcolTargets, r.URL.Path)
+			w.Header().Set("Location", r.URL.Path)
+			w.WriteHeader(http.StatusMovedPermanently)
+			return
+		}
+		if r.Method == http.MethodPut {
+			w.WriteHeader(http.StatusCreated)
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{BaseURL: server.URL + "/dav", Username: "user", Password: "secret", RemotePath: "SublinkPro", TimeoutSeconds: 5, AllowInsecureHTTP: true, AllowPrivateNetwork: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	archivePath := filepath.Join(t.TempDir(), "backup.zip")
+	if err := os.WriteFile(archivePath, []byte("content"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	archive := Archive{Path: archivePath, Name: "sublink-pro-backup-20260910-120000.zip", Size: 7, Modified: time.Now()}
+	if _, err := client.Upload(context.Background(), archive); err != nil {
+		t.Fatalf("Upload failed: %v", err)
+	}
+	if len(mkcolTargets) != 1 || mkcolTargets[0] != "/dav/SublinkPro/" {
+		t.Fatalf("unexpected MKCOL targets: %#v", mkcolTargets)
+	}
+}
+
 func TestWriteArchiveRejectsSymlinks(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "source")
