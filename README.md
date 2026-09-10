@@ -75,6 +75,31 @@ English | [简体中文](README.zh-CN.md)
 
 ---
 
+## 🆕 Recent Updates
+
+### v1.2.20 · WebDAV backup and restore (September 10, 2026)
+
+- Added an administrator-only **System Backup** settings page for configuring and testing WebDAV connections.
+- System backup ZIP files can be generated and uploaded directly to WebDAV, listed remotely, and downloaded back to start the existing database migration restore task.
+- WebDAV passwords are encrypted at rest and never returned in plaintext. HTTPS is required by default; HTTP and private-network destinations require explicit opt-ins.
+- Added archive size limits, ZIP bomb and path traversal defenses, symlink rejection, redirect blocking, temporary-file cleanup, and precise restore task tracking.
+- WebDAV backup creation currently supports SQLite deployments. Restores can optionally include AccessKeys and subscription access logs.
+- Fixed administrator detection to recognize the `roles: ["ADMIN"]` response returned by `/v1/users/me`, enabling the System Backup tab and local backup action for administrators.
+
+See [System Backup and WebDAV](docs/features/backup.md) for configuration and security details.
+
+### v1.2.19 · OpenVPN YAML import (September 9, 2026)
+
+- Added import and export support for Clash/mihomo `type: openvpn` proxy entries.
+- Preserves transport, cipher/auth, credentials, PEM certificate and private-key blocks, TLS static keys, keepalive, DNS, IP stack, and `dialer-proxy` fields.
+- Uses an internal URL-encoded `openvpn://server:port?...#name` representation for lossless editing and round trips. It is not an official OpenVPN share-link format.
+- OpenVPN nodes are output to Clash/mihomo; unsupported v2ray and Surge outputs skip them.
+- Direct `.ovpn` file import is not included in this release.
+
+See the OpenVPN compatibility notes in [Airport Management](docs/features/airport.md) and [Subscription Sharing](docs/features/subscription-share.md).
+
+---
+
 ## 🚀 Quick Start
 
 ### Docker Compose, recommended

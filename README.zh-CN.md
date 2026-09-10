@@ -75,6 +75,31 @@
 
 ---
 
+## 🆕 近期更新
+
+### v1.2.20 · WebDAV 备份与恢复（2026 年 9 月 10 日）
+
+- 新增仅管理员可用的 **系统备份** 设置页，可配置和测试 WebDAV 连接。
+- 可直接生成系统备份 ZIP 并上传到 WebDAV，查看远程备份列表，并下载远程 ZIP 后启动现有数据库迁移恢复任务。
+- WebDAV 密码加密保存且不会通过 API 返回明文。默认要求 HTTPS；HTTP 和私有网络目标都必须显式启用。
+- 增加备份大小限制、ZIP bomb 与路径穿越防护、符号链接拒绝、重定向阻止、临时文件清理和精确的恢复任务跟踪。
+- WebDAV 备份生成当前支持 SQLite 部署；恢复时可选择是否包含 AccessKey 和订阅访问日志。
+- 修复管理员角色识别，使前端正确兼容 `/v1/users/me` 返回的 `roles: ["ADMIN"]`，管理员现在可以正常进入系统备份标签并使用本地备份操作。
+
+配置方法和安全说明参见 [系统备份与 WebDAV](docs/features/backup.zh-CN.md)。
+
+### v1.2.19 · OpenVPN YAML 导入（2026 年 9 月 9 日）
+
+- 新增 Clash/mihomo `type: openvpn` 代理节点的导入和导出支持。
+- 保留传输协议、加密与认证、账号凭据、PEM 证书和私钥块、TLS 静态密钥、保活、DNS、IP 栈及 `dialer-proxy` 等字段。
+- 使用经过 URL 编码的内部格式 `openvpn://server:port?...#name` 实现无损编辑和往返；它不是 OpenVPN 官方分享链接格式。
+- OpenVPN 节点可输出到 Clash/mihomo；v2ray 和 Surge 等不支持的输出会跳过该节点。
+- 当前版本暂不包含直接导入 `.ovpn` 文件的能力。
+
+更多说明参见 [机场管理](docs/features/airport.zh-CN.md)和[订阅分享](docs/features/subscription-share.zh-CN.md)中的 OpenVPN 兼容章节。
+
+---
+
 ## 🚀 快速开始
 
 ### Docker Compose（推荐）
