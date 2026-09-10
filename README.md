@@ -77,6 +77,15 @@ English | [简体中文](README.zh-CN.md)
 
 ## 🆕 Recent Updates
 
+### v1.2.21 · Scheduled WebDAV backup (September 10, 2026)
+
+- Added **scheduled WebDAV backup** with a 5-field cron expression (for example `0 3 * * *` for 03:00 every day). Saving settings hot-reloads the job without restarting the process.
+- Scheduled runs reuse the same ZIP upload as the manual action, appear in the task center as `webdav_backup`, and skip overlapping uploads.
+- Restoring a backup preserves the current instance's WebDAV connection and schedule settings.
+- Directory creation now sends `MKCOL` with a trailing slash and treats same-host collection redirects as success, so TeraCLOUD-style WebDAV servers no longer fail with a rejected redirect.
+
+See [System Backup and WebDAV](docs/features/backup.md) for configuration details.
+
 ### v1.2.20 · WebDAV backup and restore (September 10, 2026)
 
 - Added an administrator-only **System Backup** settings page for configuring and testing WebDAV connections.
