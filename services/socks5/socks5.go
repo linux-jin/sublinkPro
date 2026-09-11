@@ -222,7 +222,7 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 }
 
 func (s *Server) serveConn(ctx context.Context, client net.Conn) {
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	_ = client.SetDeadline(time.Now().Add(handshakeTimeout))
 	if s.cfg.RequireAuth {
 		if err := s.authenticate(client); err != nil {
@@ -247,7 +247,7 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 		_ = writeReply(client, 0x01)
 		return
 	}
-	defer upstream.Close()
+	defer func() { _ = upstream.Close() }()
 	_ = client.SetDeadline(time.Time{})
 	if err := writeReply(client, 0x00); err != nil {
 		return

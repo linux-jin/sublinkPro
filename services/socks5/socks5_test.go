@@ -31,12 +31,12 @@ func TestServerHandlesAuthenticatedConnectAndPumpsTraffic(t *testing.T) {
 	t.Cleanup(func() { selectNodeFunc = previous })
 
 	client, serverConn := net.Pipe()
-	defer client.Close()
-	defer serverConn.Close()
+	defer func() { _ = client.Close() }()
+	defer func() { _ = serverConn.Close() }()
 
 	upstream, upstreamPeer := net.Pipe()
-	defer upstreamPeer.Close()
-	defer upstream.Close()
+	defer func() { _ = upstreamPeer.Close() }()
+	defer func() { _ = upstream.Close() }()
 
 	server, err := NewServer(Config{Enabled: true, Username: "alice", Password: "secret", RequireAuth: true}, func(context.Context, models.Node, string, uint16) (net.Conn, error) {
 		return upstream, nil
@@ -87,7 +87,7 @@ func TestServerHandlesAuthenticatedConnectAndPumpsTraffic(t *testing.T) {
 	if _, err := client.Write(payload); err != nil {
 		t.Fatalf("write payload: %v", err)
 	}
-	upstreamPeer.SetReadDeadline(time.Now().Add(time.Second))
+	_ = upstreamPeer.SetReadDeadline(time.Now().Add(time.Second))
 	received := make([]byte, len(payload))
 	if _, err := io.ReadFull(upstreamPeer, received); err != nil {
 		t.Fatalf("read upstream payload: %v", err)
@@ -98,7 +98,7 @@ func TestServerHandlesAuthenticatedConnectAndPumpsTraffic(t *testing.T) {
 	if _, err := upstreamPeer.Write([]byte("pong")); err != nil {
 		t.Fatalf("write upstream response: %v", err)
 	}
-	client.SetReadDeadline(time.Now().Add(time.Second))
+	_ = client.SetReadDeadline(time.Now().Add(time.Second))
 	responsePayload := make([]byte, 4)
 	if _, err := io.ReadFull(client, responsePayload); err != nil {
 		t.Fatalf("read client response: %v", err)
@@ -106,7 +106,7 @@ func TestServerHandlesAuthenticatedConnectAndPumpsTraffic(t *testing.T) {
 	if string(responsePayload) != "pong" {
 		t.Fatalf("unexpected client response: %q", responsePayload)
 	}
-	client.Close()
+	_ = client.Close()
 	select {
 	case <-done:
 	case <-time.After(time.Second):
@@ -116,8 +116,8 @@ func TestServerHandlesAuthenticatedConnectAndPumpsTraffic(t *testing.T) {
 
 func TestServerRejectsUnsupportedCommand(t *testing.T) {
 	client, serverConn := net.Pipe()
-	defer client.Close()
-	defer serverConn.Close()
+	defer func() { _ = client.Close() }()
+	defer func() { _ = serverConn.Close() }()
 	server, err := NewServer(Config{Enabled: true, Username: "alice", Password: "secret", RequireAuth: true}, func(context.Context, models.Node, string, uint16) (net.Conn, error) {
 		t.Fatal("dial should not be called")
 		return nil, nil

@@ -135,7 +135,12 @@ export default function Socks5Settings({ showMessage }) {
                 : t('settings.socks5.status.stopped')}
             </Alert>
             <FormControlLabel
-              control={<Switch checked={Boolean(form.enabled)} onChange={(event) => setForm((prev) => ({ ...prev, enabled: event.target.checked }))} />}
+              control={
+                <Switch
+                  checked={Boolean(form.enabled)}
+                  onChange={(event) => setForm((prev) => ({ ...prev, enabled: event.target.checked }))}
+                />
+              }
               label={t('settings.socks5.form.enabled')}
             />
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
@@ -185,7 +190,12 @@ export default function Socks5Settings({ showMessage }) {
               </FormControl>
             )}
             <FormControlLabel
-              control={<Switch checked={Boolean(form.requireAuth)} onChange={(event) => setForm((prev) => ({ ...prev, requireAuth: event.target.checked }))} />}
+              control={
+                <Switch
+                  checked={Boolean(form.requireAuth)}
+                  onChange={(event) => setForm((prev) => ({ ...prev, requireAuth: event.target.checked }))}
+                />
+              }
               label={t('settings.socks5.form.requireAuth')}
             />
             {form.requireAuth && (
@@ -210,7 +220,12 @@ export default function Socks5Settings({ showMessage }) {
             )}
             {config.hasPassword && form.requireAuth && (
               <FormControlLabel
-                control={<Switch checked={form.clearPassword} onChange={(event) => setForm((prev) => ({ ...prev, clearPassword: event.target.checked, password: '' }))} />}
+                control={
+                  <Switch
+                    checked={form.clearPassword}
+                    onChange={(event) => setForm((prev) => ({ ...prev, clearPassword: event.target.checked, password: '' }))}
+                  />
+                }
                 label={t('settings.socks5.form.clearPassword')}
               />
             )}
@@ -222,7 +237,13 @@ export default function Socks5Settings({ showMessage }) {
               <Button variant="outlined" startIcon={<RefreshIcon />} onClick={load} disabled={busy}>
                 {t('settings.socks5.actions.refresh')}
               </Button>
-              <Button color="error" variant="outlined" startIcon={<StopCircleIcon />} onClick={handleStop} disabled={busy || !config.running}>
+              <Button
+                color="error"
+                variant="outlined"
+                startIcon={<StopCircleIcon />}
+                onClick={handleStop}
+                disabled={busy || !config.running}
+              >
                 {stopping ? t('settings.socks5.actions.stopping') : t('settings.socks5.actions.stop')}
               </Button>
             </Stack>
