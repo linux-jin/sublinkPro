@@ -14,6 +14,7 @@ import (
 
 	"sublink/models"
 	"sublink/services/mihomo"
+	"sublink/utils"
 
 	"github.com/metacubex/mihomo/constant"
 )
@@ -434,7 +435,8 @@ func (m *Manager) Apply(cfg Config) error {
 	if !normalized.Enabled {
 		return nil
 	}
-	listener, err := net.Listen("tcp", net.JoinHostPort(normalized.ListenAddress, strconv.Itoa(normalized.Port)))
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(context.Background(), "tcp", net.JoinHostPort(normalized.ListenAddress, strconv.Itoa(normalized.Port)))
 	if err != nil {
 		return fmt.Errorf("listen SOCKS5: %w", err)
 	}
@@ -451,7 +453,7 @@ func (m *Manager) Apply(cfg Config) error {
 	}
 	go func() {
 		if serveErr := server.Serve(ctx, listener); serveErr != nil {
-			// Listener failures are reflected by Running=false; avoid crashing the HTTP service.
+			utils.Warn("SOCKS5 listener stopped: %v", serveErr)
 		}
 		m.mu.Lock()
 		if m.listener == listener {
