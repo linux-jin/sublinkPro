@@ -67,6 +67,7 @@ English | [简体中文](README.zh-CN.md)
 | 🌐 **Host management** | Domain mappings, DNS configuration, CDN preferred IPs | [📖](docs/features/host.md) |
 | ☁️ **Cloudflare Tunnel** | Expose the admin UI without a public IP, with cloudflared managed from the page | [📖](docs/features/cloudflare-tunnel.md) |
 | 💾 **WebDAV backup** | Encrypt WebDAV credentials, upload system backups on demand or by cron, list remote ZIP files, and restore from the page | [📖](docs/features/backup.md) |
+| 🧦 **SOCKS5 gateway** | Local TCP CONNECT gateway with best, random, or specific node forwarding | [📖](docs/features/socks5.md) |
 | 🤖 **Telegram Bot** | Remote speed tests, subscription management, system monitoring | [📖](docs/features/telegram-bot.md) |
 | 📜 **Script system** | Node filtering, content post processing, chained scripts | [📖](docs/script_support.md) |
 | 🔔 **Webhooks** | Supports PushDeer, Bark, DingTalk, ServerChan, and other notification platforms | [📖](docs/configuration.md) |
@@ -76,6 +77,14 @@ English | [简体中文](README.zh-CN.md)
 ---
 
 ## 🆕 Recent Updates
+
+### v1.3.0 · SOCKS5 gateway phase one (September 11, 2026)
+
+- Added an administrator-configurable local SOCKS5 gateway with TCP CONNECT, IPv4/IPv6/domain targets, and username/password authentication.
+- Supports best-node, random-node, or specific-node outbound selection; saving settings starts or stops the listener immediately.
+- The gateway is disabled by default and binds to `127.0.0.1:1080` to avoid exposing an open proxy after an upgrade.
+
+See [SOCKS5 Gateway](docs/features/socks5.md) for details.
 
 ### v1.2.21 · Scheduled WebDAV backup (September 10, 2026)
 

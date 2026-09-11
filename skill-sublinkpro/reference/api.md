@@ -709,6 +709,14 @@ Base: `/api/v1/settings` (write bodies are JSON unless noted; most writes are de
 
 **Sub-Store:** **GET** `/settings/substore` · **POST** `/settings/substore` · **POST** `/settings/substore/test`
 
+### SOCKS5 gateway
+
+- **GET** `/api/v1/settings/socks5` — get administrator-only gateway settings. The password is never returned.
+- **POST** `/api/v1/settings/socks5` — save and apply JSON settings: `enabled`, `listenAddress`, `port`, `username`, optional `password` (empty preserves the saved password), `clearPassword`, `nodeId`, `selection` (`best`, `random`, or `specific`), and `requireAuth`.
+- **POST** `/api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
+
+Phase one supports TCP CONNECT only; UDP ASSOCIATE and BIND are not implemented.
+
 **Database migration:** **POST** `/settings/database-migration/import` — **multipart/form-data** (upload a backup.zip / .db)
 
 **AI assistant (login-session only — reject API key with 403 by design):**

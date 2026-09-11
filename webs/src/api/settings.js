@@ -256,3 +256,25 @@ export function restoreWebDAVBackup(data) {
     timeout: 0
   });
 }
+
+export function getSocks5Settings() {
+  return request({
+    url: '/v1/settings/socks5',
+    method: 'get'
+  });
+}
+
+export function updateSocks5Settings(data) {
+  return request({
+    url: '/v1/settings/socks5',
+    method: 'post',
+    data
+  });
+}
+
+export function stopSocks5() {
+  return request({
+    url: '/v1/settings/socks5/stop',
+    method: 'post'
+  });
+}

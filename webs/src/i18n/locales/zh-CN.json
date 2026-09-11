@@ -577,8 +577,63 @@
       "aiAssistant": "AI 助手",
       "subStore": "Sub-Store",
       "backup": "系统备份",
+      "socks5": "SOCKS5 网关",
       "dataMigration": "数据迁移",
       "countryRules": "国家规则"
+    },
+    "socks5": {
+      "title": "SOCKS5 网关",
+      "subheader": "通过本地 TCP SOCKS5 CONNECT 监听端口转发已选择的 SublinkPro 节点。",
+      "alerts": {
+        "security": "一期仅支持 TCP CONNECT。除非已做好网络隔离和认证，否则请保持监听地址为 127.0.0.1。"
+      },
+      "status": {
+        "running": "运行中：{{address}}",
+        "stopped": "SOCKS5 网关已停止"
+      },
+      "form": {
+        "enabled": "启用 SOCKS5 网关",
+        "listenAddress": "监听地址",
+        "listenAddressHelper": "本机访问请使用 127.0.0.1。只有明确需要时才绑定 0.0.0.0。",
+        "port": "监听端口",
+        "selection": "节点选择",
+        "selectionBest": "最佳可用节点",
+        "selectionRandom": "随机可用节点",
+        "selectionSpecific": "指定节点",
+        "node": "出站节点",
+        "nodePlaceholder": "选择节点",
+        "requireAuth": "要求用户名/密码",
+        "username": "用户名",
+        "password": "密码",
+        "passwordSaved": "留空则保留已保存的密码。",
+        "passwordHelper": "启用认证时必须填写密码。",
+        "clearPassword": "清除已保存密码"
+      },
+      "actions": {
+        "save": "保存设置",
+        "saving": "保存中...",
+        "refresh": "刷新",
+        "stop": "停止网关",
+        "stopping": "停止中..."
+      },
+      "messages": {
+        "loadFailed": "获取 SOCKS5 设置失败：{{message}}",
+        "saved": "SOCKS5 设置已保存",
+        "saveFailed": "保存 SOCKS5 设置失败：{{message}}",
+        "authRequired": "请输入用户名和密码，或关闭认证。",
+        "stopped": "SOCKS5 网关已停止",
+        "stopFailed": "停止 SOCKS5 网关失败：{{message}}"
+      },
+      "api": {
+        "adminRequired": "仅管理员可管理 SOCKS5 网关",
+        "loaded": "SOCKS5 设置已加载",
+        "loadFailed": "读取 SOCKS5 设置失败：{{message}}",
+        "invalidRequest": "参数错误",
+        "invalidSettings": "SOCKS5 设置无效：{{message}}",
+        "saved": "SOCKS5 设置已保存",
+        "startFailed": "启动 SOCKS5 网关失败：{{message}}",
+        "stopped": "SOCKS5 网关已停止"
+      }
     },
     "telegramPanel": {
       "title": "Telegram 机器人",

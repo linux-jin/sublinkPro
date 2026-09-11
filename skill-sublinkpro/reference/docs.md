@@ -84,6 +84,7 @@ suffix for Chinese.
 | Contribution workflow, branch conventions, PR process, cross-layer sync requirements | `CONTRIBUTING.md` |
 | Code of Conduct | `CODE_OF_CONDUCT.md` |
 | Architectural guidance, tech stack, mihomo integration, cross-layer contracts | `AGENTS.md` |
+| SOCKS5 gateway — configure the local TCP CONNECT proxy listener | `docs/features/socks5.md` |
 
 ## Notes & guardrails
 

@@ -67,6 +67,7 @@
 | 🌐 **Host 管理** | 域名映射、DNS 配置、CDN 优选 | [📖](docs/features/host.zh-CN.md) |
 | ☁️ **Cloudflare Tunnel** | 无公网 IP 暴露管理界面、页面托管 cloudflared | [📖](docs/features/cloudflare-tunnel.zh-CN.md) |
 | 💾 **WebDAV 备份** | 加密保存 WebDAV 凭据，支持手动或定时上传系统备份、查看远程 ZIP 并从页面恢复 | [📖](docs/features/backup.zh-CN.md) |
+| 🧦 **SOCKS5 网关** | 本地 TCP CONNECT 网关，可按最佳、随机或指定节点转发 | [📖](docs/features/socks5.zh-CN.md) |
 | 🤖 **Telegram Bot** | 远程测速、订阅管理、系统监控 | [📖](docs/features/telegram-bot.zh-CN.md) |
 | 📜 **脚本系统** | 节点过滤、内容后处理、多脚本链式执行 | [📖](docs/script_support.zh-CN.md) |
 | 🔔 **Webhooks** | 支持 PushDeer、Bark、钉钉、方糖等多平台通知 | [📖](docs/configuration.zh-CN.md) |
@@ -76,6 +77,14 @@
 ---
 
 ## 🆕 近期更新
+
+### v1.3.0 · SOCKS5 网关一期（2026 年 9 月 11 日）
+
+- 新增管理员可配置的本地 SOCKS5 网关，支持 TCP CONNECT、IPv4/IPv6/域名目标和用户名/密码认证。
+- 支持最佳节点、随机节点或指定节点出站选择；保存设置后即时启动/停止。
+- 网关默认关闭并监听 `127.0.0.1:1080`，避免升级后意外暴露开放代理。
+
+详情参见 [SOCKS5 网关](docs/features/socks5.zh-CN.md)。
 
 ### v1.2.21 · WebDAV 定时备份（2026 年 9 月 10 日）
 

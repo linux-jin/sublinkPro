@@ -577,8 +577,63 @@
       "aiAssistant": "AI Assistant",
       "subStore": "Sub-Store",
       "backup": "Backup",
+      "socks5": "SOCKS5 gateway",
       "dataMigration": "Data migration",
       "countryRules": "Country Rules"
+    },
+    "socks5": {
+      "title": "SOCKS5 gateway",
+      "subheader": "Expose selected SublinkPro nodes through a local TCP SOCKS5 CONNECT listener.",
+      "alerts": {
+        "security": "Phase one supports TCP CONNECT only. Keep the listener on 127.0.0.1 unless you have secured the network and credentials."
+      },
+      "status": {
+        "running": "Running at {{address}}",
+        "stopped": "The SOCKS5 gateway is stopped"
+      },
+      "form": {
+        "enabled": "Enable SOCKS5 gateway",
+        "listenAddress": "Listen address",
+        "listenAddressHelper": "Use 127.0.0.1 for local-only access. Bind to 0.0.0.0 only when intentional.",
+        "port": "Listen port",
+        "selection": "Node selection",
+        "selectionBest": "Best available node",
+        "selectionRandom": "Random available node",
+        "selectionSpecific": "Specific node",
+        "node": "Outbound node",
+        "nodePlaceholder": "Select a node",
+        "requireAuth": "Require username/password",
+        "username": "Username",
+        "password": "Password",
+        "passwordSaved": "Leave blank to keep the saved password.",
+        "passwordHelper": "A password is required when authentication is enabled.",
+        "clearPassword": "Clear saved password"
+      },
+      "actions": {
+        "save": "Save settings",
+        "saving": "Saving...",
+        "refresh": "Refresh",
+        "stop": "Stop gateway",
+        "stopping": "Stopping..."
+      },
+      "messages": {
+        "loadFailed": "Failed to load SOCKS5 settings: {{message}}",
+        "saved": "SOCKS5 settings saved",
+        "saveFailed": "Failed to save SOCKS5 settings: {{message}}",
+        "authRequired": "Enter a username and password, or disable authentication.",
+        "stopped": "SOCKS5 gateway stopped",
+        "stopFailed": "Failed to stop SOCKS5 gateway: {{message}}"
+      },
+      "api": {
+        "adminRequired": "Only administrators can manage the SOCKS5 gateway",
+        "loaded": "SOCKS5 settings loaded",
+        "loadFailed": "Failed to load SOCKS5 settings: {{message}}",
+        "invalidRequest": "Invalid request parameters",
+        "invalidSettings": "Invalid SOCKS5 settings: {{message}}",
+        "saved": "SOCKS5 settings saved",
+        "startFailed": "Failed to start SOCKS5 gateway: {{message}}",
+        "stopped": "SOCKS5 gateway stopped"
+      }
     },
     "telegramPanel": {
       "title": "Telegram Bot",
