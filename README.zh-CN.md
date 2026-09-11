@@ -78,14 +78,13 @@
 
 ## 🆕 版本状态
 
-**最新稳定版：** `v1.2.21`
+**最新稳定版：** `v1.3.0`
 
-- 新增支持 Cron 热加载和任务中心进度的 WebDAV 定时备份。
-- 修复 TeraCLOUD 一类 WebDAV 服务的目录重定向问题。
+- 新增 SOCKS5 网关一期，支持 TCP CONNECT 和用户名/密码认证。
+- 支持最佳节点、随机节点和指定节点出站选择。
+- SOCKS5 管理已移至管理员专用侧边栏页面，并修复指定节点选择器。
 
-**当前 `dev` 开发亮点：** SOCKS5 网关一期，支持 TCP CONNECT、身份认证，以及最佳/随机/指定节点选择。
-
-完整版本历史和未发布改动请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)，正式发布包参见 [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases)。
+完整版本历史请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)，正式发布包参见 [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases)。
 
 ---
 

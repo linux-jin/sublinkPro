@@ -6,6 +6,10 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [1.3.0] - 2026-09-11
+
 ### Added
 
 - Added an administrator-configurable local SOCKS5 gateway.
