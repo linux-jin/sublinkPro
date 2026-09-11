@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { memo } from 'react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 // material-ui
@@ -50,9 +51,9 @@ import { getNodeTagChipSx, getNodeThemeTokens } from '../nodeTheme';
  * 桌面端节点表格（精简版）
  * 只显示核心信息，详细信息通过详情面板查看
  */
-export default function NodeTable({
+function NodeTable({
   nodes,
-  selectedNodes,
+  selectedNodeIds,
   sortBy,
   sortOrder,
   tagColorMap,
@@ -72,7 +73,7 @@ export default function NodeTable({
   const { t } = useTranslation();
   const { isDark } = useResolvedColorScheme();
   const tokens = getNodeThemeTokens(theme, isDark);
-  const isSelected = (node) => selectedNodes.some((n) => n.ID === node.ID);
+  const isSelected = (node) => selectedNodeIds.has(node.ID);
   const actionColumnSurface = tokens.palette.background.paper;
   const rowHoverSurface = tokens.isDark ? tokens.palette.dark.dark : tokens.palette.grey[50];
   const rowSelectedSurface = tokens.isDark ? tokens.palette.dark.main : tokens.palette.primary.light;
@@ -81,6 +82,7 @@ export default function NodeTable({
   // 列宽调整状态
   const [resizing, setResizing] = useState(null);
   const [ghostLine, setGhostLine] = useState(null); // { x: number, columnKey: string }
+  const ghostLineRef = useRef(null);
   const tableContainerRef = useRef(null);
   const rafRef = useRef(null);
 
@@ -101,7 +103,9 @@ export default function NodeTable({
         tableTop: tableRect?.top || 0,
         tableBottom: tableRect?.bottom || window.innerHeight
       });
-      setGhostLine({ x: e.clientX, columnKey });
+      const nextGhostLine = { x: e.clientX, columnKey };
+      ghostLineRef.current = nextGhostLine;
+      setGhostLine(nextGhostLine);
     },
     [columnWidths]
   );
@@ -123,11 +127,9 @@ export default function NodeTable({
         // 如果达到最小宽度限制，ghost line 停在最小位置
         const ghostX = resizing.startX + Math.max(60 - resizing.startWidth, delta);
 
-        setGhostLine({
-          x: ghostX,
-          columnKey: resizing.columnKey,
-          newWidth
-        });
+        const nextGhostLine = { x: ghostX, columnKey: resizing.columnKey, newWidth };
+        ghostLineRef.current = nextGhostLine;
+        setGhostLine(nextGhostLine);
       });
     };
 
@@ -137,11 +139,13 @@ export default function NodeTable({
         rafRef.current = null;
       }
 
-      if (ghostLine?.newWidth && ghostLine.newWidth !== resizing.startWidth) {
-        onColumnResize(resizing.columnKey, ghostLine.newWidth);
+      const latestGhostLine = ghostLineRef.current;
+      if (latestGhostLine?.newWidth && latestGhostLine.newWidth !== resizing.startWidth) {
+        onColumnResize(resizing.columnKey, latestGhostLine.newWidth);
       }
 
       setResizing(null);
+      ghostLineRef.current = null;
       setGhostLine(null);
     };
 
@@ -159,7 +163,7 @@ export default function NodeTable({
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [resizing, ghostLine, onColumnResize]);
+  }, [resizing, onColumnResize]);
 
   // 调整手柄组件
   const ResizeHandle = ({ columnKey }) => {
@@ -819,7 +823,7 @@ export default function NodeTable({
 
 NodeTable.propTypes = {
   nodes: PropTypes.array.isRequired,
-  selectedNodes: PropTypes.array.isRequired,
+  selectedNodeIds: PropTypes.instanceOf(Set).isRequired,
   sortBy: PropTypes.string.isRequired,
   sortOrder: PropTypes.string.isRequired,
   tagColorMap: PropTypes.object,
@@ -834,3 +838,5 @@ NodeTable.propTypes = {
   onViewDetails: PropTypes.func.isRequired,
   onColumnResize: PropTypes.func.isRequired
 };
+
+export default memo(NodeTable);

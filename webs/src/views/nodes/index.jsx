@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -31,6 +31,7 @@ import IPDetailsDialog from 'components/IPDetailsDialog';
 // api
 import {
   getNodes,
+  getNodeSelector,
   getNodeIds,
   addNodes,
   updateNode,
@@ -310,14 +311,18 @@ export default function NodeList() {
 
   // 后端已完成过滤和排序，直接使用 nodes 数组
   const filteredNodes = nodes;
+  const selectedNodeIds = useMemo(() => new Set(selectedNodes.map((node) => node.ID)), [selectedNodes]);
 
   // 防抖定时器引用
   const debounceTimerRef = useRef(null);
+  const requestSequenceRef = useRef(0);
+  const filterInitializedRef = useRef(false);
 
   // 获取节点列表（支持过滤和分页参数）
   // 注意：不依赖 page/rowsPerPage，而是通过参数传递，避免触发 filter useEffect 循环
   const fetchNodes = useCallback(
     async (filterParams = {}) => {
+      const requestSequence = ++requestSequenceRef.current;
       setLoading(true);
       try {
         // 构建过滤参数
@@ -352,6 +357,7 @@ export default function NodeList() {
         params.pageSize = filterParams.pageSize ?? 20;
 
         const response = await getNodes(params);
+        if (requestSequence !== requestSequenceRef.current) return;
         // 处理分页响应
         if (response.data && response.data.items !== undefined) {
           setNodes(response.data.items || []);
@@ -362,10 +368,11 @@ export default function NodeList() {
           setTotalItems((response.data || []).length);
         }
       } catch (error) {
+        if (requestSequence !== requestSequenceRef.current || error?.code === 'ERR_CANCELED') return;
         console.error(error);
         showMessage(error.message || t('nodes.page.messages.loadFailed'), 'error');
       } finally {
-        setLoading(false);
+        if (requestSequence === requestSequenceRef.current) setLoading(false);
       }
     },
     [t]
@@ -376,8 +383,8 @@ export default function NodeList() {
     if (proxyNodeOptions.length > 0) return; // 已加载过则不重复加载
     setLoadingProxyNodes(true);
     try {
-      const response = await getNodes({});
-      setProxyNodeOptions(response.data || []);
+      const response = await getNodeSelector({ page: 1, pageSize: 100 });
+      setProxyNodeOptions(response.data?.items || []);
     } catch (error) {
       console.error('获取代理节点列表失败:', error);
     } finally {
@@ -450,6 +457,10 @@ export default function NodeList() {
 
   // 监听过滤条件变化，带防抖发送请求到后端
   useEffect(() => {
+    if (!filterInitializedRef.current) {
+      filterInitializedRef.current = true;
+      return undefined;
+    }
     // 清除之前的定时器
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -512,14 +523,22 @@ export default function NodeList() {
     rowsPerPage
   ]);
 
-  const showMessage = (message, severity = 'success') => {
+  const showMessage = useCallback((message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
-  };
+  }, []);
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    showMessage(t('common.copied'));
-  };
+  const copyToClipboard = useCallback(
+    (text) => {
+      navigator.clipboard.writeText(text);
+      showMessage(t('common.copied'));
+    },
+    [showMessage, t]
+  );
+
+  const handleViewDetails = useCallback((node) => {
+    setDetailsNode(node);
+    setDetailsPanelOpen(true);
+  }, []);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -713,10 +732,10 @@ export default function NodeList() {
     setNodeDialogOpen(true);
   };
 
-  const handleOpenRawProtocol = (node) => {
+  const handleOpenRawProtocol = useCallback((node) => {
     setRawProtocolNode(node);
     setRawProtocolDialogOpen(true);
-  };
+  }, []);
 
   const handleCloseRawProtocol = () => {
     setRawProtocolDialogOpen(false);
@@ -1085,10 +1104,10 @@ export default function NodeList() {
     setProfileSelectOpen(true);
   };
 
-  const handleSingleSpeedTest = (node) => {
+  const handleSingleSpeedTest = useCallback((node) => {
     setProfileSelectNodeIds([node.ID]);
     setProfileSelectOpen(true);
-  };
+  }, []);
 
   // 选择所有（获取符合当前筛选条件的所有节点ID）
   const handleSelectAll = async (event) => {
@@ -1138,11 +1157,11 @@ export default function NodeList() {
   };
 
   const handleSelectNode = (node) => {
-    const isSelected = selectedNodes.some((n) => n.ID === node.ID);
+    const isSelected = selectedNodeIds.has(node.ID);
     if (isSelected) {
-      setSelectedNodes(selectedNodes.filter((n) => n.ID !== node.ID));
+      setSelectedNodes((previous) => previous.filter((selectedNode) => selectedNode.ID !== node.ID));
     } else {
-      setSelectedNodes([...selectedNodes, node]);
+      setSelectedNodes((previous) => [...previous, node]);
     }
   };
 
@@ -1344,21 +1363,18 @@ export default function NodeList() {
           nodes={filteredNodes}
           page={page}
           rowsPerPage={rowsPerPage}
-          selectedNodes={selectedNodes}
+          selectedNodeIds={selectedNodeIds}
           tagColorMap={tagColorMap}
           protocolMeta={protocolMeta}
           onSelect={handleSelectNode}
-          onViewDetails={(node) => {
-            setDetailsNode(node);
-            setDetailsPanelOpen(true);
-          }}
+          onViewDetails={handleViewDetails}
         />
       ) : (
         <NodeTable
           nodes={filteredNodes}
           page={page}
           rowsPerPage={rowsPerPage}
-          selectedNodes={selectedNodes}
+          selectedNodeIds={selectedNodeIds}
           sortBy={sortBy}
           sortOrder={sortOrder}
           tagColorMap={tagColorMap}
@@ -1371,10 +1387,7 @@ export default function NodeList() {
           onCopy={copyToClipboard}
           onEdit={handleEditNode}
           onDelete={handleDeleteNode}
-          onViewDetails={(node) => {
-            setDetailsNode(node);
-            setDetailsPanelOpen(true);
-          }}
+          onViewDetails={handleViewDetails}
           onColumnResize={handleColumnResize}
           onOpenRawProtocol={handleOpenRawProtocol}
         />
@@ -1395,7 +1408,6 @@ export default function NodeList() {
           localStorage.setItem('nodes_rowsPerPage', newValue);
           setPage(0);
           // 触发数据重新加载
-          fetchNodes({ ...getCurrentFilters(), page: 0, pageSize: newValue });
         }}
         pageSizeOptions={[10, 20, 50, 100]}
       />

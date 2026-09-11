@@ -402,6 +402,9 @@ func NodeSelector(c *gin.Context) {
 	if pageSize <= 0 {
 		pageSize = 100
 	}
+	if pageSize > 200 {
+		pageSize = 200
+	}
 
 	nodes, total, err := node.ListWithFiltersPaginated(filter, page, pageSize)
 	if err != nil {

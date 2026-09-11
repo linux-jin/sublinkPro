@@ -203,7 +203,7 @@ func (c *MapCache[K, V]) Filter(predicate func(V) bool) []V {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	result := make([]V, 0)
+	result := make([]V, 0, len(c.data))
 	for _, v := range c.data {
 		if predicate(v) {
 			result = append(result, v)
