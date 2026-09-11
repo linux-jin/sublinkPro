@@ -76,45 +76,16 @@
 
 ---
 
-## 🆕 近期更新
+## 🆕 版本状态
 
-### v1.3.0 · SOCKS5 网关一期（2026 年 9 月 11 日）
+**最新稳定版：** `v1.2.21`
 
-- 新增管理员可配置的本地 SOCKS5 网关，支持 TCP CONNECT、IPv4/IPv6/域名目标和用户名/密码认证。
-- 支持最佳节点、随机节点或指定节点出站选择；保存设置后即时启动/停止。
-- 网关默认关闭并监听 `127.0.0.1:1080`，避免升级后意外暴露开放代理。
+- 新增支持 Cron 热加载和任务中心进度的 WebDAV 定时备份。
+- 修复 TeraCLOUD 一类 WebDAV 服务的目录重定向问题。
 
-详情参见 [SOCKS5 网关](docs/features/socks5.zh-CN.md)。
+**当前 `dev` 开发亮点：** SOCKS5 网关一期，支持 TCP CONNECT、身份认证，以及最佳/随机/指定节点选择。
 
-### v1.2.21 · WebDAV 定时备份（2026 年 9 月 10 日）
-
-- 新增 **WebDAV 定时备份**，使用 5 段 Cron 表达式（例如 `0 3 * * *` 表示每天 03:00）。保存设置后会热加载任务，无需重启进程。
-- 定时任务复用手动上传的 ZIP 流程，在任务中心以 `webdav_backup` 展示进度，并跳过仍在进行的重叠上传。
-- 从备份恢复时会保留当前实例的 WebDAV 连接和定时计划设置。
-- 创建远程目录时会带尾斜杠发送 `MKCOL`，并把同主机的集合重定向视为成功，避免 TeraCLOUD 一类 WebDAV 因拒绝重定向而无法建目录。
-
-配置方法参见 [系统备份与 WebDAV](docs/features/backup.zh-CN.md)。
-
-### v1.2.20 · WebDAV 备份与恢复（2026 年 9 月 10 日）
-
-- 新增仅管理员可用的 **系统备份** 设置页，可配置和测试 WebDAV 连接。
-- 可直接生成系统备份 ZIP 并上传到 WebDAV，查看远程备份列表，并下载远程 ZIP 后启动现有数据库迁移恢复任务。
-- WebDAV 密码加密保存且不会通过 API 返回明文。默认要求 HTTPS；HTTP 和私有网络目标都必须显式启用。
-- 增加备份大小限制、ZIP bomb 与路径穿越防护、符号链接拒绝、重定向阻止、临时文件清理和精确的恢复任务跟踪。
-- WebDAV 备份生成当前支持 SQLite 部署；恢复时可选择是否包含 AccessKey 和订阅访问日志。
-- 修复管理员角色识别，使前端正确兼容 `/v1/users/me` 返回的 `roles: ["ADMIN"]`，管理员现在可以正常进入系统备份标签并使用本地备份操作。
-
-配置方法和安全说明参见 [系统备份与 WebDAV](docs/features/backup.zh-CN.md)。
-
-### v1.2.19 · OpenVPN YAML 导入（2026 年 9 月 9 日）
-
-- 新增 Clash/mihomo `type: openvpn` 代理节点的导入和导出支持。
-- 保留传输协议、加密与认证、账号凭据、PEM 证书和私钥块、TLS 静态密钥、保活、DNS、IP 栈及 `dialer-proxy` 等字段。
-- 使用经过 URL 编码的内部格式 `openvpn://server:port?...#name` 实现无损编辑和往返；它不是 OpenVPN 官方分享链接格式。
-- OpenVPN 节点可输出到 Clash/mihomo；v2ray 和 Surge 等不支持的输出会跳过该节点。
-- 当前版本暂不包含直接导入 `.ovpn` 文件的能力。
-
-更多说明参见 [机场管理](docs/features/airport.zh-CN.md)和[订阅分享](docs/features/subscription-share.zh-CN.md)中的 OpenVPN 兼容章节。
+完整版本历史和未发布改动请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)，正式发布包参见 [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases)。
 
 ---
 
@@ -194,6 +165,7 @@ docker-compose up -d
 |:---|:---|
 | [📦 安装部署](docs/installation.zh-CN.md) | Docker、一键脚本、更新升级、Watchtower 自动更新 |
 | [⚙️ 配置说明](docs/configuration.zh-CN.md) | 环境变量、命令行参数、验证码配置 |
+| [📝 更新日志](CHANGELOG.zh-CN.md) | 完整版本历史和发布说明 |
 
 ### ✨ 功能详解
 
@@ -208,6 +180,8 @@ docker-compose up -d
 | [📋 订阅分享](docs/features/subscription-share.zh-CN.md) | 多链接管理、过期策略、访问统计 |
 | [🌐 Host 管理](docs/features/host.zh-CN.md) | 域名映射、DNS 配置、测速持久化 |
 | [☁️ Cloudflare Tunnel](docs/features/cloudflare-tunnel.zh-CN.md) | 创建 Tunnel、获取 token、配置公网访问 |
+| [💾 系统备份与 WebDAV](docs/features/backup.zh-CN.md) | 手动/定时备份、远程列表和恢复 |
+| [🧦 SOCKS5 网关](docs/features/socks5.zh-CN.md) | 本地 TCP CONNECT 网关和节点转发 |
 | [🤖 Telegram 机器人](docs/features/telegram-bot.zh-CN.md) | 命令列表、配置指南 |
 | [📜 脚本功能](docs/script_support.zh-CN.md) | 节点过滤、内容后处理、函数参考 |
 | [🔐 双重验证（MFA）](docs/features/mfa.zh-CN.md) | TOTP 设置、恢复码、应急重置流程 |

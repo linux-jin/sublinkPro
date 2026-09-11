@@ -18,7 +18,7 @@ UDP `ASSOCIATE`, `BIND`, sticky sessions, multi-user routing, and Resin-style he
 ## Configure
 
 1. Sign in as an administrator.
-2. Open **User Center → SOCKS5 gateway**.
+2. Open **System Settings → SOCKS5 gateway** from the sidebar.
 3. Keep **Listen address** as `127.0.0.1` for local-only access.
 4. Choose a port (default `1080`) and node selection strategy.
 5. Keep authentication enabled and set a username/password.

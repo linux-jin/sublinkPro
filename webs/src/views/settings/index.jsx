@@ -20,7 +20,6 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import BackupIcon from '@mui/icons-material/Backup';
-import HubIcon from '@mui/icons-material/Hub';
 
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
@@ -34,7 +33,6 @@ import AIAssistantSettings from './components/AIAssistantSettings';
 import CloudflareTunnelSettings from './components/CloudflareTunnelSettings';
 import SubStoreSettings from './components/SubStoreSettings';
 import BackupSettings from './components/BackupSettings';
-import Socks5Settings from './components/Socks5Settings';
 import { useAuth } from 'contexts/AuthContext';
 
 // ==============================|| Tab Panel ||============================== //
@@ -68,12 +66,10 @@ export default function UserSettings() {
     if (tab === 'ai') return 5;
     if (tab === 'globalNodeProcessing') return 4;
     if (tab === 'backup' && isAdmin) return 8;
-    if (tab === 'socks5' && isAdmin) return 10;
     // 或者从 location.state 读取
     if (location.state?.targetTab === 'globalNodeProcessing') return 4;
     if (location.state?.targetTab === 'ai') return 5;
     if (location.state?.targetTab === 'backup' && isAdmin) return 8;
-    if (location.state?.targetTab === 'socks5' && isAdmin) return 10;
     return 0;
   });
   const [loading, setLoading] = useState(false);
@@ -111,8 +107,7 @@ export default function UserSettings() {
       'Cloudflare Tunnel',
       t('settings.tabs.subStore'),
       t('settings.tabs.backup'),
-      t('settings.tabs.dataMigration'),
-      t('settings.tabs.socks5')
+      t('settings.tabs.dataMigration')
     ];
     return tabTitles[tabValue] || t('settings.title');
   };
@@ -167,13 +162,6 @@ export default function UserSettings() {
             {...a11yProps(8)}
           />
           <Tab icon={<StorageIcon sx={{ mr: 1 }} />} iconPosition="start" label={t('settings.tabs.dataMigration')} {...a11yProps(9)} />
-          <Tab
-            icon={<HubIcon sx={{ mr: 1 }} />}
-            iconPosition="start"
-            label={t('settings.tabs.socks5')}
-            disabled={!isAdmin}
-            {...a11yProps(10)}
-          />
         </Tabs>
       </Box>
 
@@ -215,10 +203,6 @@ export default function UserSettings() {
 
       <TabPanel value={tabValue} index={9}>
         <DatabaseMigrationSettings showMessage={showMessage} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={10}>
-        {isAdmin && <Socks5Settings showMessage={showMessage} />}
       </TabPanel>
 
       {/* 提示消息 */}

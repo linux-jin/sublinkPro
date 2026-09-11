@@ -114,6 +114,7 @@
       "countryRules": "Country Rules",
       "webhooks": "Webhooks",
       "monitor": "Monitor",
+      "socks5": "SOCKS5 gateway",
       "changelog": "Changelog",
       "userCenter": "User Center",
       "appSettings": "Settings"
@@ -577,7 +578,6 @@
       "aiAssistant": "AI Assistant",
       "subStore": "Sub-Store",
       "backup": "Backup",
-      "socks5": "SOCKS5 gateway",
       "dataMigration": "Data migration",
       "countryRules": "Country Rules"
     },

@@ -40,6 +40,7 @@ suffix for Chinese.
 |---|---|
 | What the project is, feature overview, quick start, screenshots | `README.md` |
 | (Chinese project overview) | `README.zh-CN.md` |
+| Version history and release notes | `CHANGELOG.md` / `CHANGELOG.zh-CN.md` |
 
 ### Install, configure, deploy
 | User asks about | Doc path |

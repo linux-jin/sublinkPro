@@ -114,6 +114,7 @@
       "countryRules": "国家规则",
       "webhooks": "Webhook 管理",
       "monitor": "系统监控",
+      "socks5": "SOCKS5 网关",
       "changelog": "更新日志",
       "userCenter": "个人中心",
       "appSettings": "应用设置"
@@ -577,7 +578,6 @@
       "aiAssistant": "AI 助手",
       "subStore": "Sub-Store",
       "backup": "系统备份",
-      "socks5": "SOCKS5 网关",
       "dataMigration": "数据迁移",
       "countryRules": "国家规则"
     },

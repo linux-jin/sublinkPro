@@ -76,45 +76,16 @@ English | [简体中文](README.zh-CN.md)
 
 ---
 
-## 🆕 Recent Updates
+## 🆕 Release Status
 
-### v1.3.0 · SOCKS5 gateway phase one (September 11, 2026)
+**Latest stable release:** `v1.2.21`
 
-- Added an administrator-configurable local SOCKS5 gateway with TCP CONNECT, IPv4/IPv6/domain targets, and username/password authentication.
-- Supports best-node, random-node, or specific-node outbound selection; saving settings starts or stops the listener immediately.
-- The gateway is disabled by default and binds to `127.0.0.1:1080` to avoid exposing an open proxy after an upgrade.
+- Added scheduled WebDAV backups with cron hot-reload and task-center progress.
+- Fixed TeraCLOUD-style WebDAV directory redirects.
 
-See [SOCKS5 Gateway](docs/features/socks5.md) for details.
+**Current `dev` highlight:** phase-one SOCKS5 gateway with TCP CONNECT, authentication, and best/random/specific node selection.
 
-### v1.2.21 · Scheduled WebDAV backup (September 10, 2026)
-
-- Added **scheduled WebDAV backup** with a 5-field cron expression (for example `0 3 * * *` for 03:00 every day). Saving settings hot-reloads the job without restarting the process.
-- Scheduled runs reuse the same ZIP upload as the manual action, appear in the task center as `webdav_backup`, and skip overlapping uploads.
-- Restoring a backup preserves the current instance's WebDAV connection and schedule settings.
-- Directory creation now sends `MKCOL` with a trailing slash and treats same-host collection redirects as success, so TeraCLOUD-style WebDAV servers no longer fail with a rejected redirect.
-
-See [System Backup and WebDAV](docs/features/backup.md) for configuration details.
-
-### v1.2.20 · WebDAV backup and restore (September 10, 2026)
-
-- Added an administrator-only **System Backup** settings page for configuring and testing WebDAV connections.
-- System backup ZIP files can be generated and uploaded directly to WebDAV, listed remotely, and downloaded back to start the existing database migration restore task.
-- WebDAV passwords are encrypted at rest and never returned in plaintext. HTTPS is required by default; HTTP and private-network destinations require explicit opt-ins.
-- Added archive size limits, ZIP bomb and path traversal defenses, symlink rejection, redirect blocking, temporary-file cleanup, and precise restore task tracking.
-- WebDAV backup creation currently supports SQLite deployments. Restores can optionally include AccessKeys and subscription access logs.
-- Fixed administrator detection to recognize the `roles: ["ADMIN"]` response returned by `/v1/users/me`, enabling the System Backup tab and local backup action for administrators.
-
-See [System Backup and WebDAV](docs/features/backup.md) for configuration and security details.
-
-### v1.2.19 · OpenVPN YAML import (September 9, 2026)
-
-- Added import and export support for Clash/mihomo `type: openvpn` proxy entries.
-- Preserves transport, cipher/auth, credentials, PEM certificate and private-key blocks, TLS static keys, keepalive, DNS, IP stack, and `dialer-proxy` fields.
-- Uses an internal URL-encoded `openvpn://server:port?...#name` representation for lossless editing and round trips. It is not an official OpenVPN share-link format.
-- OpenVPN nodes are output to Clash/mihomo; unsupported v2ray and Surge outputs skip them.
-- Direct `.ovpn` file import is not included in this release.
-
-See the OpenVPN compatibility notes in [Airport Management](docs/features/airport.md) and [Subscription Sharing](docs/features/subscription-share.md).
+See [CHANGELOG.md](CHANGELOG.md) for the complete version history and unreleased changes, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 
 ---
 
@@ -194,6 +165,7 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 |:---|:---|
 | [📦 Installation](docs/installation.md) | Docker, one line scripts, updates, Watchtower automatic updates |
 | [⚙️ Configuration](docs/configuration.md) | Environment variables, command line flags, CAPTCHA configuration |
+| [📝 Changelog](CHANGELOG.md) | Complete version history and release notes |
 
 ### ✨ Feature Guides
 
@@ -208,6 +180,8 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 | [📋 Subscription sharing](docs/features/subscription-share.md) | Multiple links, expiration policies, access statistics |
 | [🌐 Host management](docs/features/host.md) | Domain mappings, DNS configuration, speed test persistence |
 | [☁️ Cloudflare Tunnel](docs/features/cloudflare-tunnel.md) | Create a Tunnel, get a token, configure public access |
+| [💾 System backup and WebDAV](docs/features/backup.md) | Manual/scheduled backups, remote listing, and restore |
+| [🧦 SOCKS5 gateway](docs/features/socks5.md) | Local TCP CONNECT gateway and node forwarding |
 | [🤖 Telegram Bot](docs/features/telegram-bot.md) | Command list and setup guide |
 | [📜 Script support](docs/script_support.md) | Node filtering, content post processing, function reference |
 | [🔐 Multi factor authentication, MFA](docs/features/mfa.md) | TOTP setup, recovery codes, emergency reset flow |

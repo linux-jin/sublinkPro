@@ -182,8 +182,8 @@ export default function Socks5Settings({ showMessage }) {
                 >
                   <MenuItem value={0}>{t('settings.socks5.form.nodePlaceholder')}</MenuItem>
                   {nodes.map((node) => (
-                    <MenuItem value={node.id} key={node.id}>
-                      {node.effectiveName || node.name || node.linkName || `#${node.id}`}
+                    <MenuItem value={node.ID} key={node.ID}>
+                      {node.EffectiveName || node.Name || node.LinkName || `#${node.ID}`}
                     </MenuItem>
                   ))}
                 </Select>
