@@ -78,11 +78,11 @@
 
 ## 🆕 版本状态
 
-**最新稳定版：** `v1.3.0`
+**最新稳定版：** `v1.4.0`
 
-- 新增 SOCKS5 网关一期，支持 TCP CONNECT 和用户名/密码认证。
-- 支持最佳节点、随机节点和指定节点出站选择。
-- SOCKS5 管理已移至管理员专用侧边栏页面，并修复指定节点选择器。
+- SOCKS5 新增轮询选择、重试次数、拨号超时和失败节点冷却，提升故障切换可靠性。
+- 新增 mihomo 适配器池复用和指定节点失败回退。
+- 优化大规模节点管理页面响应速度，并减少列表接口数据体积。
 
 完整版本历史请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)，正式发布包参见 [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases)。
 

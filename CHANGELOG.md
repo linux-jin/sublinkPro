@@ -6,10 +6,19 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [1.4.0] - 2026-09-14
+
 ### Added
 
 - Added SOCKS5 round-robin routing, configurable retry attempts, per-node dial timeout, failed-node cooldown, and optional specific-node fallback.
 - Added reusable mihomo adapter pooling with link-change invalidation and lifecycle cleanup.
+
+### Performance
+
+- Reduced node-management response size with an optional compact list projection.
+- Reduced repeated node-list requests and unnecessary rendering work for large node collections.
 
 ### Security
 
