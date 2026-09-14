@@ -1,0 +1,139 @@
+package socks5
+
+import (
+	"errors"
+	"math/rand"
+	"sort"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"sublink/models"
+)
+
+type nodeHealth struct {
+	mu            sync.Mutex
+	cooldownUntil map[string]time.Time
+	now           func() time.Time
+}
+
+func newNodeHealth() *nodeHealth {
+	return &nodeHealth{cooldownUntil: make(map[string]time.Time), now: time.Now}
+}
+
+func (h *nodeHealth) recordFailure(node models.Node, cooldown time.Duration) {
+	if cooldown <= 0 {
+		return
+	}
+	h.mu.Lock()
+	h.cooldownUntil[adapterKey(node)] = h.now().Add(cooldown)
+	h.mu.Unlock()
+}
+
+func (h *nodeHealth) recordSuccess(node models.Node) {
+	h.mu.Lock()
+	delete(h.cooldownUntil, adapterKey(node))
+	h.mu.Unlock()
+}
+
+func (h *nodeHealth) filter(nodes []models.Node) []models.Node {
+	if len(nodes) == 0 {
+		return nil
+	}
+	now := h.now()
+	h.mu.Lock()
+	available := make([]models.Node, 0, len(nodes))
+	var probe models.Node
+	var probeAt time.Time
+	for _, node := range nodes {
+		until, cooling := h.cooldownUntil[adapterKey(node)]
+		if !cooling || !until.After(now) {
+			delete(h.cooldownUntil, adapterKey(node))
+			available = append(available, node)
+			continue
+		}
+		if probeAt.IsZero() || until.Before(probeAt) {
+			probe, probeAt = node, until
+		}
+	}
+	h.mu.Unlock()
+	if len(available) > 0 {
+		return available
+	}
+	// Avoid a permanently dead pool: when every node is cooling down, probe the
+	// node whose cooldown expires first.
+	return []models.Node{probe}
+}
+
+type nodeRouter struct {
+	health     *nodeHealth
+	roundRobin atomic.Uint64
+}
+
+func newNodeRouter() *nodeRouter { return &nodeRouter{health: newNodeHealth()} }
+
+var listCandidateNodesFunc = listCandidateNodes
+
+func (r *nodeRouter) candidates(cfg Config) ([]models.Node, error) {
+	nodes, err := listCandidateNodesFunc(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if len(nodes) == 0 {
+		return nil, errors.New("no proxy nodes are available")
+	}
+
+	switch cfg.Selection {
+	case "random":
+		rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
+	case "round_robin":
+		start := int((r.roundRobin.Add(1) - 1) % uint64(len(nodes)))
+		nodes = append(append(make([]models.Node, 0, len(nodes)), nodes[start:]...), nodes[:start]...)
+	}
+
+	nodes = r.health.filter(nodes)
+	if cfg.MaxAttempts < len(nodes) {
+		nodes = nodes[:cfg.MaxAttempts]
+	}
+	return nodes, nil
+}
+
+func listCandidateNodes(cfg Config) ([]models.Node, error) {
+	var first *models.Node
+	switch cfg.Selection {
+	case "specific":
+		specific, ok := models.GetNodeByID(cfg.NodeID)
+		if !ok || strings.TrimSpace(specific.Link) == "" {
+			return nil, errors.New("configured SOCKS5 node was not found")
+		}
+		if !cfg.SpecificFallback {
+			return []models.Node{*specific}, nil
+		}
+		first = specific
+	case "best":
+		if best, bestErr := models.GetBestProxyNode(); bestErr == nil && best != nil && strings.TrimSpace(best.Link) != "" {
+			first = best
+		}
+	}
+
+	var modelNode models.Node
+	all, err := modelNode.ListWithFilters(models.NodeFilter{})
+	if err != nil {
+		return nil, err
+	}
+	available := make([]models.Node, 0, len(all)+1)
+	if first != nil {
+		available = append(available, *first)
+	}
+	for _, node := range all {
+		if strings.TrimSpace(node.Link) != "" && (first == nil || node.ID != first.ID) {
+			available = append(available, node)
+		}
+	}
+	if first == nil {
+		// Keep database results deterministic for round-robin and random seeds.
+		sort.SliceStable(available, func(i, j int) bool { return available[i].ID < available[j].ID })
+	}
+	return available, nil
+}

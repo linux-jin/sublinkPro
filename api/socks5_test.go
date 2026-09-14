@@ -42,13 +42,17 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	socks5service.DefaultManager().Stop()
 	t.Setenv("SUBLINK_API_ENCRYPTION_KEY", "socks5-test-key-0123456789abcdef0123456789")
 	recorder := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
-		"enabled":       false,
-		"listenAddress": "127.0.0.1",
-		"port":          1080,
-		"username":      "proxy-user",
-		"password":      "proxy-secret",
-		"selection":     "best",
-		"requireAuth":   true,
+		"enabled":                false,
+		"listenAddress":          "127.0.0.1",
+		"port":                   1080,
+		"username":               "proxy-user",
+		"password":               "proxy-secret",
+		"selection":              "round_robin",
+		"requireAuth":            true,
+		"maxAttempts":            4,
+		"dialTimeoutSeconds":     12,
+		"failureCooldownSeconds": 45,
+		"specificFallback":       true,
 	}, UpdateSocks5Settings)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
@@ -67,6 +71,9 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	if loaded.Username != "proxy-user" || loaded.Password != "proxy-secret" || loaded.Enabled || !loaded.RequireAuth {
 		t.Fatalf("unexpected stored config: %+v", loaded)
 	}
+	if loaded.Selection != "round_robin" || loaded.MaxAttempts != 4 || loaded.DialTimeoutSeconds != 12 || loaded.FailureCooldownSeconds != 45 || !loaded.SpecificFallback {
+		t.Fatalf("unexpected phase-two settings: %+v", loaded)
+	}
 	if _, err := socks5service.SaveConfig(socks5service.Config{
 		Enabled:       false,
 		ListenAddress: "127.0.0.1",
@@ -84,5 +91,55 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	}
 	if cleared.Password != "" || cleared.RequireAuth {
 		t.Fatalf("expected cleared password and disabled auth, got %+v", cleared)
+	}
+}
+
+func TestUpdateSocks5SettingsPreservesPhaseTwoFieldsForLegacyRequest(t *testing.T) {
+	setupBackupAPITestDB(t)
+	socks5service.DefaultManager().Stop()
+	if _, err := socks5service.SaveConfig(socks5service.Config{
+		ListenAddress:          "127.0.0.1",
+		Port:                   1080,
+		Selection:              "round_robin",
+		RequireAuth:            false,
+		MaxAttempts:            5,
+		DialTimeoutSeconds:     20,
+		FailureCooldownSeconds: 60,
+		SpecificFallback:       true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	recorder := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
+		"enabled":       false,
+		"listenAddress": "127.0.0.1",
+		"port":          1081,
+		"username":      "legacy",
+		"selection":     "best",
+		"requireAuth":   false,
+	}, UpdateSocks5Settings)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+	loaded, err := socks5service.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.MaxAttempts != 5 || loaded.DialTimeoutSeconds != 20 || loaded.FailureCooldownSeconds != 60 || !loaded.SpecificFallback {
+		t.Fatalf("legacy request overwrote phase-two fields: %+v", loaded)
+	}
+}
+
+func TestUpdateSocks5SettingsRejectsInvalidRoutingLimits(t *testing.T) {
+	setupBackupAPITestDB(t)
+	recorder := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
+		"enabled":       false,
+		"listenAddress": "127.0.0.1",
+		"port":          1080,
+		"selection":     "best",
+		"requireAuth":   false,
+		"maxAttempts":   6,
+	}, UpdateSocks5Settings)
+	if !strings.Contains(recorder.Body.String(), `"code":500`) || !strings.Contains(recorder.Body.String(), "max attempts") {
+		t.Fatalf("invalid routing limits were accepted: %s", recorder.Body.String())
 	}
 }

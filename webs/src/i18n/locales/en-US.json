@@ -585,7 +585,7 @@
       "title": "SOCKS5 gateway",
       "subheader": "Expose selected SublinkPro nodes through a local TCP SOCKS5 CONNECT listener.",
       "alerts": {
-        "security": "Phase one supports TCP CONNECT only. Keep the listener on 127.0.0.1 unless you have secured the network and credentials."
+        "security": "TCP CONNECT supports adapter reuse, retry, and failure cooldown. Non-loopback listeners require username/password authentication."
       },
       "status": {
         "running": "Running at {{address}}",
@@ -599,6 +599,7 @@
         "selection": "Node selection",
         "selectionBest": "Best available node",
         "selectionRandom": "Random available node",
+        "selectionRoundRobin": "Round-robin nodes",
         "selectionSpecific": "Specific node",
         "node": "Outbound node",
         "nodePlaceholder": "Select a node",
@@ -607,7 +608,15 @@
         "password": "Password",
         "passwordSaved": "Leave blank to keep the saved password.",
         "passwordHelper": "A password is required when authentication is enabled.",
-        "clearPassword": "Clear saved password"
+        "clearPassword": "Clear saved password",
+        "maxAttempts": "Maximum attempts",
+        "maxAttemptsHelper": "Try 1-5 candidate nodes before returning a connection failure.",
+        "dialTimeoutSeconds": "Dial timeout (seconds)",
+        "dialTimeoutSecondsHelper": "Timeout for each candidate node (1-120 seconds).",
+        "failureCooldownSeconds": "Failure cooldown (seconds)",
+        "failureCooldownSecondsHelper": "Temporarily skip failed nodes; 0 disables cooldown.",
+        "specificFallback": "Try other nodes if the specific node fails",
+        "specificFallbackHelper": "Disabled by default so specific-node routing remains strict."
       },
       "actions": {
         "save": "Save settings",

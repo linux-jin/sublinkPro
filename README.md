@@ -67,7 +67,7 @@ English | [简体中文](README.zh-CN.md)
 | 🌐 **Host management** | Domain mappings, DNS configuration, CDN preferred IPs | [📖](docs/features/host.md) |
 | ☁️ **Cloudflare Tunnel** | Expose the admin UI without a public IP, with cloudflared managed from the page | [📖](docs/features/cloudflare-tunnel.md) |
 | 💾 **WebDAV backup** | Encrypt WebDAV credentials, upload system backups on demand or by cron, list remote ZIP files, and restore from the page | [📖](docs/features/backup.md) |
-| 🧦 **SOCKS5 gateway** | Local TCP CONNECT gateway with best, random, or specific node forwarding | [📖](docs/features/socks5.md) |
+| 🧦 **SOCKS5 gateway** | Local TCP CONNECT gateway with best, random, round-robin, or specific-node failover routing | [📖](docs/features/socks5.md) |
 | 🤖 **Telegram Bot** | Remote speed tests, subscription management, system monitoring | [📖](docs/features/telegram-bot.md) |
 | 📜 **Script system** | Node filtering, content post processing, chained scripts | [📖](docs/script_support.md) |
 | 🔔 **Webhooks** | Supports PushDeer, Bark, DingTalk, ServerChan, and other notification platforms | [📖](docs/configuration.md) |
@@ -180,7 +180,7 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 | [🌐 Host management](docs/features/host.md) | Domain mappings, DNS configuration, speed test persistence |
 | [☁️ Cloudflare Tunnel](docs/features/cloudflare-tunnel.md) | Create a Tunnel, get a token, configure public access |
 | [💾 System backup and WebDAV](docs/features/backup.md) | Manual/scheduled backups, remote listing, and restore |
-| [🧦 SOCKS5 gateway](docs/features/socks5.md) | Local TCP CONNECT gateway and node forwarding |
+| [🧦 SOCKS5 gateway](docs/features/socks5.md) | Local TCP CONNECT gateway with adapter reuse, retries, cooldown, and node failover |
 | [🤖 Telegram Bot](docs/features/telegram-bot.md) | Command list and setup guide |
 | [📜 Script support](docs/script_support.md) | Node filtering, content post processing, function reference |
 | [🔐 Multi factor authentication, MFA](docs/features/mfa.md) | TOTP setup, recovery codes, emergency reset flow |

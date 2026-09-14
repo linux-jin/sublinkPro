@@ -16,6 +16,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import FormHelperText from '@mui/material/FormHelperText';
 
 import HubIcon from '@mui/icons-material/Hub';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -35,6 +36,10 @@ const defaultConfig = {
   nodeId: 0,
   selection: 'best',
   requireAuth: true,
+  maxAttempts: 1,
+  dialTimeoutSeconds: 30,
+  failureCooldownSeconds: 0,
+  specificFallback: false,
   running: false,
   boundAddress: ''
 };
@@ -90,7 +95,11 @@ export default function Socks5Settings({ showMessage }) {
         clearPassword: Boolean(form.clearPassword),
         nodeId: Number(form.nodeId) || 0,
         selection: form.selection,
-        requireAuth: Boolean(form.requireAuth)
+        requireAuth: Boolean(form.requireAuth),
+        maxAttempts: Number(form.maxAttempts) || 1,
+        dialTimeoutSeconds: Number(form.dialTimeoutSeconds) || 30,
+        failureCooldownSeconds: Number(form.failureCooldownSeconds) || 0,
+        specificFallback: Boolean(form.specificFallback)
       });
       syncConfig(response.data);
       showMessage(t('settings.socks5.messages.saved'));
@@ -117,6 +126,14 @@ export default function Socks5Settings({ showMessage }) {
   const busy = loading || saving || stopping;
   const specificInvalid = form.selection === 'specific' && !Number(form.nodeId);
   const authInvalid = form.enabled && form.requireAuth && (!form.username.trim() || (!form.password && !config.hasPassword));
+  const routingInvalid =
+    Number(form.maxAttempts) < 1 ||
+    Number(form.maxAttempts) > 5 ||
+    Number(form.dialTimeoutSeconds) < 1 ||
+    Number(form.dialTimeoutSeconds) > 120 ||
+    Number(form.failureCooldownSeconds) < 0 ||
+    Number(form.failureCooldownSeconds) > 3600 ||
+    (form.selection === 'specific' && form.specificFallback && Number(form.maxAttempts) < 2);
 
   return (
     <Card variant="outlined">
@@ -169,6 +186,7 @@ export default function Socks5Settings({ showMessage }) {
               >
                 <MenuItem value="best">{t('settings.socks5.form.selectionBest')}</MenuItem>
                 <MenuItem value="random">{t('settings.socks5.form.selectionRandom')}</MenuItem>
+                <MenuItem value="round_robin">{t('settings.socks5.form.selectionRoundRobin')}</MenuItem>
                 <MenuItem value="specific">{t('settings.socks5.form.selectionSpecific')}</MenuItem>
               </Select>
             </FormControl>
@@ -189,6 +207,55 @@ export default function Socks5Settings({ showMessage }) {
                 </Select>
               </FormControl>
             )}
+            {form.selection === 'specific' && (
+              <Box>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={Boolean(form.specificFallback)}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          specificFallback: event.target.checked,
+                          maxAttempts: event.target.checked ? Math.max(Number(prev.maxAttempts) || 1, 2) : prev.maxAttempts
+                        }))
+                      }
+                    />
+                  }
+                  label={t('settings.socks5.form.specificFallback')}
+                />
+                <FormHelperText>{t('settings.socks5.form.specificFallbackHelper')}</FormHelperText>
+              </Box>
+            )}
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <TextField
+                fullWidth
+                type="number"
+                label={t('settings.socks5.form.maxAttempts')}
+                value={form.maxAttempts}
+                onChange={(event) => setForm((prev) => ({ ...prev, maxAttempts: event.target.value }))}
+                helperText={t('settings.socks5.form.maxAttemptsHelper')}
+                slotProps={{ htmlInput: { min: 1, max: 5 } }}
+              />
+              <TextField
+                fullWidth
+                type="number"
+                label={t('settings.socks5.form.dialTimeoutSeconds')}
+                value={form.dialTimeoutSeconds}
+                onChange={(event) => setForm((prev) => ({ ...prev, dialTimeoutSeconds: event.target.value }))}
+                helperText={t('settings.socks5.form.dialTimeoutSecondsHelper')}
+                slotProps={{ htmlInput: { min: 1, max: 120 } }}
+              />
+              <TextField
+                fullWidth
+                type="number"
+                label={t('settings.socks5.form.failureCooldownSeconds')}
+                value={form.failureCooldownSeconds}
+                onChange={(event) => setForm((prev) => ({ ...prev, failureCooldownSeconds: event.target.value }))}
+                helperText={t('settings.socks5.form.failureCooldownSecondsHelper')}
+                slotProps={{ htmlInput: { min: 0, max: 3600 } }}
+              />
+            </Stack>
             <FormControlLabel
               control={
                 <Switch
@@ -231,7 +298,12 @@ export default function Socks5Settings({ showMessage }) {
             )}
             {authInvalid && <Alert severity="error">{t('settings.socks5.messages.authRequired')}</Alert>}
             <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap">
-              <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={busy || specificInvalid || authInvalid}>
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={handleSave}
+                disabled={busy || specificInvalid || authInvalid || routingInvalid}
+              >
                 {saving ? t('settings.socks5.actions.saving') : t('settings.socks5.actions.save')}
               </Button>
               <Button variant="outlined" startIcon={<RefreshIcon />} onClick={load} disabled={busy}>

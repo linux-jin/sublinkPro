@@ -40,15 +40,19 @@ func UpdateSocks5Settings(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Enabled       bool   `json:"enabled"`
-		ListenAddress string `json:"listenAddress"`
-		Port          int    `json:"port"`
-		Username      string `json:"username"`
-		Password      string `json:"password"`
-		ClearPassword bool   `json:"clearPassword"`
-		NodeID        int    `json:"nodeId"`
-		Selection     string `json:"selection"`
-		RequireAuth   *bool  `json:"requireAuth"`
+		Enabled                bool   `json:"enabled"`
+		ListenAddress          string `json:"listenAddress"`
+		Port                   int    `json:"port"`
+		Username               string `json:"username"`
+		Password               string `json:"password"`
+		ClearPassword          bool   `json:"clearPassword"`
+		NodeID                 int    `json:"nodeId"`
+		Selection              string `json:"selection"`
+		RequireAuth            *bool  `json:"requireAuth"`
+		MaxAttempts            *int   `json:"maxAttempts"`
+		DialTimeoutSeconds     *int   `json:"dialTimeoutSeconds"`
+		FailureCooldownSeconds *int   `json:"failureCooldownSeconds"`
+		SpecificFallback       *bool  `json:"specificFallback"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.FailWithI18n(c, "参数错误", "settings.socks5.api.invalidRequest", nil)
@@ -69,16 +73,36 @@ func UpdateSocks5Settings(c *gin.Context) {
 	if req.RequireAuth != nil {
 		requireAuth = *req.RequireAuth
 	}
+	maxAttempts := current.MaxAttempts
+	if req.MaxAttempts != nil {
+		maxAttempts = *req.MaxAttempts
+	}
+	dialTimeoutSeconds := current.DialTimeoutSeconds
+	if req.DialTimeoutSeconds != nil {
+		dialTimeoutSeconds = *req.DialTimeoutSeconds
+	}
+	failureCooldownSeconds := current.FailureCooldownSeconds
+	if req.FailureCooldownSeconds != nil {
+		failureCooldownSeconds = *req.FailureCooldownSeconds
+	}
+	specificFallback := current.SpecificFallback
+	if req.SpecificFallback != nil {
+		specificFallback = *req.SpecificFallback
+	}
 	cfg, err := socks5service.SaveConfig(socks5service.Config{
-		Enabled:       req.Enabled,
-		ListenAddress: req.ListenAddress,
-		Port:          req.Port,
-		Username:      req.Username,
-		Password:      password,
-		NodeID:        req.NodeID,
-		Selection:     req.Selection,
-		RequireAuth:   requireAuth,
-		ClearPassword: req.ClearPassword,
+		Enabled:                req.Enabled,
+		ListenAddress:          req.ListenAddress,
+		Port:                   req.Port,
+		Username:               req.Username,
+		Password:               password,
+		NodeID:                 req.NodeID,
+		Selection:              req.Selection,
+		RequireAuth:            requireAuth,
+		MaxAttempts:            maxAttempts,
+		DialTimeoutSeconds:     dialTimeoutSeconds,
+		FailureCooldownSeconds: failureCooldownSeconds,
+		SpecificFallback:       specificFallback,
+		ClearPassword:          req.ClearPassword,
 	})
 	if err != nil {
 		utils.FailWithI18n(c, "SOCKS5 设置无效: "+err.Error(), "settings.socks5.api.invalidSettings", map[string]any{"message": err.Error()})

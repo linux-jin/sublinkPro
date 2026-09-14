@@ -2,10 +2,10 @@ package socks5
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"strconv"
 	"strings"
@@ -13,59 +13,72 @@ import (
 	"time"
 
 	"sublink/models"
-	"sublink/services/mihomo"
 	"sublink/utils"
 
 	"github.com/metacubex/mihomo/constant"
 )
 
 const (
-	settingEnabled       = "socks5_enabled"
-	settingListenAddress = "socks5_listen_address"
-	settingPort          = "socks5_port"
-	settingUsername      = "socks5_username"
-	settingPassword      = "socks5_password"
-	settingNodeID        = "socks5_node_id"
-	settingSelection     = "socks5_selection"
-	settingRequireAuth   = "socks5_require_auth"
+	settingEnabled                = "socks5_enabled"
+	settingListenAddress          = "socks5_listen_address"
+	settingPort                   = "socks5_port"
+	settingUsername               = "socks5_username"
+	settingPassword               = "socks5_password"
+	settingNodeID                 = "socks5_node_id"
+	settingSelection              = "socks5_selection"
+	settingRequireAuth            = "socks5_require_auth"
+	settingMaxAttempts            = "socks5_max_attempts"
+	settingDialTimeoutSeconds     = "socks5_dial_timeout_seconds"
+	settingFailureCooldownSeconds = "socks5_failure_cooldown_seconds"
+	settingSpecificFallback       = "socks5_specific_fallback"
 
-	defaultListenAddress = "127.0.0.1"
-	defaultPort          = 1080
-	defaultSelection     = "best"
-	handshakeTimeout     = 15 * time.Second
-	dialTimeout          = 30 * time.Second
+	defaultListenAddress          = "127.0.0.1"
+	defaultPort                   = 1080
+	defaultSelection              = "best"
+	defaultMaxAttempts            = 1
+	defaultDialTimeoutSeconds     = 30
+	defaultFailureCooldownSeconds = 0
+	handshakeTimeout              = 15 * time.Second
 )
 
-// Config controls the phase-one SOCKS5 gateway.
+// Config controls the SOCKS5 gateway.
 type Config struct {
-	Enabled       bool
-	ListenAddress string
-	Port          int
-	Username      string
-	Password      string
-	NodeID        int
-	Selection     string
-	RequireAuth   bool
-	ClearPassword bool
+	Enabled                bool
+	ListenAddress          string
+	Port                   int
+	Username               string
+	Password               string
+	NodeID                 int
+	Selection              string
+	RequireAuth            bool
+	MaxAttempts            int
+	DialTimeoutSeconds     int
+	FailureCooldownSeconds int
+	SpecificFallback       bool
+	ClearPassword          bool
 }
 
 // PublicConfig is safe to return from the settings API.
 type PublicConfig struct {
-	Enabled        bool   `json:"enabled"`
-	ListenAddress  string `json:"listenAddress"`
-	Port           int    `json:"port"`
-	Username       string `json:"username"`
-	HasPassword    bool   `json:"hasPassword"`
-	MaskedPassword string `json:"maskedPassword,omitempty"`
-	NodeID         int    `json:"nodeId"`
-	Selection      string `json:"selection"`
-	RequireAuth    bool   `json:"requireAuth"`
-	Running        bool   `json:"running"`
-	BoundAddress   string `json:"boundAddress,omitempty"`
+	Enabled                bool   `json:"enabled"`
+	ListenAddress          string `json:"listenAddress"`
+	Port                   int    `json:"port"`
+	Username               string `json:"username"`
+	HasPassword            bool   `json:"hasPassword"`
+	MaskedPassword         string `json:"maskedPassword,omitempty"`
+	NodeID                 int    `json:"nodeId"`
+	Selection              string `json:"selection"`
+	RequireAuth            bool   `json:"requireAuth"`
+	MaxAttempts            int    `json:"maxAttempts"`
+	DialTimeoutSeconds     int    `json:"dialTimeoutSeconds"`
+	FailureCooldownSeconds int    `json:"failureCooldownSeconds"`
+	SpecificFallback       bool   `json:"specificFallback"`
+	Running                bool   `json:"running"`
+	BoundAddress           string `json:"boundAddress,omitempty"`
 }
 
 func defaultConfig() Config {
-	return Config{ListenAddress: defaultListenAddress, Port: defaultPort, Selection: defaultSelection, RequireAuth: true}
+	return Config{ListenAddress: defaultListenAddress, Port: defaultPort, Selection: defaultSelection, RequireAuth: true, MaxAttempts: defaultMaxAttempts, DialTimeoutSeconds: defaultDialTimeoutSeconds, FailureCooldownSeconds: defaultFailureCooldownSeconds}
 }
 
 func LoadConfig() (Config, error) {
@@ -106,6 +119,30 @@ func LoadConfig() (Config, error) {
 	if value, err := models.GetSetting(settingRequireAuth); err == nil && strings.TrimSpace(value) != "" {
 		cfg.RequireAuth = value != "false"
 	}
+	if value, err := models.GetSetting(settingMaxAttempts); err == nil && strings.TrimSpace(value) != "" {
+		parsed, parseErr := strconv.Atoi(value)
+		if parseErr != nil {
+			return cfg, fmt.Errorf("invalid SOCKS5 max attempts: %w", parseErr)
+		}
+		cfg.MaxAttempts = parsed
+	}
+	if value, err := models.GetSetting(settingDialTimeoutSeconds); err == nil && strings.TrimSpace(value) != "" {
+		parsed, parseErr := strconv.Atoi(value)
+		if parseErr != nil {
+			return cfg, fmt.Errorf("invalid SOCKS5 dial timeout: %w", parseErr)
+		}
+		cfg.DialTimeoutSeconds = parsed
+	}
+	if value, err := models.GetSetting(settingFailureCooldownSeconds); err == nil && strings.TrimSpace(value) != "" {
+		parsed, parseErr := strconv.Atoi(value)
+		if parseErr != nil {
+			return cfg, fmt.Errorf("invalid SOCKS5 failure cooldown: %w", parseErr)
+		}
+		cfg.FailureCooldownSeconds = parsed
+	}
+	if value, err := models.GetSetting(settingSpecificFallback); err == nil && strings.TrimSpace(value) != "" {
+		cfg.SpecificFallback = value == "true"
+	}
 	return NormalizeConfig(cfg)
 }
 
@@ -123,10 +160,28 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	switch strings.ToLower(strings.TrimSpace(cfg.Selection)) {
 	case "", "best":
 		cfg.Selection = defaultSelection
-	case "random", "specific":
+	case "random", "round_robin", "specific":
 		cfg.Selection = strings.ToLower(strings.TrimSpace(cfg.Selection))
 	default:
-		return cfg, errors.New("SOCKS5 selection must be best, random, or specific")
+		return cfg, errors.New("SOCKS5 selection must be best, random, round_robin, or specific")
+	}
+	if cfg.MaxAttempts == 0 {
+		cfg.MaxAttempts = defaultMaxAttempts
+	}
+	if cfg.MaxAttempts < 1 || cfg.MaxAttempts > 5 {
+		return cfg, errors.New("SOCKS5 max attempts must be between 1 and 5")
+	}
+	if cfg.DialTimeoutSeconds == 0 {
+		cfg.DialTimeoutSeconds = defaultDialTimeoutSeconds
+	}
+	if cfg.DialTimeoutSeconds < 1 || cfg.DialTimeoutSeconds > 120 {
+		return cfg, errors.New("SOCKS5 dial timeout must be between 1 and 120 seconds")
+	}
+	if cfg.FailureCooldownSeconds < 0 || cfg.FailureCooldownSeconds > 3600 {
+		return cfg, errors.New("SOCKS5 failure cooldown must be between 0 and 3600 seconds")
+	}
+	if cfg.Enabled && !cfg.RequireAuth && !isLoopbackListenAddress(cfg.ListenAddress) {
+		return cfg, errors.New("SOCKS5 authentication can only be disabled on a loopback listen address")
 	}
 	if cfg.Enabled && cfg.RequireAuth && (strings.TrimSpace(cfg.Username) == "" || cfg.Password == "") {
 		return cfg, errors.New("SOCKS5 username and password are required when authentication is enabled")
@@ -137,6 +192,9 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if cfg.Selection == "specific" && cfg.NodeID <= 0 {
 		return cfg, errors.New("a node ID is required for specific SOCKS5 selection")
 	}
+	if cfg.Selection == "specific" && cfg.SpecificFallback && cfg.MaxAttempts < 2 {
+		return cfg, errors.New("SOCKS5 max attempts must be at least 2 when specific-node fallback is enabled")
+	}
 	return cfg, nil
 }
 
@@ -146,13 +204,17 @@ func SaveConfig(input Config) (Config, error) {
 		return cfg, err
 	}
 	values := map[string]string{
-		settingEnabled:       strconv.FormatBool(cfg.Enabled),
-		settingListenAddress: cfg.ListenAddress,
-		settingPort:          strconv.Itoa(cfg.Port),
-		settingUsername:      strings.TrimSpace(cfg.Username),
-		settingNodeID:        strconv.Itoa(cfg.NodeID),
-		settingSelection:     cfg.Selection,
-		settingRequireAuth:   strconv.FormatBool(cfg.RequireAuth),
+		settingEnabled:                strconv.FormatBool(cfg.Enabled),
+		settingListenAddress:          cfg.ListenAddress,
+		settingPort:                   strconv.Itoa(cfg.Port),
+		settingUsername:               strings.TrimSpace(cfg.Username),
+		settingNodeID:                 strconv.Itoa(cfg.NodeID),
+		settingSelection:              cfg.Selection,
+		settingRequireAuth:            strconv.FormatBool(cfg.RequireAuth),
+		settingMaxAttempts:            strconv.Itoa(cfg.MaxAttempts),
+		settingDialTimeoutSeconds:     strconv.Itoa(cfg.DialTimeoutSeconds),
+		settingFailureCooldownSeconds: strconv.Itoa(cfg.FailureCooldownSeconds),
+		settingSpecificFallback:       strconv.FormatBool(cfg.SpecificFallback),
 	}
 	if cfg.ClearPassword {
 		values[settingPassword] = ""
@@ -178,24 +240,18 @@ func ToPublicConfig(cfg Config, running bool, boundAddress string) PublicConfig 
 	if cfg.Password != "" {
 		masked = "••••••••"
 	}
-	return PublicConfig{Enabled: cfg.Enabled, ListenAddress: cfg.ListenAddress, Port: cfg.Port, Username: cfg.Username, HasPassword: cfg.Password != "", MaskedPassword: masked, NodeID: cfg.NodeID, Selection: cfg.Selection, RequireAuth: cfg.RequireAuth, Running: running, BoundAddress: boundAddress}
+	return PublicConfig{Enabled: cfg.Enabled, ListenAddress: cfg.ListenAddress, Port: cfg.Port, Username: cfg.Username, HasPassword: cfg.Password != "", MaskedPassword: masked, NodeID: cfg.NodeID, Selection: cfg.Selection, RequireAuth: cfg.RequireAuth, MaxAttempts: cfg.MaxAttempts, DialTimeoutSeconds: cfg.DialTimeoutSeconds, FailureCooldownSeconds: cfg.FailureCooldownSeconds, SpecificFallback: cfg.SpecificFallback, Running: running, BoundAddress: boundAddress}
 }
 
 // DialFunc allows tests and future routing implementations to replace mihomo dialing.
 type DialFunc func(ctx context.Context, node models.Node, host string, port uint16) (net.Conn, error)
 
-func defaultDial(ctx context.Context, node models.Node, host string, port uint16) (net.Conn, error) {
-	adapter, err := mihomo.GetMihomoAdapter(node.Link)
-	if err != nil {
-		return nil, err
-	}
-	return adapter.DialContext(ctx, &constant.Metadata{NetWork: constant.TCP, Type: constant.SOCKS5, Host: host, DstPort: port})
-}
-
 // Server serves SOCKS5 CONNECT requests over a supplied listener.
 type Server struct {
-	cfg  Config
-	dial DialFunc
+	cfg    Config
+	dial   DialFunc
+	pool   *adapterPool
+	router *nodeRouter
 }
 
 func NewServer(cfg Config, dial DialFunc) (*Server, error) {
@@ -203,10 +259,12 @@ func NewServer(cfg Config, dial DialFunc) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	if dial == nil {
-		dial = defaultDial
+	server := &Server{cfg: normalized, dial: dial, router: newNodeRouter()}
+	if server.dial == nil {
+		server.pool = newAdapterPool(nil)
+		server.dial = server.dialWithPool
 	}
-	return &Server{cfg: normalized, dial: dial}, nil
+	return server, nil
 }
 
 func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
@@ -236,15 +294,23 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 	if err != nil {
 		return
 	}
-	node, err := selectNodeFunc(s.cfg)
+	nodes, err := s.router.candidates(s.cfg)
 	if err != nil {
 		_ = writeReply(client, 0x01)
 		return
 	}
-	dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
-	defer cancel()
-	upstream, err := s.dial(dialCtx, node, host, port)
-	if err != nil {
+	var upstream net.Conn
+	for _, node := range nodes {
+		dialCtx, cancel := context.WithTimeout(ctx, time.Duration(s.cfg.DialTimeoutSeconds)*time.Second)
+		upstream, err = s.dial(dialCtx, node, host, port)
+		cancel()
+		if err == nil {
+			s.router.health.recordSuccess(node)
+			break
+		}
+		s.router.health.recordFailure(node, time.Duration(s.cfg.FailureCooldownSeconds)*time.Second)
+	}
+	if upstream == nil {
 		_ = writeReply(client, 0x01)
 		return
 	}
@@ -295,7 +361,9 @@ func (s *Server) authenticate(conn net.Conn) error {
 	if _, err := io.ReadFull(conn, password); err != nil {
 		return err
 	}
-	if string(username) != s.cfg.Username || string(password) != s.cfg.Password {
+	usernameOK := subtle.ConstantTimeCompare(username, []byte(s.cfg.Username)) == 1
+	passwordOK := subtle.ConstantTimeCompare(password, []byte(s.cfg.Password)) == 1
+	if !usernameOK || !passwordOK {
 		_, _ = conn.Write([]byte{0x01, 0x01})
 		return errors.New("invalid SOCKS5 credentials")
 	}
@@ -378,35 +446,32 @@ func pump(client, upstream net.Conn) {
 	<-done
 }
 
-var selectNodeFunc = selectNode
-
-func selectNode(cfg Config) (models.Node, error) {
-	if cfg.Selection == "specific" {
-		if node, ok := models.GetNodeByID(cfg.NodeID); ok && strings.TrimSpace(node.Link) != "" {
-			return *node, nil
-		}
-		return models.Node{}, errors.New("configured SOCKS5 node was not found")
-	}
-	if cfg.Selection == "best" {
-		if node, err := models.GetBestProxyNode(); err == nil && node != nil && strings.TrimSpace(node.Link) != "" {
-			return *node, nil
-		}
-	}
-	var modelNode models.Node
-	nodes, err := modelNode.ListWithFilters(models.NodeFilter{})
+func (s *Server) dialWithPool(ctx context.Context, node models.Node, host string, port uint16) (net.Conn, error) {
+	adapter, lease, err := s.pool.acquire(node)
 	if err != nil {
-		return models.Node{}, err
+		return nil, err
 	}
-	available := make([]models.Node, 0, len(nodes))
-	for _, node := range nodes {
-		if strings.TrimSpace(node.Link) != "" {
-			available = append(available, node)
-		}
+	conn, err := adapter.DialContext(ctx, &constant.Metadata{NetWork: constant.TCP, Type: constant.SOCKS5, Host: host, DstPort: port})
+	if err != nil {
+		lease.release(true)
+		return nil, err
 	}
-	if len(available) == 0 {
-		return models.Node{}, errors.New("no proxy nodes are available")
+	return &pooledConn{Conn: conn, lease: lease}, nil
+}
+
+func (s *Server) Close() {
+	if s.pool != nil {
+		s.pool.close()
 	}
-	return available[rand.Intn(len(available))], nil
+}
+
+func isLoopbackListenAddress(address string) bool {
+	host := strings.TrimSpace(strings.Trim(address, "[]"))
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // Manager owns the optional long-lived listener.
@@ -416,6 +481,7 @@ type Manager struct {
 	cancel   context.CancelFunc
 	cfg      Config
 	dial     DialFunc
+	server   *Server
 }
 
 var defaultManager = &Manager{}
@@ -441,24 +507,27 @@ func (m *Manager) Apply(cfg Config) error {
 		return fmt.Errorf("listen SOCKS5: %w", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	m.mu.Lock()
-	m.listener = listener
-	m.cancel = cancel
-	m.mu.Unlock()
 	server, err := NewServer(normalized, dial)
 	if err != nil {
 		_ = listener.Close()
 		cancel()
 		return err
 	}
+	m.mu.Lock()
+	m.listener = listener
+	m.cancel = cancel
+	m.server = server
+	m.mu.Unlock()
 	go func() {
 		if serveErr := server.Serve(ctx, listener); serveErr != nil {
 			utils.Warn("SOCKS5 listener stopped: %v", serveErr)
 		}
+		server.Close()
 		m.mu.Lock()
 		if m.listener == listener {
 			m.listener = nil
 			m.cancel = nil
+			m.server = nil
 		}
 		m.mu.Unlock()
 	}()
@@ -477,14 +546,19 @@ func (m *Manager) Stop() {
 	m.mu.Lock()
 	listener := m.listener
 	cancel := m.cancel
+	server := m.server
 	m.listener = nil
 	m.cancel = nil
+	m.server = nil
 	m.mu.Unlock()
 	if cancel != nil {
 		cancel()
 	}
 	if listener != nil {
 		_ = listener.Close()
+	}
+	if server != nil {
+		server.Close()
 	}
 }
 

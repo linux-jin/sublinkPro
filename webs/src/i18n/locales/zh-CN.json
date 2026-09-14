@@ -585,7 +585,7 @@
       "title": "SOCKS5 网关",
       "subheader": "通过本地 TCP SOCKS5 CONNECT 监听端口转发已选择的 SublinkPro 节点。",
       "alerts": {
-        "security": "一期仅支持 TCP CONNECT。除非已做好网络隔离和认证，否则请保持监听地址为 127.0.0.1。"
+        "security": "TCP CONNECT 已支持适配器复用、失败重试和节点冷却。非回环地址必须启用用户名/密码认证。"
       },
       "status": {
         "running": "运行中：{{address}}",
@@ -599,6 +599,7 @@
         "selection": "节点选择",
         "selectionBest": "最佳可用节点",
         "selectionRandom": "随机可用节点",
+        "selectionRoundRobin": "轮询可用节点",
         "selectionSpecific": "指定节点",
         "node": "出站节点",
         "nodePlaceholder": "选择节点",
@@ -607,7 +608,15 @@
         "password": "密码",
         "passwordSaved": "留空则保留已保存的密码。",
         "passwordHelper": "启用认证时必须填写密码。",
-        "clearPassword": "清除已保存密码"
+        "clearPassword": "清除已保存密码",
+        "maxAttempts": "最大尝试次数",
+        "maxAttemptsHelper": "连接失败前最多尝试 1-5 个候选节点。",
+        "dialTimeoutSeconds": "拨号超时（秒）",
+        "dialTimeoutSecondsHelper": "每个候选节点的超时时间（1-120 秒）。",
+        "failureCooldownSeconds": "失败冷却（秒）",
+        "failureCooldownSecondsHelper": "暂时跳过失败节点；设置为 0 可关闭冷却。",
+        "specificFallback": "指定节点失败时尝试其他节点",
+        "specificFallbackHelper": "默认关闭，确保指定节点模式不会自动切换。"
       },
       "actions": {
         "save": "保存设置",

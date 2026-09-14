@@ -164,7 +164,7 @@ Base: `/api/v1/nodes`
 - **POST** `/nodes/batch-fill-country` — **JSON** `{"airportId":123, "onlyEmpty":true}` fills node countries from enabled country rules by matching each node name. `airportId` is optional; when omitted, it scans all nodes. This is rule-based filling of empty/missing country values, not landing-IP detection. Use `/nodes/batch-update-country` when you already know the exact country code to set.
 
 ### List / Get Nodes
-**GET** `/nodes/get` — query filters (all lowerCamel): `search`, `group`, `source`, `protocol`, `maxDelay`, `minSpeed`, `sortBy`, `sortOrder`, `page`, `pageSize`, array filters `countries[]`, `tags[]`. Returns `{items, total, page, pageSize, totalPages}` when paginated.
+**GET** `/nodes/get` — query filters (all lowerCamel): `search`, `group`, `source`, `protocol`, `maxDelay`, `minSpeed`, `sortBy`, `sortOrder`, `page`, `pageSize`, array filters `countries[]`, `tags[]`. Returns `{items, total, page, pageSize, totalPages}` when paginated. Add `compact=true` for the node-management projection, which omits internal persistence fields while preserving fields needed by the list/details/edit flows.
 
 ### Node Selector (compact picker list)
 **GET** `/nodes/selector` — same query filters as `/nodes/get`; returns `{items:[{ID, Name, Group, Source, LinkCountry, ...}], total, ...}`. Use this to present nodes as a numbered pick list.
@@ -712,10 +712,10 @@ Base: `/api/v1/settings` (write bodies are JSON unless noted; most writes are de
 ### SOCKS5 gateway
 
 - **GET** `/api/v1/settings/socks5` — get administrator-only gateway settings. The password is never returned.
-- **POST** `/api/v1/settings/socks5` — save and apply JSON settings: `enabled`, `listenAddress`, `port`, `username`, optional `password` (empty preserves the saved password), `clearPassword`, `nodeId`, `selection` (`best`, `random`, or `specific`), and `requireAuth`.
+- **POST** `/api/v1/settings/socks5` — save and apply JSON settings: `enabled`, `listenAddress`, `port`, `username`, optional `password` (empty preserves the saved password), `clearPassword`, `nodeId`, `selection` (`best`, `random`, `round_robin`, or `specific`), `requireAuth`, `maxAttempts` (1-5), `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), and `specificFallback`.
 - **POST** `/api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
 
-Phase one supports TCP CONNECT only; UDP ASSOCIATE and BIND are not implemented.
+TCP CONNECT supports adapter reuse, pre-reply candidate retry, and failed-node cooldown. UDP ASSOCIATE and BIND are not implemented.
 
 **Database migration:** **POST** `/settings/database-migration/import` — **multipart/form-data** (upload a backup.zip / .db)
 

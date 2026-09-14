@@ -24,11 +24,11 @@ func TestNormalizeConfigDefaultsAndValidation(t *testing.T) {
 }
 
 func TestServerHandlesAuthenticatedConnectAndPumpsTraffic(t *testing.T) {
-	previous := selectNodeFunc
-	selectNodeFunc = func(Config) (models.Node, error) {
-		return models.Node{ID: 1, Link: "socks5://upstream:1080", Name: "test"}, nil
+	previous := listCandidateNodesFunc
+	listCandidateNodesFunc = func(Config) ([]models.Node, error) {
+		return []models.Node{{ID: 1, Link: "socks5://upstream:1080", Name: "test"}}, nil
 	}
-	t.Cleanup(func() { selectNodeFunc = previous })
+	t.Cleanup(func() { listCandidateNodesFunc = previous })
 
 	client, serverConn := net.Pipe()
 	defer func() { _ = client.Close() }()
