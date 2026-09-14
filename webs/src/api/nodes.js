@@ -1,7 +1,7 @@
 import request from './request';
 
 // 获取节点列表（支持过滤和分页参数）
-// params: { search, group, source, maxDelay, minSpeed, countries[], sortBy, sortOrder, page, pageSize }
+// params: { search, group, source, maxDelay, minSpeed, countries[], sortBy, sortOrder, page, pageSize, compact }
 // 带page/pageSize时返回 { items, total, page, pageSize, totalPages }
 // 不带分页参数时返回节点数组（向后兼容）
 export function getNodes(params = {}) {

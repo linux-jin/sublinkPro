@@ -361,6 +361,7 @@ func NodeGet(c *gin.Context) {
 	var Node models.Node
 	filter := buildNodeFilterFromQuery(c)
 	page, pageSize := parsePagination(c)
+	compact := strings.EqualFold(strings.TrimSpace(c.Query("compact")), "true")
 
 	// 如果提供了分页参数，返回分页响应
 	if page > 0 && pageSize > 0 {
@@ -373,8 +374,12 @@ func NodeGet(c *gin.Context) {
 		if pageSize > 0 {
 			totalPages = int((total + int64(pageSize) - 1) / int64(pageSize))
 		}
+		items := any(nodes)
+		if compact {
+			items = models.ToNodeListItems(nodes)
+		}
 		utils.OkDetailed(c, "node get", gin.H{
-			"items":      nodes,
+			"items":      items,
 			"total":      total,
 			"page":       page,
 			"pageSize":   pageSize,
@@ -387,6 +392,10 @@ func NodeGet(c *gin.Context) {
 	nodes, err := Node.ListWithFilters(filter)
 	if err != nil {
 		utils.FailWithMsg(c, "node list error")
+		return
+	}
+	if compact {
+		utils.OkDetailed(c, "node get", models.ToNodeListItems(nodes))
 		return
 	}
 	utils.OkDetailed(c, "node get", nodes)

@@ -72,6 +72,77 @@ type NodeSelectorItem struct {
 	UnlockCheckAt string
 }
 
+// NodeListItem is the compact projection used by the node-management list.
+// Keep fields consumed by the node table/details/edit flows, but avoid exposing
+// internal persistence fields that are not needed for list rendering.
+type NodeListItem struct {
+	ID              int
+	Link            string
+	Name            string
+	LinkName        string
+	NameMode        string
+	EffectiveName   string
+	Group           string
+	Source          string
+	LinkCountry     string
+	LandingIP       string
+	DialerProxyName string
+	Speed           float64
+	DelayTime       int
+	SpeedStatus     string
+	DelayStatus     string
+	LatencyCheckAt  string
+	SpeedCheckAt    string
+	Tags            string
+	IsBroadcast     bool
+	IsResidential   bool
+	FraudScore      int
+	QualityStatus   string
+	QualityFamily   string
+	UnlockSummary   string
+	UnlockCheckAt   string
+	UpdatedAt       time.Time
+}
+
+func BuildNodeListItem(node Node) NodeListItem {
+	return NodeListItem{
+		ID:              node.ID,
+		Link:            node.Link,
+		Name:            node.Name,
+		LinkName:        node.LinkName,
+		NameMode:        NormalizeNodeNameMode(node.NameMode),
+		EffectiveName:   node.EffectiveName(),
+		Group:           node.Group,
+		Source:          node.Source,
+		LinkCountry:     node.LinkCountry,
+		LandingIP:       node.LandingIP,
+		DialerProxyName: node.DialerProxyName,
+		Speed:           node.Speed,
+		DelayTime:       node.DelayTime,
+		SpeedStatus:     node.SpeedStatus,
+		DelayStatus:     node.DelayStatus,
+		LatencyCheckAt:  node.LatencyCheckAt,
+		SpeedCheckAt:    node.SpeedCheckAt,
+		Tags:            node.Tags,
+		IsBroadcast:     node.IsBroadcast,
+		IsResidential:   node.IsResidential,
+		FraudScore:      node.FraudScore,
+		QualityStatus:   node.QualityStatus,
+		QualityFamily:   node.QualityFamily,
+		UnlockSummary:   node.UnlockSummary,
+		UnlockCheckAt:   node.UnlockCheckAt,
+		UpdatedAt:       node.UpdatedAt,
+	}
+}
+
+func ToNodeListItems(nodes []Node) []NodeListItem {
+	items := make([]NodeListItem, 0, len(nodes))
+	for _, node := range nodes {
+		items = append(items, BuildNodeListItem(node))
+	}
+	return items
+}
+
 func BuildNodeSelectorItem(node Node) NodeSelectorItem {
 	effectiveName := node.EffectiveName()
 	return NodeSelectorItem{

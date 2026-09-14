@@ -355,6 +355,7 @@ export default function NodeList() {
         // 分页参数必须通过 filterParams 传递
         params.page = (filterParams.page ?? 0) + 1; // 后端是1-indexed
         params.pageSize = filterParams.pageSize ?? 20;
+        params.compact = true;
 
         const response = await getNodes(params);
         if (requestSequence !== requestSequenceRef.current) return;
