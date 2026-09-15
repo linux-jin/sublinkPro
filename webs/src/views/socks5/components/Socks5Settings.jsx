@@ -23,8 +23,9 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SaveIcon from '@mui/icons-material/Save';
 import StopCircleIcon from '@mui/icons-material/StopCircle';
 
-import { getNodeSelector } from 'api/nodes';
 import { getSocks5Settings, stopSocks5, updateSocks5Settings } from 'api/settings';
+
+import SpecificNodeSelector from './SpecificNodeSelector';
 
 const defaultConfig = {
   enabled: false,
@@ -61,7 +62,6 @@ export default function Socks5Settings({ showMessage }) {
   const { t } = useTranslation();
   const [config, setConfig] = useState(defaultConfig);
   const [form, setForm] = useState({ ...defaultConfig, password: '', clearPassword: false });
-  const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -75,10 +75,8 @@ export default function Socks5Settings({ showMessage }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [settingsResponse, nodesResponse] = await Promise.all([getSocks5Settings(), getNodeSelector({ page: 1, pageSize: 100 })]);
+      const settingsResponse = await getSocks5Settings();
       syncConfig(settingsResponse.data);
-      const items = nodesResponse.data?.items || nodesResponse.data || [];
-      setNodes(Array.isArray(items) ? items : []);
     } catch (error) {
       showMessage(messageFromError(t, error, 'settings.socks5.messages.loadFailed'), 'error');
     } finally {
@@ -217,21 +215,12 @@ export default function Socks5Settings({ showMessage }) {
               </Select>
             </FormControl>
             {form.selection === 'specific' && (
-              <FormControl fullWidth error={specificInvalid}>
-                <InputLabel>{t('settings.socks5.form.node')}</InputLabel>
-                <Select
-                  label={t('settings.socks5.form.node')}
-                  value={Number(form.nodeId) || 0}
-                  onChange={(event) => setForm((prev) => ({ ...prev, nodeId: Number(event.target.value) }))}
-                >
-                  <MenuItem value={0}>{t('settings.socks5.form.nodePlaceholder')}</MenuItem>
-                  {nodes.map((node) => (
-                    <MenuItem value={node.ID} key={node.ID}>
-                      {node.EffectiveName || node.Name || node.LinkName || `#${node.ID}`}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <SpecificNodeSelector
+                value={Number(form.nodeId) || 0}
+                onChange={(nodeId) => setForm((prev) => ({ ...prev, nodeId }))}
+                disabled={busy}
+                error={specificInvalid}
+              />
             )}
             {form.selection === 'specific' && (
               <Box>
