@@ -8,6 +8,23 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 No unreleased changes yet.
 
+## [1.5.0] - 2026-09-15
+
+### Added
+
+- Added configurable global and per-client SOCKS5 connection limits.
+- Added idle and maximum-duration connection timeouts.
+- Added administrator-only live SOCKS5 monitoring with active connection details, aggregate counters, and traffic byte statistics.
+- Added administrator controls to disconnect one active SOCKS5 connection or all active connections.
+- Added status, active-connections, and connection-control endpoints for SOCKS5 operations.
+
+### Security
+
+- SOCKS5 connection and disconnect management APIs require administrator authentication.
+- Connection identifiers and traffic details are not exposed to non-administrator users.
+
+See [SOCKS5 Gateway](docs/features/socks5.md).
+
 ## [1.4.0] - 2026-09-14
 
 ### Added

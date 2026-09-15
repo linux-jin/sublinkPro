@@ -78,10 +78,10 @@ English | [简体中文](README.zh-CN.md)
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.4.0`
+**Latest stable release:** `v1.5.0`
 
-- Added resilient SOCKS5 routing with round-robin selection, retry limits, dial timeouts, and failed-node cooldown.
-- Added reusable mihomo adapter pooling and optional fallback from a specified node.
+- Added SOCKS5 connection governance with global/per-client limits, idle and duration timeouts, and administrator live monitoring.
+- Added active connection inspection and administrator disconnect controls through the SOCKS5 page and API.
 - Improved node-management responsiveness and reduced list API payload size for large node collections.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
