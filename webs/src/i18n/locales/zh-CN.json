@@ -591,6 +591,19 @@
         "running": "运行中：{{address}}",
         "stopped": "SOCKS5 网关已停止"
       },
+      "monitor": {
+        "title": "SOCKS5 运行监控",
+        "subheader": "页面可见时每 3 秒刷新",
+        "disconnectAll": "全部断开",
+        "activeConnections": "活动连接 {{count}}",
+        "totalConnections": "累计 {{count}}",
+        "successfulConnections": "成功 {{count}}",
+        "failedConnections": "失败 {{count}}",
+        "connecting": "连接中",
+        "waitingNode": "等待节点",
+        "disconnect": "断开",
+        "empty": "暂无活动连接"
+      },
       "form": {
         "enabled": "启用 SOCKS5 网关",
         "listenAddress": "监听地址",
@@ -616,7 +629,15 @@
         "failureCooldownSeconds": "失败冷却（秒）",
         "failureCooldownSecondsHelper": "暂时跳过失败节点；设置为 0 可关闭冷却。",
         "specificFallback": "指定节点失败时尝试其他节点",
-        "specificFallbackHelper": "默认关闭，确保指定节点模式不会自动切换。"
+        "specificFallbackHelper": "默认关闭，确保指定节点模式不会自动切换。",
+        "maxConnections": "最大连接数",
+        "maxConnectionsHelper": "全局活动连接上限。",
+        "maxConnectionsPerClient": "单客户端连接上限",
+        "maxConnectionsPerClientHelper": "同一客户端 IP 的活动连接上限。",
+        "idleTimeoutSeconds": "空闲超时（秒）",
+        "idleTimeoutSecondsHelper": "设置为 0 表示不限制。",
+        "maxConnectionDurationSeconds": "最大连接时长（秒）",
+        "maxConnectionDurationSecondsHelper": "设置为 0 表示不限制。"
       },
       "actions": {
         "save": "保存设置",
@@ -641,7 +662,13 @@
         "invalidSettings": "SOCKS5 设置无效：{{message}}",
         "saved": "SOCKS5 设置已保存",
         "startFailed": "启动 SOCKS5 网关失败：{{message}}",
-        "stopped": "SOCKS5 网关已停止"
+        "stopped": "SOCKS5 网关已停止",
+        "statusLoaded": "SOCKS5 状态已加载",
+        "connectionsLoaded": "SOCKS5 连接已加载",
+        "connectionClosed": "SOCKS5 连接已断开",
+        "connectionsClosed": "SOCKS5 连接已全部断开",
+        "invalidConnection": "连接 ID 无效",
+        "connectionNotFound": "连接不存在"
       }
     },
     "telegramPanel": {
@@ -1137,8 +1164,8 @@
         "remotePathHelper": "目录不存在时会尝试创建，例如 SublinkPro/backups。",
         "timeoutSeconds": "请求超时（秒）",
         "allowInsecureHttp": "允许不安全的 HTTP WebDAV",
-        "allowPrivateNetwork": "允许访问私有网络或本机地址"
-        ,"scheduleEnabled": "启用定时备份",
+        "allowPrivateNetwork": "允许访问私有网络或本机地址",
+        "scheduleEnabled": "启用定时备份",
         "scheduleHelper": "按 Cron 表达式自动生成系统备份并上传到 WebDAV。当前仅 SQLite 部署支持定时备份。",
         "cronExpr": "备份计划"
       },
@@ -3610,8 +3637,8 @@
       "speedTest": "节点测速",
       "subUpdate": "订阅更新",
       "tagRule": "标签规则",
-      "dbMigration": "数据迁移"
-      ,"webdavBackup": "WebDAV 备份"
+      "dbMigration": "数据迁移",
+      "webdavBackup": "WebDAV 备份"
     },
     "trigger": {
       "manual": "手动",

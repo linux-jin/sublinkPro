@@ -40,6 +40,10 @@ const defaultConfig = {
   dialTimeoutSeconds: 30,
   failureCooldownSeconds: 0,
   specificFallback: false,
+  maxConnections: 256,
+  maxConnectionsPerClient: 32,
+  idleTimeoutSeconds: 600,
+  maxConnectionDurationSeconds: 0,
   running: false,
   boundAddress: ''
 };
@@ -99,7 +103,11 @@ export default function Socks5Settings({ showMessage }) {
         maxAttempts: Number(form.maxAttempts) || 1,
         dialTimeoutSeconds: Number(form.dialTimeoutSeconds) || 30,
         failureCooldownSeconds: Number(form.failureCooldownSeconds) || 0,
-        specificFallback: Boolean(form.specificFallback)
+        specificFallback: Boolean(form.specificFallback),
+        maxConnections: Number(form.maxConnections) || 256,
+        maxConnectionsPerClient: Number(form.maxConnectionsPerClient) || 32,
+        idleTimeoutSeconds: Number(form.idleTimeoutSeconds) || 0,
+        maxConnectionDurationSeconds: Number(form.maxConnectionDurationSeconds) || 0
       });
       syncConfig(response.data);
       showMessage(t('settings.socks5.messages.saved'));
@@ -133,7 +141,15 @@ export default function Socks5Settings({ showMessage }) {
     Number(form.dialTimeoutSeconds) > 120 ||
     Number(form.failureCooldownSeconds) < 0 ||
     Number(form.failureCooldownSeconds) > 3600 ||
-    (form.selection === 'specific' && form.specificFallback && Number(form.maxAttempts) < 2);
+    (form.selection === 'specific' && form.specificFallback && Number(form.maxAttempts) < 2) ||
+    Number(form.maxConnections) < 1 ||
+    Number(form.maxConnections) > 10000 ||
+    Number(form.maxConnectionsPerClient) < 1 ||
+    Number(form.maxConnectionsPerClient) > Number(form.maxConnections) ||
+    Number(form.idleTimeoutSeconds) < 0 ||
+    Number(form.idleTimeoutSeconds) > 86400 ||
+    Number(form.maxConnectionDurationSeconds) < 0 ||
+    Number(form.maxConnectionDurationSeconds) > 604800;
 
   return (
     <Card variant="outlined">
@@ -254,6 +270,44 @@ export default function Socks5Settings({ showMessage }) {
                 onChange={(event) => setForm((prev) => ({ ...prev, failureCooldownSeconds: event.target.value }))}
                 helperText={t('settings.socks5.form.failureCooldownSecondsHelper')}
                 slotProps={{ htmlInput: { min: 0, max: 3600 } }}
+              />
+            </Stack>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <TextField
+                fullWidth
+                type="number"
+                label={t('settings.socks5.form.maxConnections')}
+                value={form.maxConnections}
+                onChange={(event) => setForm((prev) => ({ ...prev, maxConnections: event.target.value }))}
+                helperText={t('settings.socks5.form.maxConnectionsHelper')}
+                slotProps={{ htmlInput: { min: 1, max: 10000 } }}
+              />
+              <TextField
+                fullWidth
+                type="number"
+                label={t('settings.socks5.form.maxConnectionsPerClient')}
+                value={form.maxConnectionsPerClient}
+                onChange={(event) => setForm((prev) => ({ ...prev, maxConnectionsPerClient: event.target.value }))}
+                helperText={t('settings.socks5.form.maxConnectionsPerClientHelper')}
+                slotProps={{ htmlInput: { min: 1, max: 10000 } }}
+              />
+              <TextField
+                fullWidth
+                type="number"
+                label={t('settings.socks5.form.idleTimeoutSeconds')}
+                value={form.idleTimeoutSeconds}
+                onChange={(event) => setForm((prev) => ({ ...prev, idleTimeoutSeconds: event.target.value }))}
+                helperText={t('settings.socks5.form.idleTimeoutSecondsHelper')}
+                slotProps={{ htmlInput: { min: 0, max: 86400 } }}
+              />
+              <TextField
+                fullWidth
+                type="number"
+                label={t('settings.socks5.form.maxConnectionDurationSeconds')}
+                value={form.maxConnectionDurationSeconds}
+                onChange={(event) => setForm((prev) => ({ ...prev, maxConnectionDurationSeconds: event.target.value }))}
+                helperText={t('settings.socks5.form.maxConnectionDurationSecondsHelper')}
+                slotProps={{ htmlInput: { min: 0, max: 604800 } }}
               />
             </Stack>
             <FormControlLabel

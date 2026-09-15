@@ -591,6 +591,19 @@
         "running": "Running at {{address}}",
         "stopped": "The SOCKS5 gateway is stopped"
       },
+      "monitor": {
+        "title": "SOCKS5 runtime monitor",
+        "subheader": "Refreshes every 3 seconds while this page is visible",
+        "disconnectAll": "Disconnect all",
+        "activeConnections": "Active {{count}}",
+        "totalConnections": "Total {{count}}",
+        "successfulConnections": "Successful {{count}}",
+        "failedConnections": "Failed {{count}}",
+        "connecting": "Connecting",
+        "waitingNode": "Waiting for node",
+        "disconnect": "Disconnect",
+        "empty": "No active connections"
+      },
       "form": {
         "enabled": "Enable SOCKS5 gateway",
         "listenAddress": "Listen address",
@@ -616,7 +629,15 @@
         "failureCooldownSeconds": "Failure cooldown (seconds)",
         "failureCooldownSecondsHelper": "Temporarily skip failed nodes; 0 disables cooldown.",
         "specificFallback": "Try other nodes if the specific node fails",
-        "specificFallbackHelper": "Disabled by default so specific-node routing remains strict."
+        "specificFallbackHelper": "Disabled by default so specific-node routing remains strict.",
+        "maxConnections": "Maximum connections",
+        "maxConnectionsHelper": "Global active connection limit.",
+        "maxConnectionsPerClient": "Per-client limit",
+        "maxConnectionsPerClientHelper": "Maximum active connections from one client IP.",
+        "idleTimeoutSeconds": "Idle timeout (seconds)",
+        "idleTimeoutSecondsHelper": "0 disables idle timeout.",
+        "maxConnectionDurationSeconds": "Maximum connection duration (seconds)",
+        "maxConnectionDurationSecondsHelper": "0 disables the duration limit."
       },
       "actions": {
         "save": "Save settings",
@@ -641,7 +662,13 @@
         "invalidSettings": "Invalid SOCKS5 settings: {{message}}",
         "saved": "SOCKS5 settings saved",
         "startFailed": "Failed to start SOCKS5 gateway: {{message}}",
-        "stopped": "SOCKS5 gateway stopped"
+        "stopped": "SOCKS5 gateway stopped",
+        "statusLoaded": "SOCKS5 status loaded",
+        "connectionsLoaded": "SOCKS5 connections loaded",
+        "connectionClosed": "SOCKS5 connection disconnected",
+        "connectionsClosed": "All SOCKS5 connections disconnected",
+        "invalidConnection": "Invalid connection ID",
+        "connectionNotFound": "Connection not found"
       }
     },
     "telegramPanel": {
@@ -1122,8 +1149,8 @@
         "label": "Connection status",
         "configured": "Configured",
         "notConfigured": "Not configured",
-        "passwordSaved": "Password encrypted and saved"
-        ,"scheduleEnabled": "Scheduled backup enabled"
+        "passwordSaved": "Password encrypted and saved",
+        "scheduleEnabled": "Scheduled backup enabled"
       },
       "form": {
         "baseUrl": "WebDAV URL",
@@ -1137,8 +1164,8 @@
         "remotePathHelper": "Missing directories are created when possible, for example SublinkPro/backups.",
         "timeoutSeconds": "Request timeout (seconds)",
         "allowInsecureHttp": "Allow insecure HTTP WebDAV",
-        "allowPrivateNetwork": "Allow private-network or local addresses"
-        ,"scheduleEnabled": "Enable scheduled backup",
+        "allowPrivateNetwork": "Allow private-network or local addresses",
+        "scheduleEnabled": "Enable scheduled backup",
         "scheduleHelper": "Automatically create a system backup and upload it to WebDAV on a cron schedule. Scheduled backups currently support SQLite deployments only.",
         "cronExpr": "Backup schedule"
       },
@@ -3610,8 +3637,8 @@
       "speedTest": "Speed test",
       "subUpdate": "Subscription update",
       "tagRule": "Tag rule",
-      "dbMigration": "Database migration"
-      ,"webdavBackup": "WebDAV backup"
+      "dbMigration": "Database migration",
+      "webdavBackup": "WebDAV backup"
     },
     "trigger": {
       "manual": "Manual",

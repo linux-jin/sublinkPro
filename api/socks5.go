@@ -1,6 +1,7 @@
 package api
 
 import (
+	"net/http"
 	"strings"
 	"sublink/models"
 	socks5service "sublink/services/socks5"
@@ -40,19 +41,23 @@ func UpdateSocks5Settings(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Enabled                bool   `json:"enabled"`
-		ListenAddress          string `json:"listenAddress"`
-		Port                   int    `json:"port"`
-		Username               string `json:"username"`
-		Password               string `json:"password"`
-		ClearPassword          bool   `json:"clearPassword"`
-		NodeID                 int    `json:"nodeId"`
-		Selection              string `json:"selection"`
-		RequireAuth            *bool  `json:"requireAuth"`
-		MaxAttempts            *int   `json:"maxAttempts"`
-		DialTimeoutSeconds     *int   `json:"dialTimeoutSeconds"`
-		FailureCooldownSeconds *int   `json:"failureCooldownSeconds"`
-		SpecificFallback       *bool  `json:"specificFallback"`
+		Enabled                      bool   `json:"enabled"`
+		ListenAddress                string `json:"listenAddress"`
+		Port                         int    `json:"port"`
+		Username                     string `json:"username"`
+		Password                     string `json:"password"`
+		ClearPassword                bool   `json:"clearPassword"`
+		NodeID                       int    `json:"nodeId"`
+		Selection                    string `json:"selection"`
+		RequireAuth                  *bool  `json:"requireAuth"`
+		MaxAttempts                  *int   `json:"maxAttempts"`
+		DialTimeoutSeconds           *int   `json:"dialTimeoutSeconds"`
+		FailureCooldownSeconds       *int   `json:"failureCooldownSeconds"`
+		SpecificFallback             *bool  `json:"specificFallback"`
+		MaxConnections               *int   `json:"maxConnections"`
+		MaxConnectionsPerClient      *int   `json:"maxConnectionsPerClient"`
+		IdleTimeoutSeconds           *int   `json:"idleTimeoutSeconds"`
+		MaxConnectionDurationSeconds *int   `json:"maxConnectionDurationSeconds"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.FailWithI18n(c, "参数错误", "settings.socks5.api.invalidRequest", nil)
@@ -89,20 +94,40 @@ func UpdateSocks5Settings(c *gin.Context) {
 	if req.SpecificFallback != nil {
 		specificFallback = *req.SpecificFallback
 	}
+	maxConnections := current.MaxConnections
+	if req.MaxConnections != nil {
+		maxConnections = *req.MaxConnections
+	}
+	maxConnectionsPerClient := current.MaxConnectionsPerClient
+	if req.MaxConnectionsPerClient != nil {
+		maxConnectionsPerClient = *req.MaxConnectionsPerClient
+	}
+	idleTimeoutSeconds := current.IdleTimeoutSeconds
+	if req.IdleTimeoutSeconds != nil {
+		idleTimeoutSeconds = *req.IdleTimeoutSeconds
+	}
+	maxConnectionDurationSeconds := current.MaxConnectionDurationSeconds
+	if req.MaxConnectionDurationSeconds != nil {
+		maxConnectionDurationSeconds = *req.MaxConnectionDurationSeconds
+	}
 	cfg, err := socks5service.SaveConfig(socks5service.Config{
-		Enabled:                req.Enabled,
-		ListenAddress:          req.ListenAddress,
-		Port:                   req.Port,
-		Username:               req.Username,
-		Password:               password,
-		NodeID:                 req.NodeID,
-		Selection:              req.Selection,
-		RequireAuth:            requireAuth,
-		MaxAttempts:            maxAttempts,
-		DialTimeoutSeconds:     dialTimeoutSeconds,
-		FailureCooldownSeconds: failureCooldownSeconds,
-		SpecificFallback:       specificFallback,
-		ClearPassword:          req.ClearPassword,
+		Enabled:                      req.Enabled,
+		ListenAddress:                req.ListenAddress,
+		Port:                         req.Port,
+		Username:                     req.Username,
+		Password:                     password,
+		NodeID:                       req.NodeID,
+		Selection:                    req.Selection,
+		RequireAuth:                  requireAuth,
+		MaxAttempts:                  maxAttempts,
+		DialTimeoutSeconds:           dialTimeoutSeconds,
+		FailureCooldownSeconds:       failureCooldownSeconds,
+		SpecificFallback:             specificFallback,
+		MaxConnections:               maxConnections,
+		MaxConnectionsPerClient:      maxConnectionsPerClient,
+		IdleTimeoutSeconds:           idleTimeoutSeconds,
+		MaxConnectionDurationSeconds: maxConnectionDurationSeconds,
+		ClearPassword:                req.ClearPassword,
 	})
 	if err != nil {
 		utils.FailWithI18n(c, "SOCKS5 设置无效: "+err.Error(), "settings.socks5.api.invalidSettings", map[string]any{"message": err.Error()})
@@ -128,4 +153,49 @@ func StopSocks5(c *gin.Context) {
 	}
 	running, bound := socks5service.DefaultManager().Status()
 	utils.OkDetailedI18n(c, "SOCKS5 服务已停止", socks5service.ToPublicConfig(cfg, running, bound), "settings.socks5.api.stopped", nil)
+}
+
+func GetSocks5Status(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	cfg, err := socks5service.LoadConfig()
+	if err != nil {
+		utils.FailWithI18n(c, "读取 SOCKS5 设置失败: "+err.Error(), "settings.socks5.api.loadFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	running, bound := socks5service.DefaultManager().Status()
+	utils.OkDetailedI18n(c, "SOCKS5 状态已加载", gin.H{"config": socks5service.ToPublicConfig(cfg, running, bound), "stats": socks5service.DefaultManager().GatewaySnapshot()}, "settings.socks5.api.statusLoaded", nil)
+}
+
+func GetSocks5Connections(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	connections := socks5service.DefaultManager().Connections()
+	utils.OkDetailedI18n(c, "SOCKS5 连接已加载", connections, "settings.socks5.api.connectionsLoaded", nil)
+}
+
+func DeleteSocks5Connection(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" || len(id) > 64 {
+		utils.FailWithI18n(c, "连接 ID 无效", "settings.socks5.api.invalidConnection", nil)
+		return
+	}
+	if !socks5service.DefaultManager().CloseConnection(id) {
+		utils.FailWithCodeI18n(c, http.StatusNotFound, "连接不存在", "settings.socks5.api.connectionNotFound", nil)
+		return
+	}
+	utils.OkDetailedI18n(c, "SOCKS5 连接已断开", nil, "settings.socks5.api.connectionClosed", nil)
+}
+
+func DeleteSocks5Connections(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	socks5service.DefaultManager().CloseAllConnections()
+	utils.OkDetailedI18n(c, "SOCKS5 连接已全部断开", nil, "settings.socks5.api.connectionsClosed", nil)
 }

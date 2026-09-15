@@ -67,7 +67,7 @@
 | 🌐 **Host 管理** | 域名映射、DNS 配置、CDN 优选 | [📖](docs/features/host.zh-CN.md) |
 | ☁️ **Cloudflare Tunnel** | 无公网 IP 暴露管理界面、页面托管 cloudflared | [📖](docs/features/cloudflare-tunnel.zh-CN.md) |
 | 💾 **WebDAV 备份** | 加密保存 WebDAV 凭据，支持手动或定时上传系统备份、查看远程 ZIP 并从页面恢复 | [📖](docs/features/backup.zh-CN.md) |
-| 🧦 **SOCKS5 网关** | 本地 TCP CONNECT 网关，支持最佳、随机、轮询或指定节点故障切换 | [📖](docs/features/socks5.zh-CN.md) |
+| 🧦 **SOCKS5 网关** | 本地 TCP CONNECT 网关，支持节点故障切换、连接限制、超时和管理员实时监控 | [📖](docs/features/socks5.zh-CN.md) |
 | 🤖 **Telegram Bot** | 远程测速、订阅管理、系统监控 | [📖](docs/features/telegram-bot.zh-CN.md) |
 | 📜 **脚本系统** | 节点过滤、内容后处理、多脚本链式执行 | [📖](docs/script_support.zh-CN.md) |
 | 🔔 **Webhooks** | 支持 PushDeer、Bark、钉钉、方糖等多平台通知 | [📖](docs/configuration.zh-CN.md) |
@@ -180,7 +180,7 @@ docker-compose up -d
 | [🌐 Host 管理](docs/features/host.zh-CN.md) | 域名映射、DNS 配置、测速持久化 |
 | [☁️ Cloudflare Tunnel](docs/features/cloudflare-tunnel.zh-CN.md) | 创建 Tunnel、获取 token、配置公网访问 |
 | [💾 系统备份与 WebDAV](docs/features/backup.zh-CN.md) | 手动/定时备份、远程列表和恢复 |
-| [🧦 SOCKS5 网关](docs/features/socks5.zh-CN.md) | 支持适配器复用、重试、冷却和节点故障切换的本地 TCP CONNECT 网关 |
+| [🧦 SOCKS5 网关](docs/features/socks5.zh-CN.md) | 支持适配器复用、重试、冷却、连接限制和实时监控的本地 TCP CONNECT 网关 |
 | [🤖 Telegram 机器人](docs/features/telegram-bot.zh-CN.md) | 命令列表、配置指南 |
 | [📜 脚本功能](docs/script_support.zh-CN.md) | 节点过滤、内容后处理、函数参考 |
 | [🔐 双重验证（MFA）](docs/features/mfa.zh-CN.md) | TOTP 设置、恢复码、应急重置流程 |

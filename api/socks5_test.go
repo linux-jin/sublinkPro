@@ -42,17 +42,21 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	socks5service.DefaultManager().Stop()
 	t.Setenv("SUBLINK_API_ENCRYPTION_KEY", "socks5-test-key-0123456789abcdef0123456789")
 	recorder := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
-		"enabled":                false,
-		"listenAddress":          "127.0.0.1",
-		"port":                   1080,
-		"username":               "proxy-user",
-		"password":               "proxy-secret",
-		"selection":              "round_robin",
-		"requireAuth":            true,
-		"maxAttempts":            4,
-		"dialTimeoutSeconds":     12,
-		"failureCooldownSeconds": 45,
-		"specificFallback":       true,
+		"enabled":                      false,
+		"listenAddress":                "127.0.0.1",
+		"port":                         1080,
+		"username":                     "proxy-user",
+		"password":                     "proxy-secret",
+		"selection":                    "round_robin",
+		"requireAuth":                  true,
+		"maxAttempts":                  4,
+		"dialTimeoutSeconds":           12,
+		"failureCooldownSeconds":       45,
+		"specificFallback":             true,
+		"maxConnections":               100,
+		"maxConnectionsPerClient":      8,
+		"idleTimeoutSeconds":           90,
+		"maxConnectionDurationSeconds": 3600,
 	}, UpdateSocks5Settings)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
@@ -73,6 +77,9 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	}
 	if loaded.Selection != "round_robin" || loaded.MaxAttempts != 4 || loaded.DialTimeoutSeconds != 12 || loaded.FailureCooldownSeconds != 45 || !loaded.SpecificFallback {
 		t.Fatalf("unexpected phase-two settings: %+v", loaded)
+	}
+	if loaded.MaxConnections != 100 || loaded.MaxConnectionsPerClient != 8 || loaded.IdleTimeoutSeconds != 90 || loaded.MaxConnectionDurationSeconds != 3600 {
+		t.Fatalf("unexpected connection governance settings: %+v", loaded)
 	}
 	if _, err := socks5service.SaveConfig(socks5service.Config{
 		Enabled:       false,
@@ -141,5 +148,30 @@ func TestUpdateSocks5SettingsRejectsInvalidRoutingLimits(t *testing.T) {
 	}, UpdateSocks5Settings)
 	if !strings.Contains(recorder.Body.String(), `"code":500`) || !strings.Contains(recorder.Body.String(), "max attempts") {
 		t.Fatalf("invalid routing limits were accepted: %s", recorder.Body.String())
+	}
+}
+
+func TestGetSocks5StatusAndConnectionsRequireAdmin(t *testing.T) {
+	setupBackupAPITestDB(t)
+	socks5service.DefaultManager().Stop()
+	statusRecorder := performSocks5JSONRequest(t, "admin", http.MethodGet, nil, GetSocks5Status)
+	if statusRecorder.Code != http.StatusOK {
+		t.Fatalf("status endpoint code = %d, body = %s", statusRecorder.Code, statusRecorder.Body.String())
+	}
+	if !strings.Contains(statusRecorder.Body.String(), `"activeConnections":0`) {
+		t.Fatalf("status response missing gateway stats: %s", statusRecorder.Body.String())
+	}
+	connectionsRecorder := performSocks5JSONRequest(t, "admin", http.MethodGet, nil, GetSocks5Connections)
+	if connectionsRecorder.Code != http.StatusOK {
+		t.Fatalf("connections endpoint code = %d, body = %s", connectionsRecorder.Code, connectionsRecorder.Body.String())
+	}
+	if !strings.Contains(connectionsRecorder.Body.String(), `"data":[]`) {
+		t.Fatalf("connections response should be empty: %s", connectionsRecorder.Body.String())
+	}
+	for _, handler := range []func(*gin.Context){GetSocks5Status, GetSocks5Connections} {
+		recorder := performSocks5JSONRequest(t, "member", http.MethodGet, nil, handler)
+		if recorder.Code != http.StatusForbidden {
+			t.Fatalf("non-admin status = %d, want %d", recorder.Code, http.StatusForbidden)
+		}
 	}
 }

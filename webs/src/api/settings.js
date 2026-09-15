@@ -278,3 +278,19 @@ export function stopSocks5() {
     method: 'post'
   });
 }
+
+export function getSocks5Status() {
+  return request({ url: '/v1/settings/socks5/status', method: 'get' });
+}
+
+export function getSocks5Connections() {
+  return request({ url: '/v1/settings/socks5/connections', method: 'get' });
+}
+
+export function closeSocks5Connection(id) {
+  return request({ url: `/v1/settings/socks5/connections/${encodeURIComponent(id)}`, method: 'delete' });
+}
+
+export function closeAllSocks5Connections() {
+  return request({ url: '/v1/settings/socks5/connections', method: 'delete' });
+}

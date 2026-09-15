@@ -19,66 +19,82 @@ import (
 )
 
 const (
-	settingEnabled                = "socks5_enabled"
-	settingListenAddress          = "socks5_listen_address"
-	settingPort                   = "socks5_port"
-	settingUsername               = "socks5_username"
-	settingPassword               = "socks5_password"
-	settingNodeID                 = "socks5_node_id"
-	settingSelection              = "socks5_selection"
-	settingRequireAuth            = "socks5_require_auth"
-	settingMaxAttempts            = "socks5_max_attempts"
-	settingDialTimeoutSeconds     = "socks5_dial_timeout_seconds"
-	settingFailureCooldownSeconds = "socks5_failure_cooldown_seconds"
-	settingSpecificFallback       = "socks5_specific_fallback"
+	settingEnabled                      = "socks5_enabled"
+	settingListenAddress                = "socks5_listen_address"
+	settingPort                         = "socks5_port"
+	settingUsername                     = "socks5_username"
+	settingPassword                     = "socks5_password"
+	settingNodeID                       = "socks5_node_id"
+	settingSelection                    = "socks5_selection"
+	settingRequireAuth                  = "socks5_require_auth"
+	settingMaxAttempts                  = "socks5_max_attempts"
+	settingDialTimeoutSeconds           = "socks5_dial_timeout_seconds"
+	settingFailureCooldownSeconds       = "socks5_failure_cooldown_seconds"
+	settingSpecificFallback             = "socks5_specific_fallback"
+	settingMaxConnections               = "socks5_max_connections"
+	settingMaxConnectionsPerClient      = "socks5_max_connections_per_client"
+	settingIdleTimeoutSeconds           = "socks5_idle_timeout_seconds"
+	settingMaxConnectionDurationSeconds = "socks5_max_connection_duration_seconds"
 
-	defaultListenAddress          = "127.0.0.1"
-	defaultPort                   = 1080
-	defaultSelection              = "best"
-	defaultMaxAttempts            = 1
-	defaultDialTimeoutSeconds     = 30
-	defaultFailureCooldownSeconds = 0
-	handshakeTimeout              = 15 * time.Second
+	defaultListenAddress                = "127.0.0.1"
+	defaultPort                         = 1080
+	defaultSelection                    = "best"
+	defaultMaxAttempts                  = 1
+	defaultDialTimeoutSeconds           = 30
+	defaultFailureCooldownSeconds       = 0
+	defaultMaxConnections               = 256
+	defaultMaxConnectionsPerClient      = 32
+	defaultIdleTimeoutSeconds           = 600
+	defaultMaxConnectionDurationSeconds = 0
+	handshakeTimeout                    = 15 * time.Second
 )
 
 // Config controls the SOCKS5 gateway.
 type Config struct {
-	Enabled                bool
-	ListenAddress          string
-	Port                   int
-	Username               string
-	Password               string
-	NodeID                 int
-	Selection              string
-	RequireAuth            bool
-	MaxAttempts            int
-	DialTimeoutSeconds     int
-	FailureCooldownSeconds int
-	SpecificFallback       bool
-	ClearPassword          bool
+	Enabled                      bool
+	ListenAddress                string
+	Port                         int
+	Username                     string
+	Password                     string
+	NodeID                       int
+	Selection                    string
+	RequireAuth                  bool
+	MaxAttempts                  int
+	DialTimeoutSeconds           int
+	FailureCooldownSeconds       int
+	SpecificFallback             bool
+	MaxConnections               int
+	MaxConnectionsPerClient      int
+	IdleTimeoutSeconds           int
+	MaxConnectionDurationSeconds int
+	ClearPassword                bool
 }
 
 // PublicConfig is safe to return from the settings API.
 type PublicConfig struct {
-	Enabled                bool   `json:"enabled"`
-	ListenAddress          string `json:"listenAddress"`
-	Port                   int    `json:"port"`
-	Username               string `json:"username"`
-	HasPassword            bool   `json:"hasPassword"`
-	MaskedPassword         string `json:"maskedPassword,omitempty"`
-	NodeID                 int    `json:"nodeId"`
-	Selection              string `json:"selection"`
-	RequireAuth            bool   `json:"requireAuth"`
-	MaxAttempts            int    `json:"maxAttempts"`
-	DialTimeoutSeconds     int    `json:"dialTimeoutSeconds"`
-	FailureCooldownSeconds int    `json:"failureCooldownSeconds"`
-	SpecificFallback       bool   `json:"specificFallback"`
-	Running                bool   `json:"running"`
-	BoundAddress           string `json:"boundAddress,omitempty"`
+	Enabled                      bool   `json:"enabled"`
+	ListenAddress                string `json:"listenAddress"`
+	Port                         int    `json:"port"`
+	Username                     string `json:"username"`
+	HasPassword                  bool   `json:"hasPassword"`
+	MaskedPassword               string `json:"maskedPassword,omitempty"`
+	NodeID                       int    `json:"nodeId"`
+	Selection                    string `json:"selection"`
+	RequireAuth                  bool   `json:"requireAuth"`
+	MaxAttempts                  int    `json:"maxAttempts"`
+	DialTimeoutSeconds           int    `json:"dialTimeoutSeconds"`
+	FailureCooldownSeconds       int    `json:"failureCooldownSeconds"`
+	SpecificFallback             bool   `json:"specificFallback"`
+	MaxConnections               int    `json:"maxConnections"`
+	MaxConnectionsPerClient      int    `json:"maxConnectionsPerClient"`
+	IdleTimeoutSeconds           int    `json:"idleTimeoutSeconds"`
+	MaxConnectionDurationSeconds int    `json:"maxConnectionDurationSeconds"`
+	Running                      bool   `json:"running"`
+	BoundAddress                 string `json:"boundAddress,omitempty"`
 }
 
 func defaultConfig() Config {
-	return Config{ListenAddress: defaultListenAddress, Port: defaultPort, Selection: defaultSelection, RequireAuth: true, MaxAttempts: defaultMaxAttempts, DialTimeoutSeconds: defaultDialTimeoutSeconds, FailureCooldownSeconds: defaultFailureCooldownSeconds}
+	return Config{ListenAddress: defaultListenAddress, Port: defaultPort, Selection: defaultSelection, RequireAuth: true, MaxAttempts: defaultMaxAttempts, DialTimeoutSeconds: defaultDialTimeoutSeconds, FailureCooldownSeconds: defaultFailureCooldownSeconds, MaxConnections: defaultMaxConnections, MaxConnectionsPerClient: defaultMaxConnectionsPerClient, IdleTimeoutSeconds: defaultIdleTimeoutSeconds, MaxConnectionDurationSeconds: defaultMaxConnectionDurationSeconds}
 }
 
 func LoadConfig() (Config, error) {
@@ -143,6 +159,15 @@ func LoadConfig() (Config, error) {
 	if value, err := models.GetSetting(settingSpecificFallback); err == nil && strings.TrimSpace(value) != "" {
 		cfg.SpecificFallback = value == "true"
 	}
+	for key, target := range map[string]*int{settingMaxConnections: &cfg.MaxConnections, settingMaxConnectionsPerClient: &cfg.MaxConnectionsPerClient, settingIdleTimeoutSeconds: &cfg.IdleTimeoutSeconds, settingMaxConnectionDurationSeconds: &cfg.MaxConnectionDurationSeconds} {
+		if value, err := models.GetSetting(key); err == nil && strings.TrimSpace(value) != "" {
+			parsed, parseErr := strconv.Atoi(value)
+			if parseErr != nil {
+				return cfg, fmt.Errorf("invalid SOCKS5 setting %s: %w", key, parseErr)
+			}
+			*target = parsed
+		}
+	}
 	return NormalizeConfig(cfg)
 }
 
@@ -195,6 +220,24 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if cfg.Selection == "specific" && cfg.SpecificFallback && cfg.MaxAttempts < 2 {
 		return cfg, errors.New("SOCKS5 max attempts must be at least 2 when specific-node fallback is enabled")
 	}
+	if cfg.MaxConnections == 0 {
+		cfg.MaxConnections = defaultMaxConnections
+	}
+	if cfg.MaxConnections < 1 || cfg.MaxConnections > 10000 {
+		return cfg, errors.New("SOCKS5 max connections must be between 1 and 10000")
+	}
+	if cfg.MaxConnectionsPerClient == 0 {
+		cfg.MaxConnectionsPerClient = defaultMaxConnectionsPerClient
+	}
+	if cfg.MaxConnectionsPerClient < 1 || cfg.MaxConnectionsPerClient > cfg.MaxConnections {
+		return cfg, errors.New("SOCKS5 per-client connection limit is invalid")
+	}
+	if cfg.IdleTimeoutSeconds < 0 || cfg.IdleTimeoutSeconds > 86400 {
+		return cfg, errors.New("SOCKS5 idle timeout must be between 0 and 86400 seconds")
+	}
+	if cfg.MaxConnectionDurationSeconds < 0 || cfg.MaxConnectionDurationSeconds > 604800 {
+		return cfg, errors.New("SOCKS5 max connection duration must be between 0 and 604800 seconds")
+	}
 	return cfg, nil
 }
 
@@ -204,17 +247,21 @@ func SaveConfig(input Config) (Config, error) {
 		return cfg, err
 	}
 	values := map[string]string{
-		settingEnabled:                strconv.FormatBool(cfg.Enabled),
-		settingListenAddress:          cfg.ListenAddress,
-		settingPort:                   strconv.Itoa(cfg.Port),
-		settingUsername:               strings.TrimSpace(cfg.Username),
-		settingNodeID:                 strconv.Itoa(cfg.NodeID),
-		settingSelection:              cfg.Selection,
-		settingRequireAuth:            strconv.FormatBool(cfg.RequireAuth),
-		settingMaxAttempts:            strconv.Itoa(cfg.MaxAttempts),
-		settingDialTimeoutSeconds:     strconv.Itoa(cfg.DialTimeoutSeconds),
-		settingFailureCooldownSeconds: strconv.Itoa(cfg.FailureCooldownSeconds),
-		settingSpecificFallback:       strconv.FormatBool(cfg.SpecificFallback),
+		settingEnabled:                      strconv.FormatBool(cfg.Enabled),
+		settingListenAddress:                cfg.ListenAddress,
+		settingPort:                         strconv.Itoa(cfg.Port),
+		settingUsername:                     strings.TrimSpace(cfg.Username),
+		settingNodeID:                       strconv.Itoa(cfg.NodeID),
+		settingSelection:                    cfg.Selection,
+		settingRequireAuth:                  strconv.FormatBool(cfg.RequireAuth),
+		settingMaxAttempts:                  strconv.Itoa(cfg.MaxAttempts),
+		settingDialTimeoutSeconds:           strconv.Itoa(cfg.DialTimeoutSeconds),
+		settingFailureCooldownSeconds:       strconv.Itoa(cfg.FailureCooldownSeconds),
+		settingSpecificFallback:             strconv.FormatBool(cfg.SpecificFallback),
+		settingMaxConnections:               strconv.Itoa(cfg.MaxConnections),
+		settingMaxConnectionsPerClient:      strconv.Itoa(cfg.MaxConnectionsPerClient),
+		settingIdleTimeoutSeconds:           strconv.Itoa(cfg.IdleTimeoutSeconds),
+		settingMaxConnectionDurationSeconds: strconv.Itoa(cfg.MaxConnectionDurationSeconds),
 	}
 	if cfg.ClearPassword {
 		values[settingPassword] = ""
@@ -240,7 +287,7 @@ func ToPublicConfig(cfg Config, running bool, boundAddress string) PublicConfig 
 	if cfg.Password != "" {
 		masked = "••••••••"
 	}
-	return PublicConfig{Enabled: cfg.Enabled, ListenAddress: cfg.ListenAddress, Port: cfg.Port, Username: cfg.Username, HasPassword: cfg.Password != "", MaskedPassword: masked, NodeID: cfg.NodeID, Selection: cfg.Selection, RequireAuth: cfg.RequireAuth, MaxAttempts: cfg.MaxAttempts, DialTimeoutSeconds: cfg.DialTimeoutSeconds, FailureCooldownSeconds: cfg.FailureCooldownSeconds, SpecificFallback: cfg.SpecificFallback, Running: running, BoundAddress: boundAddress}
+	return PublicConfig{Enabled: cfg.Enabled, ListenAddress: cfg.ListenAddress, Port: cfg.Port, Username: cfg.Username, HasPassword: cfg.Password != "", MaskedPassword: masked, NodeID: cfg.NodeID, Selection: cfg.Selection, RequireAuth: cfg.RequireAuth, MaxAttempts: cfg.MaxAttempts, DialTimeoutSeconds: cfg.DialTimeoutSeconds, FailureCooldownSeconds: cfg.FailureCooldownSeconds, SpecificFallback: cfg.SpecificFallback, MaxConnections: cfg.MaxConnections, MaxConnectionsPerClient: cfg.MaxConnectionsPerClient, IdleTimeoutSeconds: cfg.IdleTimeoutSeconds, MaxConnectionDurationSeconds: cfg.MaxConnectionDurationSeconds, Running: running, BoundAddress: boundAddress}
 }
 
 // DialFunc allows tests and future routing implementations to replace mihomo dialing.
@@ -248,10 +295,11 @@ type DialFunc func(ctx context.Context, node models.Node, host string, port uint
 
 // Server serves SOCKS5 CONNECT requests over a supplied listener.
 type Server struct {
-	cfg    Config
-	dial   DialFunc
-	pool   *adapterPool
-	router *nodeRouter
+	cfg      Config
+	dial     DialFunc
+	pool     *adapterPool
+	router   *nodeRouter
+	registry *sessionRegistry
 }
 
 func NewServer(cfg Config, dial DialFunc) (*Server, error) {
@@ -259,7 +307,7 @@ func NewServer(cfg Config, dial DialFunc) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	server := &Server{cfg: normalized, dial: dial, router: newNodeRouter()}
+	server := &Server{cfg: normalized, dial: dial, router: newNodeRouter(), registry: newSessionRegistry(normalized.MaxConnections, normalized.MaxConnectionsPerClient)}
 	if server.dial == nil {
 		server.pool = newAdapterPool(nil)
 		server.dial = server.dialWithPool
@@ -281,7 +329,20 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 }
 
 func (s *Server) serveConn(ctx context.Context, client net.Conn) {
-	defer func() { _ = client.Close() }()
+	session, connCtx, ok := s.registry.register(ctx, client)
+	if !ok {
+		_ = client.Close()
+		return
+	}
+	ctx = connCtx
+	established := false
+	defer func() {
+		if !established {
+			s.registry.recordFailure()
+		}
+		s.registry.remove(session.ID)
+		_ = client.Close()
+	}()
 	_ = client.SetDeadline(time.Now().Add(handshakeTimeout))
 	if s.cfg.RequireAuth {
 		if err := s.authenticate(client); err != nil {
@@ -294,6 +355,9 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 	if err != nil {
 		return
 	}
+	session.mu.Lock()
+	session.Target = net.JoinHostPort(host, strconv.Itoa(int(port)))
+	session.mu.Unlock()
 	nodes, err := s.router.candidates(s.cfg)
 	if err != nil {
 		_ = writeReply(client, 0x01)
@@ -306,6 +370,7 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 		cancel()
 		if err == nil {
 			s.router.health.recordSuccess(node)
+			session.setUpstream(upstream, node)
 			break
 		}
 		s.router.health.recordFailure(node, time.Duration(s.cfg.FailureCooldownSeconds)*time.Second)
@@ -319,7 +384,9 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 	if err := writeReply(client, 0x00); err != nil {
 		return
 	}
-	pump(client, upstream)
+	established = true
+	s.registry.recordSuccess()
+	pumpWithSession(ctx, session, client, upstream, s.cfg.IdleTimeoutSeconds, s.cfg.MaxConnectionDurationSeconds)
 }
 
 func (s *Server) authenticate(conn net.Conn) error {
@@ -439,13 +506,6 @@ func writeReply(conn net.Conn, code byte) error {
 	return err
 }
 
-func pump(client, upstream net.Conn) {
-	done := make(chan struct{}, 2)
-	go func() { _, _ = io.Copy(upstream, client); done <- struct{}{} }()
-	go func() { _, _ = io.Copy(client, upstream); done <- struct{}{} }()
-	<-done
-}
-
 func (s *Server) dialWithPool(ctx context.Context, node models.Node, host string, port uint16) (net.Conn, error) {
 	adapter, lease, err := s.pool.acquire(node)
 	if err != nil {
@@ -460,10 +520,16 @@ func (s *Server) dialWithPool(ctx context.Context, node models.Node, host string
 }
 
 func (s *Server) Close() {
+	if s.registry != nil {
+		s.registry.closeAll()
+	}
 	if s.pool != nil {
 		s.pool.close()
 	}
 }
+
+func (s *Server) Connections() []ConnectionSnapshot { return s.registry.snapshot() }
+func (s *Server) Stats() GatewaySnapshot            { return s.registry.snapshotStats() }
 
 func isLoopbackListenAddress(address string) bool {
 	host := strings.TrimSpace(strings.Trim(address, "[]"))
@@ -559,6 +625,42 @@ func (m *Manager) Stop() {
 	}
 	if server != nil {
 		server.Close()
+	}
+}
+
+func (m *Manager) GatewaySnapshot() GatewaySnapshot {
+	m.mu.Lock()
+	server := m.server
+	m.mu.Unlock()
+	if server == nil {
+		return GatewaySnapshot{}
+	}
+	return server.Stats()
+}
+
+func (m *Manager) Connections() []ConnectionSnapshot {
+	m.mu.Lock()
+	server := m.server
+	m.mu.Unlock()
+	if server == nil {
+		return []ConnectionSnapshot{}
+	}
+	return server.Connections()
+}
+
+func (m *Manager) CloseConnection(id string) bool {
+	m.mu.Lock()
+	server := m.server
+	m.mu.Unlock()
+	return server != nil && server.registry.close(id)
+}
+
+func (m *Manager) CloseAllConnections() {
+	m.mu.Lock()
+	server := m.server
+	m.mu.Unlock()
+	if server != nil {
+		server.registry.closeAll()
 	}
 }
 
