@@ -23,6 +23,7 @@ type nodeHealthState struct {
 	ConsecutiveFailures int
 	CooldownUntil       time.Time
 	LastError           string
+	ExcludeFromRouting  bool
 }
 
 type nodeHealth struct {
@@ -75,6 +76,14 @@ func (h *nodeHealth) recordFailure(node models.Node, cooldown time.Duration) {
 }
 
 func (h *nodeHealth) recordFailureReason(node models.Node, cooldown time.Duration, reason string) {
+	h.recordFailureState(node, cooldown, reason, false)
+}
+
+func (h *nodeHealth) recordProbeFailureReason(node models.Node, cooldown time.Duration, reason string) {
+	h.recordFailureState(node, cooldown, reason, true)
+}
+
+func (h *nodeHealth) recordFailureState(node models.Node, cooldown time.Duration, reason string, excludeFromRouting bool) {
 	h.mu.Lock()
 	now := h.now()
 	state := h.stateLocked(node)
@@ -83,6 +92,9 @@ func (h *nodeHealth) recordFailureReason(node models.Node, cooldown time.Duratio
 	state.LastFailureAt = now
 	state.ConsecutiveFailures++
 	state.LastError = sanitizeHealthError(reason)
+	if excludeFromRouting {
+		state.ExcludeFromRouting = true
+	}
 	if cooldown > 0 {
 		backoff := cooldown
 		for i := 1; i < state.ConsecutiveFailures && backoff < time.Hour; i++ {
@@ -98,7 +110,18 @@ func (h *nodeHealth) recordFailureReason(node models.Node, cooldown time.Duratio
 }
 
 func (h *nodeHealth) recordSuccess(node models.Node) {
-	h.recordProbeSuccess(node, 0)
+	h.mu.Lock()
+	now := h.now()
+	state := h.stateLocked(node)
+	state.Status = "healthy"
+	state.LastCheckedAt = now
+	state.LastSuccessAt = now
+	state.ConsecutiveFailures = 0
+	state.CooldownUntil = time.Time{}
+	state.LastError = ""
+	state.ExcludeFromRouting = false
+	delete(h.cooldownUntil, adapterKey(node))
+	h.mu.Unlock()
 }
 
 func (h *nodeHealth) recordProbeSuccess(node models.Node, latency int) {
@@ -112,41 +135,117 @@ func (h *nodeHealth) recordProbeSuccess(node models.Node, latency int) {
 	state.ConsecutiveFailures = 0
 	state.CooldownUntil = time.Time{}
 	state.LastError = ""
+	state.ExcludeFromRouting = false
 	delete(h.cooldownUntil, adapterKey(node))
 	h.mu.Unlock()
 }
 
+type rankedNode struct {
+	node       models.Node
+	status     string
+	latencyMs  int
+	excluded   bool
+	originalAt int
+}
+
 func (h *nodeHealth) filter(nodes []models.Node) []models.Node {
+	return h.rank(nodes, false)
+}
+
+func (h *nodeHealth) rank(nodes []models.Node, preferLatency bool) []models.Node {
 	if len(nodes) == 0 {
 		return nil
 	}
 	now := h.now()
 	h.mu.Lock()
-	available := make([]models.Node, 0, len(nodes))
+	available := make([]rankedNode, 0, len(nodes))
 	var probe models.Node
 	var probeAt time.Time
-	for _, node := range nodes {
-		until, cooling := h.cooldownUntil[adapterKey(node)]
-		if !cooling || !until.After(now) {
-			key := adapterKey(node)
-			delete(h.cooldownUntil, key)
-			if state := h.states[key]; state != nil {
-				state.CooldownUntil = time.Time{}
+	for index, node := range nodes {
+		key := adapterKey(node)
+		until, cooling := h.cooldownUntil[key]
+		if cooling && until.After(now) {
+			if probeAt.IsZero() || until.Before(probeAt) {
+				probe, probeAt = node, until
 			}
-			available = append(available, node)
 			continue
 		}
-		if probeAt.IsZero() || until.Before(probeAt) {
-			probe, probeAt = node, until
+		delete(h.cooldownUntil, key)
+		status := "unknown"
+		latency := 0
+		if state := h.states[key]; state != nil {
+			state.CooldownUntil = time.Time{}
+			status = state.Status
+			latency = state.LatencyMs
 		}
+		excluded := false
+		if state := h.states[key]; state != nil {
+			excluded = state.ExcludeFromRouting
+		}
+		available = append(available, rankedNode{node: node, status: status, latencyMs: latency, excluded: excluded, originalAt: index})
 	}
 	h.mu.Unlock()
-	if len(available) > 0 {
-		return available
+	if len(available) == 0 {
+		// Avoid a permanently dead pool: when every node is cooling down, probe
+		// the node whose cooldown expires first.
+		return []models.Node{probe}
 	}
-	// Avoid a permanently dead pool: when every node is cooling down, probe the
-	// node whose cooldown expires first.
-	return []models.Node{probe}
+
+	hasRoutable := false
+	for _, candidate := range available {
+		if !candidate.excluded {
+			hasRoutable = true
+			break
+		}
+	}
+	if hasRoutable {
+		filtered := available[:0]
+		for _, candidate := range available {
+			if !candidate.excluded {
+				filtered = append(filtered, candidate)
+			}
+		}
+		available = filtered
+	}
+
+	if preferLatency {
+		sort.SliceStable(available, func(i, j int) bool {
+			leftRank := healthCandidateRank(available[i])
+			rightRank := healthCandidateRank(available[j])
+			if leftRank != rightRank {
+				return leftRank < rightRank
+			}
+			if leftRank == 0 && available[i].latencyMs != available[j].latencyMs {
+				return available[i].latencyMs < available[j].latencyMs
+			}
+			return available[i].originalAt < available[j].originalAt
+		})
+	}
+
+	result := make([]models.Node, 0, len(available))
+	for _, candidate := range available {
+		result = append(result, candidate.node)
+	}
+	return result
+}
+
+func healthCandidateRank(candidate rankedNode) int {
+	switch candidate.status {
+	case "healthy":
+		if candidate.latencyMs > 0 {
+			return 0
+		}
+		return 1
+	case "checking":
+		if candidate.latencyMs > 0 {
+			return 0
+		}
+		return 2
+	case "unknown", "":
+		return 2
+	default:
+		return 3
+	}
 }
 
 type nodeRouter struct {
@@ -168,14 +267,18 @@ func (r *nodeRouter) candidates(cfg Config) ([]models.Node, error) {
 	}
 
 	switch cfg.Selection {
+	case "best":
+		nodes = r.health.rank(nodes, true)
 	case "random":
+		nodes = r.health.filter(nodes)
 		rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
 	case "round_robin":
+		nodes = r.health.filter(nodes)
 		start := int((r.roundRobin.Add(1) - 1) % uint64(len(nodes)))
 		nodes = append(append(make([]models.Node, 0, len(nodes)), nodes[start:]...), nodes[:start]...)
+	default:
+		nodes = r.health.filter(nodes)
 	}
-
-	nodes = r.health.filter(nodes)
 	if cfg.MaxAttempts < len(nodes) {
 		nodes = nodes[:cfg.MaxAttempts]
 	}

@@ -21,9 +21,10 @@ SublinkPro can expose selected stored proxy nodes through a local SOCKS5 gateway
 - Administrator controls to disconnect one active connection or all active connections
 - Optional active node health checks with a fixed HTTPS probe target, bounded concurrency, latency reporting, exponential failure cooldown, and manual probe control
 - Node health visualization for healthy, unhealthy, checking, and unknown nodes
+- Health-aware routing: active-probe failures are removed from normal candidate sets, and `best` prioritizes fresh active-probe latency before applying the retry limit
 - Runtime start/stop when settings are saved; no process restart is required
 
-Retries happen before the SOCKS5 success reply is sent. A failed adapter is discarded, and adapters are closed when the gateway is stopped or reapplied. If every candidate is cooling down, the node whose cooldown expires first is probed so the pool cannot remain permanently unavailable.
+Retries happen before the SOCKS5 success reply is sent. Active-probe failures are skipped while another routable candidate exists; if every candidate is unhealthy, routing fails open and keeps candidates available for recovery. A successful real connection clears the routing exclusion without erasing the most recent active-probe latency. A failed adapter is discarded, and adapters are closed when the gateway is stopped or reapplied. If every candidate is cooling down, the node whose cooldown expires first is probed so the pool cannot remain permanently unavailable.
 
 UDP `ASSOCIATE`, `BIND`, sticky sessions, multi-user routing, and multi-port listeners are not included yet. Phase 2.2 adds administrator-only live connection monitoring, aggregate counters, traffic byte counters, and connection termination controls.
 

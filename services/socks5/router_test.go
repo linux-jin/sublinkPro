@@ -66,6 +66,26 @@ func TestNodeRouterRoundRobin(t *testing.T) {
 	}
 }
 
+func TestNodeRouterRoundRobinSkipsProbeExcludedNodesBeforeRotation(t *testing.T) {
+	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}, {ID: 3, Link: "c"}}
+	withCandidateNodes(t, nodes)
+	router := newNodeRouter()
+	router.health.recordProbeFailureReason(nodes[0], 0, "probe failed")
+	cfg := Config{Selection: "round_robin", MaxAttempts: 2, DialTimeoutSeconds: 30}
+
+	first, err := router.candidates(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := router.candidates(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual([]int{first[0].ID, second[0].ID}, []int{2, 3}) {
+		t.Fatalf("excluded node distorted rotation: first=%v second=%v", first, second)
+	}
+}
+
 func TestNodeRouterSpecificFallback(t *testing.T) {
 	previous := listCandidateNodesFunc
 	listCandidateNodesFunc = func(cfg Config) ([]models.Node, error) {
@@ -105,6 +125,64 @@ func TestNodeHealthCooldownAndProbe(t *testing.T) {
 	filtered = health.filter(nodes)
 	if len(filtered) != 1 || filtered[0].ID != 1 {
 		t.Fatalf("expected expired node, got %+v", filtered)
+	}
+}
+
+func TestNodeHealthPrefersUsableNodesAndFallsBackWhenAllUnhealthy(t *testing.T) {
+	health := newNodeHealth()
+	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}}
+	health.recordProbeFailureReason(nodes[0], 0, "probe failed")
+	health.recordProbeSuccess(nodes[1], 25)
+
+	filtered := health.filter(nodes)
+	if len(filtered) != 1 || filtered[0].ID != 2 {
+		t.Fatalf("expected healthy node only, got %+v", filtered)
+	}
+
+	health.recordProbeFailureReason(nodes[1], 0, "probe failed")
+	filtered = health.filter(nodes)
+	if len(filtered) != 2 {
+		t.Fatalf("expected fail-open candidates when all nodes are unhealthy, got %+v", filtered)
+	}
+}
+
+func TestNodeHealthPassiveFailureDoesNotPermanentlyExcludeNode(t *testing.T) {
+	health := newNodeHealth()
+	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}}
+	health.recordFailureReason(nodes[0], 0, "dial failed")
+	health.recordProbeSuccess(nodes[1], 25)
+
+	filtered := health.filter(nodes)
+	if len(filtered) != 2 {
+		t.Fatalf("passive failure unexpectedly excluded node: %+v", filtered)
+	}
+}
+
+func TestNodeRouterBestUsesActiveHealthLatencyBeforeAttemptLimit(t *testing.T) {
+	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}, {ID: 3, Link: "c"}}
+	withCandidateNodes(t, nodes)
+	router := newNodeRouter()
+	router.health.recordProbeSuccess(nodes[0], 300)
+	router.health.recordProbeSuccess(nodes[1], 20)
+
+	candidates, err := router.candidates(Config{Selection: "best", MaxAttempts: 2, DialTimeoutSeconds: 30})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual([]int{candidates[0].ID, candidates[1].ID}, []int{2, 1}) {
+		t.Fatalf("active health latency did not order candidates before truncation: %+v", candidates)
+	}
+}
+
+func TestNodeHealthConnectionSuccessPreservesProbeLatency(t *testing.T) {
+	health := newNodeHealth()
+	node := models.Node{ID: 1, Link: "a"}
+	health.recordProbeSuccess(node, 42)
+	health.recordSuccess(node)
+
+	snapshot := health.snapshot()
+	if len(snapshot) != 1 || snapshot[0].Status != "healthy" || snapshot[0].LatencyMs != 42 {
+		t.Fatalf("connection success cleared active probe latency: %+v", snapshot)
 	}
 }
 

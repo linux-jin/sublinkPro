@@ -227,7 +227,7 @@ func (s *Server) runHealthSweep(ctx context.Context) {
 				latency, probeErr := s.healthProbe(probeCtx, node, time.Duration(s.cfg.HealthCheckTimeoutSeconds)*time.Second)
 				cancel()
 				if probeErr != nil {
-					s.router.health.recordFailureReason(node, time.Duration(s.cfg.FailureCooldownSeconds)*time.Second, s.sanitizeProbeError(node, probeErr))
+					s.router.health.recordProbeFailureReason(node, time.Duration(s.cfg.FailureCooldownSeconds)*time.Second, s.sanitizeProbeError(node, probeErr))
 					continue
 				}
 				s.router.health.recordProbeSuccess(node, latency)
