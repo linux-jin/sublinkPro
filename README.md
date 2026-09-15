@@ -78,11 +78,11 @@ English | [简体中文](README.zh-CN.md)
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.5.0`
+**Latest stable release:** `v1.6.0`
 
-- Added SOCKS5 connection governance with global/per-client limits, idle and duration timeouts, and administrator live monitoring.
-- Added active connection inspection and administrator disconnect controls through the SOCKS5 page and API.
-- Improved node-management responsiveness and reduced list API payload size for large node collections.
+- Added active SOCKS5 node health sweeps, latency tracking, exponential cooldown, and manual probe execution.
+- Expanded the SOCKS5 live monitor with aggregate byte totals, per-connection transfer, duration, and idle metrics.
+- Added graceful SOCKS5 shutdown coordination with handshake cancellation.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 
