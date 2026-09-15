@@ -6,7 +6,14 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Added SOCKS5 candidate node pool filters for groups, sources, protocols, and countries/regions.
+- Added searchable, grouped, server-paginated selection for the SOCKS5 specific outbound node.
+
+### Changed
+
+- SOCKS5 active health results now participate in routing; `best` prioritizes measured probe latency, and probe-failed nodes are skipped while alternatives exist.
 
 ## [1.6.0] - 2026-09-15
 

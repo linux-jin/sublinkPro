@@ -720,7 +720,9 @@ All SOCKS5 endpoints require an authenticated administrator. Destructive `POST`/
   `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`,
   `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections),
   `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`,
-  `healthCheckIntervalSeconds` (10-3600), and `healthCheckTimeoutSeconds` (1-30).
+  `healthCheckIntervalSeconds` (10-3600), `healthCheckTimeoutSeconds` (1-30), and candidate-pool arrays
+  `candidateGroups`, `candidateSources`, `candidateProtocols`, and `candidateCountries`.
+  Candidate-pool fields combine with AND; values inside one field combine with OR. Empty arrays do not restrict the pool.
   Optional fields may be omitted to preserve saved values for legacy clients. `0` disables either connection timeout.
 - **POST** `/api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
 - **GET** `/api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health`.

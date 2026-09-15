@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -60,6 +61,10 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 		"healthCheckEnabled":           true,
 		"healthCheckIntervalSeconds":   120,
 		"healthCheckTimeoutSeconds":    8,
+		"candidateGroups":              []string{"premium", "backup"},
+		"candidateSources":             []string{"airport-a"},
+		"candidateProtocols":           []string{"VLESS", "trojan"},
+		"candidateCountries":           []string{"jp", "US"},
 	}, UpdateSocks5Settings)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
@@ -70,6 +75,9 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	}
 	if !strings.Contains(body, `"hasPassword":true`) {
 		t.Fatalf("expected masked password metadata: %s", body)
+	}
+	if !strings.Contains(body, `"candidateGroups":["premium","backup"]`) || !strings.Contains(body, `"candidateCountries":["JP","US"]`) {
+		t.Fatalf("response missing normalized candidate pool: %s", body)
 	}
 	loaded, err := socks5service.LoadConfig()
 	if err != nil {
@@ -86,6 +94,9 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	}
 	if !loaded.HealthCheckEnabled || loaded.HealthCheckIntervalSeconds != 120 || loaded.HealthCheckTimeoutSeconds != 8 {
 		t.Fatalf("unexpected health check settings: %+v", loaded)
+	}
+	if len(loaded.CandidateGroups) != 2 || loaded.CandidateGroups[0] != "premium" || loaded.CandidateSources[0] != "airport-a" || loaded.CandidateProtocols[0] != "vless" || loaded.CandidateCountries[0] != "JP" {
+		t.Fatalf("unexpected candidate pool settings: %+v", loaded)
 	}
 	if _, err := socks5service.SaveConfig(socks5service.Config{
 		Enabled:       false,
@@ -122,6 +133,10 @@ func TestUpdateSocks5SettingsPreservesPhaseTwoFieldsForLegacyRequest(t *testing.
 		HealthCheckEnabled:         true,
 		HealthCheckIntervalSeconds: 180,
 		HealthCheckTimeoutSeconds:  9,
+		CandidateGroups:            []string{"premium"},
+		CandidateSources:           []string{"airport-a"},
+		CandidateProtocols:         []string{"vless"},
+		CandidateCountries:         []string{"JP"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -145,6 +160,32 @@ func TestUpdateSocks5SettingsPreservesPhaseTwoFieldsForLegacyRequest(t *testing.
 	}
 	if !loaded.HealthCheckEnabled || loaded.HealthCheckIntervalSeconds != 180 || loaded.HealthCheckTimeoutSeconds != 9 {
 		t.Fatalf("legacy request overwrote health check fields: %+v", loaded)
+	}
+	if !reflect.DeepEqual(loaded.CandidateGroups, []string{"premium"}) || !reflect.DeepEqual(loaded.CandidateSources, []string{"airport-a"}) || !reflect.DeepEqual(loaded.CandidateProtocols, []string{"vless"}) || !reflect.DeepEqual(loaded.CandidateCountries, []string{"JP"}) {
+		t.Fatalf("legacy request overwrote candidate pool fields: %+v", loaded)
+	}
+
+	clearRecorder := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
+		"enabled":            false,
+		"listenAddress":      "127.0.0.1",
+		"port":               1081,
+		"username":           "legacy",
+		"selection":          "best",
+		"requireAuth":        false,
+		"candidateGroups":    []string{},
+		"candidateSources":   []string{},
+		"candidateProtocols": []string{},
+		"candidateCountries": []string{},
+	}, UpdateSocks5Settings)
+	if clearRecorder.Code != http.StatusOK {
+		t.Fatalf("clear status = %d, body = %s", clearRecorder.Code, clearRecorder.Body.String())
+	}
+	cleared, err := socks5service.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cleared.CandidateGroups) != 0 || len(cleared.CandidateSources) != 0 || len(cleared.CandidateProtocols) != 0 || len(cleared.CandidateCountries) != 0 {
+		t.Fatalf("explicit empty candidate pool did not clear settings: %+v", cleared)
 	}
 }
 

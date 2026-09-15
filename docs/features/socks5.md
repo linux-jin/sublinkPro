@@ -10,6 +10,7 @@ SublinkPro can expose selected stored proxy nodes through a local SOCKS5 gateway
 - IPv4, IPv6, and domain targets
 - Optional username/password authentication (enabled by default)
 - Best-node, random-node, round-robin, or specific-node selection
+- Candidate node pools filtered by one or more groups, sources, protocols, and countries/regions; fields combine with AND and values inside one field combine with OR
 - Mihomo outbound adapter pooling keyed by node ID and link hash, with an idle LRU cap
 - Configurable per-request retry (up to 5 candidate nodes), dial timeout, and failed-node cooldown
 - Optional fallback from a specific node; disabled by default to keep specific routing strict
@@ -34,13 +35,14 @@ UDP `ASSOCIATE`, `BIND`, sticky sessions, multi-user routing, and multi-port lis
 2. Open **System Settings → SOCKS5 gateway** from the sidebar.
 3. Keep **Listen address** as `127.0.0.1` for local-only access.
 4. Choose a port (default `1080`) and node selection strategy.
-5. Configure maximum attempts, per-node dial timeout, and failed-node cooldown.
-6. Configure global and per-client connection limits.
-7. Configure idle timeout and maximum connection duration; set either value to `0` to disable that limit.
-8. For specific-node routing, enable fallback only if switching to another node is acceptable.
-9. Keep authentication enabled and set a username/password.
-10. Optionally enable active node health checks, then choose a 10-3600 second interval and 1-30 second per-node timeout.
-11. Save the settings. Monitoring, health probing, and connection termination controls are administrator-only.
+5. Optionally restrict the candidate node pool by groups, sources, protocols, and countries/regions. Empty fields do not restrict the pool. Specific-node mode uses these filters only for fallback candidates.
+6. Configure maximum attempts, per-node dial timeout, and failed-node cooldown.
+7. Configure global and per-client connection limits.
+8. Configure idle timeout and maximum connection duration; set either value to `0` to disable that limit.
+9. For specific-node routing, enable fallback only if switching to another node is acceptable.
+10. Keep authentication enabled and set a username/password.
+11. Optionally enable active node health checks, then choose a 10-3600 second interval and 1-30 second per-node timeout.
+12. Save the settings. Monitoring, health probing, and connection termination controls are administrator-only.
 
 The gateway is disabled by default. Passwords are encrypted with the instance API encryption key. Settings responses expose `hasPassword` and, when present, `maskedPassword`; plaintext `password` is never returned. Omitting `password` preserves the saved password, while `clearPassword: true` clears it.
 
@@ -59,7 +61,7 @@ If you bind to `0.0.0.0` or another non-loopback address, authentication is mand
 All endpoints below require an authenticated administrator. The destructive `POST`/`DELETE` operations are also restricted in demo mode.
 
 - `GET /api/v1/settings/socks5` — read public gateway settings; the plaintext password is never returned.
-- `POST /api/v1/settings/socks5` — save and apply settings. JSON fields include `enabled`, `listenAddress`, `port`, `username`, optional `password`, `clearPassword`, `nodeId`, `selection` (`best`, `random`, `round_robin`, or `specific`), `requireAuth`, `maxAttempts` (1-5), `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`, `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections), `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`, `healthCheckIntervalSeconds` (10-3600), and `healthCheckTimeoutSeconds` (1-30). Optional fields may be omitted to preserve saved values for legacy clients.
+- `POST /api/v1/settings/socks5` — save and apply settings. JSON fields include `enabled`, `listenAddress`, `port`, `username`, optional `password`, `clearPassword`, `nodeId`, `selection` (`best`, `random`, `round_robin`, or `specific`), `requireAuth`, `maxAttempts` (1-5), `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`, `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections), `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`, `healthCheckIntervalSeconds` (10-3600), `healthCheckTimeoutSeconds` (1-30), `candidateGroups`, `candidateSources`, `candidateProtocols`, and `candidateCountries`. Candidate pool fields are string arrays; fields are combined with AND and values within each field use OR. Optional fields may be omitted to preserve saved values for legacy clients.
 - `POST /api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
 - `GET /api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health` with sweep state and per-node health details.
 - `POST /api/v1/settings/socks5/health/probe` — start an immediate health sweep. An already-running sweep is reused instead of starting a duplicate.
@@ -69,4 +71,4 @@ All endpoints below require an authenticated administrator. The destructive `POS
 
 The status counters and active connection list belong to the current gateway server lifetime; stopping or reapplying settings creates a new registry and resets them.
 
-Active health checks use a fixed Cloudflare HTTPS connectivity endpoint; administrators cannot configure an arbitrary probe URL. Sweeps use at most four workers and never overlap. Status responses include aggregate counts and at most the first 200 sorted node records to keep three-second monitoring polls bounded. Failed probes retire the failed adapter lease safely and apply exponential cooldown capped at one hour.
+Active health checks follow the current selection: strict specific-node mode probes only that node, specific-node fallback probes that node plus the configured fallback pool, and other strategies probe the configured candidate pool. Probes use a fixed Cloudflare HTTPS connectivity endpoint; administrators cannot configure an arbitrary probe URL. Sweeps use at most four workers and never overlap. Status responses include aggregate counts and at most the first 200 sorted node records to keep three-second monitoring polls bounded. Failed probes retire the failed adapter lease safely and apply exponential cooldown capped at one hour.

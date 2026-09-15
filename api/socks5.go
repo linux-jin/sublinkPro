@@ -41,26 +41,30 @@ func UpdateSocks5Settings(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Enabled                      bool   `json:"enabled"`
-		ListenAddress                string `json:"listenAddress"`
-		Port                         int    `json:"port"`
-		Username                     string `json:"username"`
-		Password                     string `json:"password"`
-		ClearPassword                bool   `json:"clearPassword"`
-		NodeID                       int    `json:"nodeId"`
-		Selection                    string `json:"selection"`
-		RequireAuth                  *bool  `json:"requireAuth"`
-		MaxAttempts                  *int   `json:"maxAttempts"`
-		DialTimeoutSeconds           *int   `json:"dialTimeoutSeconds"`
-		FailureCooldownSeconds       *int   `json:"failureCooldownSeconds"`
-		SpecificFallback             *bool  `json:"specificFallback"`
-		MaxConnections               *int   `json:"maxConnections"`
-		MaxConnectionsPerClient      *int   `json:"maxConnectionsPerClient"`
-		IdleTimeoutSeconds           *int   `json:"idleTimeoutSeconds"`
-		MaxConnectionDurationSeconds *int   `json:"maxConnectionDurationSeconds"`
-		HealthCheckEnabled           *bool  `json:"healthCheckEnabled"`
-		HealthCheckIntervalSeconds   *int   `json:"healthCheckIntervalSeconds"`
-		HealthCheckTimeoutSeconds    *int   `json:"healthCheckTimeoutSeconds"`
+		Enabled                      bool      `json:"enabled"`
+		ListenAddress                string    `json:"listenAddress"`
+		Port                         int       `json:"port"`
+		Username                     string    `json:"username"`
+		Password                     string    `json:"password"`
+		ClearPassword                bool      `json:"clearPassword"`
+		NodeID                       int       `json:"nodeId"`
+		Selection                    string    `json:"selection"`
+		RequireAuth                  *bool     `json:"requireAuth"`
+		MaxAttempts                  *int      `json:"maxAttempts"`
+		DialTimeoutSeconds           *int      `json:"dialTimeoutSeconds"`
+		FailureCooldownSeconds       *int      `json:"failureCooldownSeconds"`
+		SpecificFallback             *bool     `json:"specificFallback"`
+		MaxConnections               *int      `json:"maxConnections"`
+		MaxConnectionsPerClient      *int      `json:"maxConnectionsPerClient"`
+		IdleTimeoutSeconds           *int      `json:"idleTimeoutSeconds"`
+		MaxConnectionDurationSeconds *int      `json:"maxConnectionDurationSeconds"`
+		HealthCheckEnabled           *bool     `json:"healthCheckEnabled"`
+		HealthCheckIntervalSeconds   *int      `json:"healthCheckIntervalSeconds"`
+		HealthCheckTimeoutSeconds    *int      `json:"healthCheckTimeoutSeconds"`
+		CandidateGroups              *[]string `json:"candidateGroups"`
+		CandidateSources             *[]string `json:"candidateSources"`
+		CandidateProtocols           *[]string `json:"candidateProtocols"`
+		CandidateCountries           *[]string `json:"candidateCountries"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.FailWithI18n(c, "参数错误", "settings.socks5.api.invalidRequest", nil)
@@ -125,6 +129,22 @@ func UpdateSocks5Settings(c *gin.Context) {
 	if req.HealthCheckTimeoutSeconds != nil {
 		healthCheckTimeoutSeconds = *req.HealthCheckTimeoutSeconds
 	}
+	candidateGroups := current.CandidateGroups
+	if req.CandidateGroups != nil {
+		candidateGroups = *req.CandidateGroups
+	}
+	candidateSources := current.CandidateSources
+	if req.CandidateSources != nil {
+		candidateSources = *req.CandidateSources
+	}
+	candidateProtocols := current.CandidateProtocols
+	if req.CandidateProtocols != nil {
+		candidateProtocols = *req.CandidateProtocols
+	}
+	candidateCountries := current.CandidateCountries
+	if req.CandidateCountries != nil {
+		candidateCountries = *req.CandidateCountries
+	}
 	cfg, err := socks5service.SaveConfig(socks5service.Config{
 		Enabled:                      req.Enabled,
 		ListenAddress:                req.ListenAddress,
@@ -145,6 +165,10 @@ func UpdateSocks5Settings(c *gin.Context) {
 		HealthCheckEnabled:           healthCheckEnabled,
 		HealthCheckIntervalSeconds:   healthCheckIntervalSeconds,
 		HealthCheckTimeoutSeconds:    healthCheckTimeoutSeconds,
+		CandidateGroups:              candidateGroups,
+		CandidateSources:             candidateSources,
+		CandidateProtocols:           candidateProtocols,
+		CandidateCountries:           candidateCountries,
 		ClearPassword:                req.ClearPassword,
 	})
 	if err != nil {

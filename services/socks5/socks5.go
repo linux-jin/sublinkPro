@@ -3,6 +3,7 @@ package socks5
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -38,6 +39,10 @@ const (
 	settingHealthCheckEnabled           = "socks5_health_check_enabled"
 	settingHealthCheckIntervalSeconds   = "socks5_health_check_interval_seconds"
 	settingHealthCheckTimeoutSeconds    = "socks5_health_check_timeout_seconds"
+	settingCandidateGroups              = "socks5_candidate_groups"
+	settingCandidateSources             = "socks5_candidate_sources"
+	settingCandidateProtocols           = "socks5_candidate_protocols"
+	settingCandidateCountries           = "socks5_candidate_countries"
 
 	defaultListenAddress                = "127.0.0.1"
 	defaultPort                         = 1080
@@ -75,33 +80,41 @@ type Config struct {
 	HealthCheckEnabled           bool
 	HealthCheckIntervalSeconds   int
 	HealthCheckTimeoutSeconds    int
+	CandidateGroups              []string
+	CandidateSources             []string
+	CandidateProtocols           []string
+	CandidateCountries           []string
 	ClearPassword                bool
 }
 
 // PublicConfig is safe to return from the settings API.
 type PublicConfig struct {
-	Enabled                      bool   `json:"enabled"`
-	ListenAddress                string `json:"listenAddress"`
-	Port                         int    `json:"port"`
-	Username                     string `json:"username"`
-	HasPassword                  bool   `json:"hasPassword"`
-	MaskedPassword               string `json:"maskedPassword,omitempty"`
-	NodeID                       int    `json:"nodeId"`
-	Selection                    string `json:"selection"`
-	RequireAuth                  bool   `json:"requireAuth"`
-	MaxAttempts                  int    `json:"maxAttempts"`
-	DialTimeoutSeconds           int    `json:"dialTimeoutSeconds"`
-	FailureCooldownSeconds       int    `json:"failureCooldownSeconds"`
-	SpecificFallback             bool   `json:"specificFallback"`
-	MaxConnections               int    `json:"maxConnections"`
-	MaxConnectionsPerClient      int    `json:"maxConnectionsPerClient"`
-	IdleTimeoutSeconds           int    `json:"idleTimeoutSeconds"`
-	MaxConnectionDurationSeconds int    `json:"maxConnectionDurationSeconds"`
-	HealthCheckEnabled           bool   `json:"healthCheckEnabled"`
-	HealthCheckIntervalSeconds   int    `json:"healthCheckIntervalSeconds"`
-	HealthCheckTimeoutSeconds    int    `json:"healthCheckTimeoutSeconds"`
-	Running                      bool   `json:"running"`
-	BoundAddress                 string `json:"boundAddress,omitempty"`
+	Enabled                      bool     `json:"enabled"`
+	ListenAddress                string   `json:"listenAddress"`
+	Port                         int      `json:"port"`
+	Username                     string   `json:"username"`
+	HasPassword                  bool     `json:"hasPassword"`
+	MaskedPassword               string   `json:"maskedPassword,omitempty"`
+	NodeID                       int      `json:"nodeId"`
+	Selection                    string   `json:"selection"`
+	RequireAuth                  bool     `json:"requireAuth"`
+	MaxAttempts                  int      `json:"maxAttempts"`
+	DialTimeoutSeconds           int      `json:"dialTimeoutSeconds"`
+	FailureCooldownSeconds       int      `json:"failureCooldownSeconds"`
+	SpecificFallback             bool     `json:"specificFallback"`
+	MaxConnections               int      `json:"maxConnections"`
+	MaxConnectionsPerClient      int      `json:"maxConnectionsPerClient"`
+	IdleTimeoutSeconds           int      `json:"idleTimeoutSeconds"`
+	MaxConnectionDurationSeconds int      `json:"maxConnectionDurationSeconds"`
+	HealthCheckEnabled           bool     `json:"healthCheckEnabled"`
+	HealthCheckIntervalSeconds   int      `json:"healthCheckIntervalSeconds"`
+	HealthCheckTimeoutSeconds    int      `json:"healthCheckTimeoutSeconds"`
+	CandidateGroups              []string `json:"candidateGroups"`
+	CandidateSources             []string `json:"candidateSources"`
+	CandidateProtocols           []string `json:"candidateProtocols"`
+	CandidateCountries           []string `json:"candidateCountries"`
+	Running                      bool     `json:"running"`
+	BoundAddress                 string   `json:"boundAddress,omitempty"`
 }
 
 func defaultConfig() Config {
@@ -181,6 +194,18 @@ func LoadConfig() (Config, error) {
 			}
 			*target = parsed
 		}
+	}
+	for key, target := range map[string]*[]string{
+		settingCandidateGroups:    &cfg.CandidateGroups,
+		settingCandidateSources:   &cfg.CandidateSources,
+		settingCandidateProtocols: &cfg.CandidateProtocols,
+		settingCandidateCountries: &cfg.CandidateCountries,
+	} {
+		values, loadErr := loadStringListSetting(key)
+		if loadErr != nil {
+			return cfg, loadErr
+		}
+		*target = values
 	}
 	return NormalizeConfig(cfg)
 }
@@ -264,7 +289,62 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if cfg.HealthCheckTimeoutSeconds < 1 || cfg.HealthCheckTimeoutSeconds > 30 {
 		return cfg, errors.New("SOCKS5 health check timeout must be between 1 and 30 seconds")
 	}
+	cfg.CandidateGroups = normalizeStringList(cfg.CandidateGroups, nil)
+	cfg.CandidateSources = normalizeStringList(cfg.CandidateSources, nil)
+	cfg.CandidateProtocols = normalizeStringList(cfg.CandidateProtocols, strings.ToLower)
+	cfg.CandidateCountries = normalizeStringList(cfg.CandidateCountries, strings.ToUpper)
+	for name, values := range map[string][]string{
+		"groups": cfg.CandidateGroups, "sources": cfg.CandidateSources,
+		"protocols": cfg.CandidateProtocols, "countries": cfg.CandidateCountries,
+	} {
+		if len(values) > 256 {
+			return cfg, fmt.Errorf("SOCKS5 candidate %s must contain at most 256 values", name)
+		}
+		for _, value := range values {
+			if len(value) > 255 {
+				return cfg, fmt.Errorf("SOCKS5 candidate %s values must be at most 255 bytes", name)
+			}
+		}
+	}
 	return cfg, nil
+}
+
+func normalizeStringList(values []string, transform func(string) string) []string {
+	normalized := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if transform != nil {
+			value = transform(value)
+		}
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, value)
+	}
+	return normalized
+}
+
+func loadStringListSetting(key string) ([]string, error) {
+	value, err := models.GetSetting(key)
+	if err != nil || strings.TrimSpace(value) == "" {
+		return []string{}, nil
+	}
+	var values []string
+	if err := json.Unmarshal([]byte(value), &values); err != nil {
+		return nil, fmt.Errorf("invalid SOCKS5 setting %s: %w", key, err)
+	}
+	return values, nil
+}
+
+func encodeStringListSetting(values []string) string {
+	encoded, _ := json.Marshal(values)
+	return string(encoded)
 }
 
 func SaveConfig(input Config) (Config, error) {
@@ -291,6 +371,10 @@ func SaveConfig(input Config) (Config, error) {
 		settingHealthCheckEnabled:           strconv.FormatBool(cfg.HealthCheckEnabled),
 		settingHealthCheckIntervalSeconds:   strconv.Itoa(cfg.HealthCheckIntervalSeconds),
 		settingHealthCheckTimeoutSeconds:    strconv.Itoa(cfg.HealthCheckTimeoutSeconds),
+		settingCandidateGroups:              encodeStringListSetting(cfg.CandidateGroups),
+		settingCandidateSources:             encodeStringListSetting(cfg.CandidateSources),
+		settingCandidateProtocols:           encodeStringListSetting(cfg.CandidateProtocols),
+		settingCandidateCountries:           encodeStringListSetting(cfg.CandidateCountries),
 	}
 	if cfg.ClearPassword {
 		values[settingPassword] = ""
@@ -316,7 +400,19 @@ func ToPublicConfig(cfg Config, running bool, boundAddress string) PublicConfig 
 	if cfg.Password != "" {
 		masked = "••••••••"
 	}
-	return PublicConfig{Enabled: cfg.Enabled, ListenAddress: cfg.ListenAddress, Port: cfg.Port, Username: cfg.Username, HasPassword: cfg.Password != "", MaskedPassword: masked, NodeID: cfg.NodeID, Selection: cfg.Selection, RequireAuth: cfg.RequireAuth, MaxAttempts: cfg.MaxAttempts, DialTimeoutSeconds: cfg.DialTimeoutSeconds, FailureCooldownSeconds: cfg.FailureCooldownSeconds, SpecificFallback: cfg.SpecificFallback, MaxConnections: cfg.MaxConnections, MaxConnectionsPerClient: cfg.MaxConnectionsPerClient, IdleTimeoutSeconds: cfg.IdleTimeoutSeconds, MaxConnectionDurationSeconds: cfg.MaxConnectionDurationSeconds, HealthCheckEnabled: cfg.HealthCheckEnabled, HealthCheckIntervalSeconds: cfg.HealthCheckIntervalSeconds, HealthCheckTimeoutSeconds: cfg.HealthCheckTimeoutSeconds, Running: running, BoundAddress: boundAddress}
+	return PublicConfig{
+		Enabled: cfg.Enabled, ListenAddress: cfg.ListenAddress, Port: cfg.Port, Username: cfg.Username,
+		HasPassword: cfg.Password != "", MaskedPassword: masked, NodeID: cfg.NodeID, Selection: cfg.Selection,
+		RequireAuth: cfg.RequireAuth, MaxAttempts: cfg.MaxAttempts, DialTimeoutSeconds: cfg.DialTimeoutSeconds,
+		FailureCooldownSeconds: cfg.FailureCooldownSeconds, SpecificFallback: cfg.SpecificFallback,
+		MaxConnections: cfg.MaxConnections, MaxConnectionsPerClient: cfg.MaxConnectionsPerClient,
+		IdleTimeoutSeconds: cfg.IdleTimeoutSeconds, MaxConnectionDurationSeconds: cfg.MaxConnectionDurationSeconds,
+		HealthCheckEnabled: cfg.HealthCheckEnabled, HealthCheckIntervalSeconds: cfg.HealthCheckIntervalSeconds,
+		HealthCheckTimeoutSeconds: cfg.HealthCheckTimeoutSeconds,
+		CandidateGroups:           append([]string{}, cfg.CandidateGroups...), CandidateSources: append([]string{}, cfg.CandidateSources...),
+		CandidateProtocols: append([]string{}, cfg.CandidateProtocols...), CandidateCountries: append([]string{}, cfg.CandidateCountries...),
+		Running: running, BoundAddress: boundAddress,
+	}
 }
 
 // DialFunc allows tests and future routing implementations to replace mihomo dialing.

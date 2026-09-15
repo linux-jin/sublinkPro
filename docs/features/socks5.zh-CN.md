@@ -10,6 +10,7 @@ SublinkPro 可以将已保存的代理节点通过本地 SOCKS5 网关暴露出�
 - 支持 IPv4、IPv6 和域名目标
 - 可选用户名/密码认证（默认启用）
 - 支持最佳节点、随机节点、轮询节点或指定节点选择
+- 支持按多个分组、来源、协议和国家/地区组合过滤候选节点池；不同条件之间为“且”，同一条件内多个值为“或”
 - 按节点 ID 和链接哈希缓存复用 mihomo 出站适配器，并限制空闲 LRU 缓存规模
 - 支持每次请求最多 5 个候选节点重试、拨号超时和失败节点冷却
 - 指定节点可选失败回退；默认关闭，保持指定节点路由严格性
@@ -34,13 +35,14 @@ SublinkPro 可以将已保存的代理节点通过本地 SOCKS5 网关暴露出�
 2. 从侧边栏打开 **系统设置 → SOCKS5 网关**。
 3. 本机使用请保持监听地址为 `127.0.0.1`。
 4. 选择端口（默认 `1080`）和节点选择策略。
-5. 配置最大尝试次数、单节点拨号超时和失败节点冷却。
-6. 配置全局连接上限和单客户端连接上限。
-7. 配置空闲超时和最大连接时长；设置为 `0` 可禁用对应限制。
-8. 使用指定节点时，仅在允许切换其他节点的情况下开启失败回退。
-9. 保持认证开启，并设置用户名和密码。
-10. 可选启用节点主动健康探测，并配置 10-3600 秒的探测间隔和 1-30 秒的单节点超时。
-11. 保存设置。监控、健康探测和断开连接操作仅管理员可用。
+5. 可选按分组、来源、协议和国家/地区限制候选节点池；留空表示不限制。指定节点模式仅将这些条件用于失败回退候选。
+6. 配置最大尝试次数、单节点拨号超时和失败节点冷却。
+7. 配置全局连接上限和单客户端连接上限。
+8. 配置空闲超时和最大连接时长；设置为 `0` 可禁用对应限制。
+9. 使用指定节点时，仅在允许切换其他节点的情况下开启失败回退。
+10. 保持认证开启，并设置用户名和密码。
+11. 可选启用节点主动健康探测，并配置 10-3600 秒的探测间隔和 1-30 秒的单节点超时。
+12. 保存设置。监控、健康探测和断开连接操作仅管理员可用。
 
 网关默认关闭。密码使用实例 API 加密密钥加密保存。设置响应仅返回 `hasPassword` 及（有密码时）`maskedPassword`，不会返回明文 `password`。省略 `password` 会保留已保存密码，`clearPassword: true` 会清除密码。
 
@@ -59,7 +61,7 @@ curl --proxy socks5h://127.0.0.1:1080 \
 以下接口均要求登录并且仅管理员可用；有写入风险的 `POST`/`DELETE` 接口在演示模式下也会被限制。
 
 - `GET /api/v1/settings/socks5` — 读取公开网关设置，不返回明文密码。
-- `POST /api/v1/settings/socks5` — 保存并应用设置。JSON 字段包括 `enabled`、`listenAddress`、`port`、`username`、可选 `password`、`clearPassword`、`nodeId`、`selection`（`best`、`random`、`round_robin` 或 `specific`）、`requireAuth`、`maxAttempts`（1-5）、`dialTimeoutSeconds`（1-120）、`failureCooldownSeconds`（0-3600）、`specificFallback`、`maxConnections`（1-10000）、`maxConnectionsPerClient`（1..maxConnections）、`idleTimeoutSeconds`（0-86400）、`maxConnectionDurationSeconds`（0-604800）、`healthCheckEnabled`、`healthCheckIntervalSeconds`（10-3600）和 `healthCheckTimeoutSeconds`（1-30）。可选字段均可省略，以兼容旧客户端并保留已保存值。
+- `POST /api/v1/settings/socks5` — 保存并应用设置。JSON 字段包括 `enabled`、`listenAddress`、`port`、`username`、可选 `password`、`clearPassword`、`nodeId`、`selection`（`best`、`random`、`round_robin` 或 `specific`）、`requireAuth`、`maxAttempts`（1-5）、`dialTimeoutSeconds`（1-120）、`failureCooldownSeconds`（0-3600）、`specificFallback`、`maxConnections`（1-10000）、`maxConnectionsPerClient`（1..maxConnections）、`idleTimeoutSeconds`（0-86400）、`maxConnectionDurationSeconds`（0-604800）、`healthCheckEnabled`、`healthCheckIntervalSeconds`（10-3600）、`healthCheckTimeoutSeconds`（1-30）、`candidateGroups`、`candidateSources`、`candidateProtocols` 和 `candidateCountries`。候选池字段均为字符串数组；不同字段之间为“且”，字段内多个值为“或”。可选字段均可省略，以兼容旧客户端并保留已保存值。
 - `POST /api/v1/settings/socks5/stop` — 停止监听，但不修改已保存设置。
 - `GET /api/v1/settings/socks5/status` — 返回 `data.config`、`data.stats` 和 `data.health`；后者包含探测运行状态和逐节点健康详情。
 - `POST /api/v1/settings/socks5/health/probe` — 立即启动一轮节点健康探测；已有探测运行时不会重复启动。
@@ -69,4 +71,4 @@ curl --proxy socks5h://127.0.0.1:1080 \
 
 状态统计和活动连接列表仅属于当前网关进程生命周期；停止或重新应用设置后会创建新的注册中心，计数会重置。
 
-主动健康探测固定使用 Cloudflare HTTPS 连通性检测地址，不允许管理员配置任意探测 URL。每轮最多使用 4 个 worker 且不会重叠；状态响应包含完整聚合计数，但最多返回排序后的前 200 条节点记录，避免三秒轮询产生过大响应；失败探测会安全淘汰对应适配器租约，并使用最长一小时的指数冷却。
+主动健康探测遵循当前选择策略：严格指定节点模式只探测该节点，开启指定节点回退时探测指定节点及配置后的回退池，其他策略探测配置后的候选节点池。探测固定使用 Cloudflare HTTPS 连通性检测地址，不允许管理员配置任意探测 URL。每轮最多使用 4 个 worker 且不会重叠；状态响应包含完整聚合计数，但最多返回排序后的前 200 条节点记录，避免三秒轮询产生过大响应；失败探测会安全淘汰对应适配器租约，并使用最长一小时的指数冷却。

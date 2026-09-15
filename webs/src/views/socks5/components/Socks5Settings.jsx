@@ -25,6 +25,7 @@ import StopCircleIcon from '@mui/icons-material/StopCircle';
 
 import { getSocks5Settings, stopSocks5, updateSocks5Settings } from 'api/settings';
 
+import CandidateNodePool from './CandidateNodePool';
 import SpecificNodeSelector from './SpecificNodeSelector';
 
 const defaultConfig = {
@@ -48,6 +49,10 @@ const defaultConfig = {
   healthCheckEnabled: false,
   healthCheckIntervalSeconds: 60,
   healthCheckTimeoutSeconds: 5,
+  candidateGroups: [],
+  candidateSources: [],
+  candidateProtocols: [],
+  candidateCountries: [],
   running: false,
   boundAddress: ''
 };
@@ -111,7 +116,11 @@ export default function Socks5Settings({ showMessage }) {
         maxConnectionDurationSeconds: Number(form.maxConnectionDurationSeconds) || 0,
         healthCheckEnabled: Boolean(form.healthCheckEnabled),
         healthCheckIntervalSeconds: Number(form.healthCheckIntervalSeconds) || 60,
-        healthCheckTimeoutSeconds: Number(form.healthCheckTimeoutSeconds) || 5
+        healthCheckTimeoutSeconds: Number(form.healthCheckTimeoutSeconds) || 5,
+        candidateGroups: Array.isArray(form.candidateGroups) ? form.candidateGroups : [],
+        candidateSources: Array.isArray(form.candidateSources) ? form.candidateSources : [],
+        candidateProtocols: Array.isArray(form.candidateProtocols) ? form.candidateProtocols : [],
+        candidateCountries: Array.isArray(form.candidateCountries) ? form.candidateCountries : []
       });
       syncConfig(response.data);
       showMessage(t('settings.socks5.messages.saved'));
@@ -241,6 +250,9 @@ export default function Socks5Settings({ showMessage }) {
                 />
                 <FormHelperText>{t('settings.socks5.form.specificFallbackHelper')}</FormHelperText>
               </Box>
+            )}
+            {(form.selection !== 'specific' || form.specificFallback) && (
+              <CandidateNodePool value={form} onChange={(pool) => setForm((prev) => ({ ...prev, ...pool }))} disabled={busy} />
             )}
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField

@@ -12,6 +12,8 @@ import (
 	"sublink/models"
 )
 
+const candidateUngroupedValue = "__ungrouped__"
+
 type nodeHealthState struct {
 	NodeID              int
 	NodeName            string
@@ -287,8 +289,7 @@ func (r *nodeRouter) candidates(cfg Config) ([]models.Node, error) {
 
 func listCandidateNodes(cfg Config) ([]models.Node, error) {
 	var first *models.Node
-	switch cfg.Selection {
-	case "specific":
+	if cfg.Selection == "specific" {
 		specific, ok := models.GetNodeByID(cfg.NodeID)
 		if !ok || strings.TrimSpace(specific.Link) == "" {
 			return nil, errors.New("configured SOCKS5 node was not found")
@@ -297,10 +298,6 @@ func listCandidateNodes(cfg Config) ([]models.Node, error) {
 			return []models.Node{*specific}, nil
 		}
 		first = specific
-	case "best":
-		if best, bestErr := models.GetBestProxyNode(); bestErr == nil && best != nil && strings.TrimSpace(best.Link) != "" {
-			first = best
-		}
 	}
 
 	var modelNode models.Node
@@ -308,6 +305,11 @@ func listCandidateNodes(cfg Config) ([]models.Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	all = filterCandidatePool(all, cfg)
+	if cfg.Selection == "best" {
+		first = bestCandidateNode(all)
+	}
+
 	available := make([]models.Node, 0, len(all)+1)
 	if first != nil {
 		available = append(available, *first)
@@ -322,4 +324,77 @@ func listCandidateNodes(cfg Config) ([]models.Node, error) {
 		sort.SliceStable(available, func(i, j int) bool { return available[i].ID < available[j].ID })
 	}
 	return available, nil
+}
+
+func filterCandidatePool(nodes []models.Node, cfg Config) []models.Node {
+	filtered := make([]models.Node, 0, len(nodes))
+	for _, node := range nodes {
+		if strings.TrimSpace(node.Link) == "" {
+			continue
+		}
+		if !matchesCandidateGroup(node.Group, cfg.CandidateGroups) ||
+			!matchesCandidateSource(node.Source, cfg.CandidateSources) ||
+			!matchesCandidateValue(node.Protocol, cfg.CandidateProtocols) ||
+			!matchesCandidateValue(node.LinkCountry, cfg.CandidateCountries) {
+			continue
+		}
+		filtered = append(filtered, node)
+	}
+	return filtered
+}
+
+func matchesCandidateGroup(group string, allowed []string) bool {
+	if len(allowed) == 0 {
+		return true
+	}
+	for _, candidate := range allowed {
+		if (strings.EqualFold(candidate, candidateUngroupedValue) || candidate == "未分组") && strings.TrimSpace(group) == "" {
+			return true
+		}
+		if strings.EqualFold(group, candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesCandidateSource(source string, allowed []string) bool {
+	if len(allowed) == 0 {
+		return true
+	}
+	for _, candidate := range allowed {
+		if (candidate == "手动添加" || strings.EqualFold(candidate, "manual")) && (strings.TrimSpace(source) == "" || strings.EqualFold(source, "manual")) {
+			return true
+		}
+		if strings.EqualFold(source, candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesCandidateValue(value string, allowed []string) bool {
+	if len(allowed) == 0 {
+		return true
+	}
+	for _, candidate := range allowed {
+		if strings.EqualFold(value, candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func bestCandidateNode(nodes []models.Node) *models.Node {
+	var best *models.Node
+	for index := range nodes {
+		node := &nodes[index]
+		if node.DelayTime <= 0 || node.Speed <= 0 {
+			continue
+		}
+		if best == nil || node.DelayTime < best.DelayTime {
+			best = node
+		}
+	}
+	return best
 }

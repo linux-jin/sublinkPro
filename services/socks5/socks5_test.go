@@ -21,6 +21,18 @@ func TestNormalizeConfigDefaultsAndValidation(t *testing.T) {
 	if _, err := NormalizeConfig(Config{Enabled: true, RequireAuth: true, Username: "user"}); err == nil {
 		t.Fatal("expected missing password validation error")
 	}
+	pool, err := NormalizeConfig(Config{
+		CandidateGroups:    []string{" premium ", "PREMIUM", "backup"},
+		CandidateSources:   []string{" manual ", "manual"},
+		CandidateProtocols: []string{" VLESS ", "Trojan"},
+		CandidateCountries: []string{" jp ", "US"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pool.CandidateGroups) != 2 || pool.CandidateGroups[0] != "premium" || pool.CandidateProtocols[0] != "vless" || pool.CandidateCountries[0] != "JP" {
+		t.Fatalf("candidate pool was not normalized: %+v", pool)
+	}
 }
 
 func TestServerHandlesAuthenticatedConnectAndPumpsTraffic(t *testing.T) {

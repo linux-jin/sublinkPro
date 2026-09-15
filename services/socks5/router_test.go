@@ -48,6 +48,43 @@ func TestNormalizeConfigPhaseTwoValidation(t *testing.T) {
 	}
 }
 
+func TestFilterCandidatePoolCombinesFields(t *testing.T) {
+	nodes := []models.Node{
+		{ID: 1, Link: "a", Group: "premium", Source: "airport-a", Protocol: "vless", LinkCountry: "JP"},
+		{ID: 2, Link: "b", Group: "backup", Source: "airport-a", Protocol: "trojan", LinkCountry: "US"},
+		{ID: 3, Link: "c", Group: "premium", Source: "airport-b", Protocol: "vless", LinkCountry: "JP"},
+		{ID: 4, Link: "d", Group: "free", Source: "airport-a", Protocol: "vless", LinkCountry: "JP"},
+		{ID: 5, Link: "e", Group: "premium", Source: "airport-a", Protocol: "ss", LinkCountry: "JP"},
+		{ID: 6, Group: "premium", Source: "airport-a", Protocol: "vless", LinkCountry: "JP"},
+	}
+	filtered := filterCandidatePool(nodes, Config{
+		CandidateGroups:    []string{"premium", "backup"},
+		CandidateSources:   []string{"airport-a"},
+		CandidateProtocols: []string{"VLESS", "trojan"},
+		CandidateCountries: []string{"jp", "US"},
+	})
+	if len(filtered) != 2 || !reflect.DeepEqual([]int{filtered[0].ID, filtered[1].ID}, []int{1, 2}) {
+		t.Fatalf("unexpected candidate pool: %+v", filtered)
+	}
+	manual := filterCandidatePool([]models.Node{{ID: 7, Link: "g"}}, Config{CandidateGroups: []string{candidateUngroupedValue}, CandidateSources: []string{"manual"}})
+	if len(manual) != 1 {
+		t.Fatalf("ungrouped manual node did not match candidate pool: %+v", manual)
+	}
+}
+
+func TestBestCandidateNodeStaysInsideFilteredPool(t *testing.T) {
+	nodes := []models.Node{
+		{ID: 1, Link: "a", Group: "excluded", DelayTime: 5, Speed: 100},
+		{ID: 2, Link: "b", Group: "pool", DelayTime: 30, Speed: 20},
+		{ID: 3, Link: "c", Group: "pool", DelayTime: 60, Speed: 30},
+	}
+	filtered := filterCandidatePool(nodes, Config{CandidateGroups: []string{"pool"}})
+	best := bestCandidateNode(filtered)
+	if best == nil || best.ID != 2 {
+		t.Fatalf("best candidate escaped filtered pool: %+v", best)
+	}
+}
+
 func TestNodeRouterRoundRobin(t *testing.T) {
 	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}, {ID: 3, Link: "c"}}
 	withCandidateNodes(t, nodes)
