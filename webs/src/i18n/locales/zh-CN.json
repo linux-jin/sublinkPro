@@ -592,6 +592,27 @@
         "stopped": "SOCKS5 网关已停止"
       },
       "monitor": {
+        "probeNow": "立即探测",
+        "probing": "探测中...",
+        "uploadBytes": "上传 {{value}}",
+        "downloadBytes": "下载 {{value}}",
+        "healthyNodes": "健康 {{count}}",
+        "unhealthyNodes": "异常 {{count}}",
+        "checkingNodes": "探测中 {{count}}",
+        "unknownNodes": "未知 {{count}}",
+        "duration": "持续 {{value}}",
+        "idle": "空闲 {{value}}",
+        "healthTruncated": "当前显示前 {{shown}} 条，共 {{total}} 条节点健康记录。",
+        "nodeHealth": "节点健康状态",
+        "failures": "连续失败 {{count}}",
+        "cooldownUntil": "冷却至 {{value}}",
+        "noHealthData": "暂无节点健康数据，请立即探测或启用主动健康探测。",
+        "healthStatus": {
+          "healthy": "健康",
+          "unhealthy": "异常",
+          "checking": "探测中",
+          "unknown": "未知"
+        },
         "title": "SOCKS5 运行监控",
         "subheader": "页面可见时每 3 秒刷新",
         "disconnectAll": "全部断开",
@@ -605,6 +626,12 @@
         "empty": "暂无活动连接"
       },
       "form": {
+        "healthCheckEnabled": "启用节点主动健康探测",
+        "healthCheckEnabledHelper": "通过网关定期探测候选节点，使用固定 HTTPS 地址，最多并发探测 4 个节点。",
+        "healthCheckIntervalSeconds": "健康探测间隔（秒）",
+        "healthCheckIntervalSecondsHelper": "每 10-3600 秒执行一轮节点健康探测。",
+        "healthCheckTimeoutSeconds": "健康探测超时（秒）",
+        "healthCheckTimeoutSecondsHelper": "每个节点的探测超时（1-30 秒）。",
         "enabled": "启用 SOCKS5 网关",
         "listenAddress": "监听地址",
         "listenAddressHelper": "本机访问请使用 127.0.0.1。只有明确需要时才绑定 0.0.0.0。",
@@ -647,6 +674,8 @@
         "stopping": "停止中..."
       },
       "messages": {
+        "healthProbeStarted": "SOCKS5 节点健康探测已启动",
+        "healthProbeRunning": "SOCKS5 节点健康探测正在执行",
         "loadFailed": "获取 SOCKS5 设置失败：{{message}}",
         "saved": "SOCKS5 设置已保存",
         "saveFailed": "保存 SOCKS5 设置失败：{{message}}",
@@ -655,6 +684,9 @@
         "stopFailed": "停止 SOCKS5 网关失败：{{message}}"
       },
       "api": {
+        "healthProbeStarted": "SOCKS5 节点健康探测已启动",
+        "healthProbeRunning": "SOCKS5 节点健康探测正在执行",
+        "healthProbeUnavailable": "SOCKS5 健康探测无法启动，网关尚未运行",
         "adminRequired": "仅管理员可管理 SOCKS5 网关",
         "loaded": "SOCKS5 设置已加载",
         "loadFailed": "读取 SOCKS5 设置失败：{{message}}",

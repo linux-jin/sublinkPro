@@ -15,6 +15,7 @@ func Socks5(r *gin.Engine) {
 		group.POST("", middlewares.DemoModeRestrict, api.UpdateSocks5Settings)
 		group.POST("/stop", middlewares.DemoModeRestrict, api.StopSocks5)
 		group.GET("/status", api.GetSocks5Status)
+		group.POST("/health/probe", middlewares.DemoModeRestrict, api.ProbeSocks5Health)
 		group.GET("/connections", api.GetSocks5Connections)
 		group.DELETE("/connections", middlewares.DemoModeRestrict, api.DeleteSocks5Connections)
 		group.DELETE("/connections/:id", middlewares.DemoModeRestrict, api.DeleteSocks5Connection)

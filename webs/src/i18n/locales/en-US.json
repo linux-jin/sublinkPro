@@ -592,6 +592,27 @@
         "stopped": "The SOCKS5 gateway is stopped"
       },
       "monitor": {
+        "probeNow": "Probe now",
+        "probing": "Probing...",
+        "uploadBytes": "Uploaded {{value}}",
+        "downloadBytes": "Downloaded {{value}}",
+        "healthyNodes": "Healthy {{count}}",
+        "unhealthyNodes": "Unhealthy {{count}}",
+        "checkingNodes": "Checking {{count}}",
+        "unknownNodes": "Unknown {{count}}",
+        "duration": "duration {{value}}",
+        "idle": "idle {{value}}",
+        "healthTruncated": "Showing the first {{shown}} of {{total}} node health records.",
+        "nodeHealth": "Node health",
+        "failures": "failures {{count}}",
+        "cooldownUntil": "cooldown until {{value}}",
+        "noHealthData": "No node health data yet. Run a probe or enable active health checks.",
+        "healthStatus": {
+          "healthy": "Healthy",
+          "unhealthy": "Unhealthy",
+          "checking": "Checking",
+          "unknown": "Unknown"
+        },
         "title": "SOCKS5 runtime monitor",
         "subheader": "Refreshes every 3 seconds while this page is visible",
         "disconnectAll": "Disconnect all",
@@ -605,6 +626,12 @@
         "empty": "No active connections"
       },
       "form": {
+        "healthCheckEnabled": "Enable active node health checks",
+        "healthCheckEnabledHelper": "Periodically tests candidate nodes through the gateway. Uses a fixed HTTPS endpoint and up to four concurrent probes.",
+        "healthCheckIntervalSeconds": "Health check interval (seconds)",
+        "healthCheckIntervalSecondsHelper": "Run a health sweep every 10-3600 seconds.",
+        "healthCheckTimeoutSeconds": "Health check timeout (seconds)",
+        "healthCheckTimeoutSecondsHelper": "Timeout for each node probe (1-30 seconds).",
         "enabled": "Enable SOCKS5 gateway",
         "listenAddress": "Listen address",
         "listenAddressHelper": "Use 127.0.0.1 for local-only access. Bind to 0.0.0.0 only when intentional.",
@@ -647,6 +674,8 @@
         "stopping": "Stopping..."
       },
       "messages": {
+        "healthProbeStarted": "SOCKS5 node health probe started",
+        "healthProbeRunning": "A SOCKS5 node health probe is already running",
         "loadFailed": "Failed to load SOCKS5 settings: {{message}}",
         "saved": "SOCKS5 settings saved",
         "saveFailed": "Failed to save SOCKS5 settings: {{message}}",
@@ -655,6 +684,9 @@
         "stopFailed": "Failed to stop SOCKS5 gateway: {{message}}"
       },
       "api": {
+        "healthProbeStarted": "SOCKS5 node health probe started",
+        "healthProbeRunning": "SOCKS5 node health probe is already running",
+        "healthProbeUnavailable": "The SOCKS5 health probe could not start because the gateway is stopped",
         "adminRequired": "Only administrators can manage the SOCKS5 gateway",
         "loaded": "SOCKS5 settings loaded",
         "loadFailed": "Failed to load SOCKS5 settings: {{message}}",

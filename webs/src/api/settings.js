@@ -294,3 +294,7 @@ export function closeSocks5Connection(id) {
 export function closeAllSocks5Connections() {
   return request({ url: '/v1/settings/socks5/connections', method: 'delete' });
 }
+
+export function probeSocks5Health() {
+  return request({ url: '/v1/settings/socks5/health/probe', method: 'post' });
+}

@@ -57,6 +57,9 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 		"maxConnectionsPerClient":      8,
 		"idleTimeoutSeconds":           90,
 		"maxConnectionDurationSeconds": 3600,
+		"healthCheckEnabled":           true,
+		"healthCheckIntervalSeconds":   120,
+		"healthCheckTimeoutSeconds":    8,
 	}, UpdateSocks5Settings)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
@@ -80,6 +83,9 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	}
 	if loaded.MaxConnections != 100 || loaded.MaxConnectionsPerClient != 8 || loaded.IdleTimeoutSeconds != 90 || loaded.MaxConnectionDurationSeconds != 3600 {
 		t.Fatalf("unexpected connection governance settings: %+v", loaded)
+	}
+	if !loaded.HealthCheckEnabled || loaded.HealthCheckIntervalSeconds != 120 || loaded.HealthCheckTimeoutSeconds != 8 {
+		t.Fatalf("unexpected health check settings: %+v", loaded)
 	}
 	if _, err := socks5service.SaveConfig(socks5service.Config{
 		Enabled:       false,
@@ -105,14 +111,17 @@ func TestUpdateSocks5SettingsPreservesPhaseTwoFieldsForLegacyRequest(t *testing.
 	setupBackupAPITestDB(t)
 	socks5service.DefaultManager().Stop()
 	if _, err := socks5service.SaveConfig(socks5service.Config{
-		ListenAddress:          "127.0.0.1",
-		Port:                   1080,
-		Selection:              "round_robin",
-		RequireAuth:            false,
-		MaxAttempts:            5,
-		DialTimeoutSeconds:     20,
-		FailureCooldownSeconds: 60,
-		SpecificFallback:       true,
+		ListenAddress:              "127.0.0.1",
+		Port:                       1080,
+		Selection:                  "round_robin",
+		RequireAuth:                false,
+		MaxAttempts:                5,
+		DialTimeoutSeconds:         20,
+		FailureCooldownSeconds:     60,
+		SpecificFallback:           true,
+		HealthCheckEnabled:         true,
+		HealthCheckIntervalSeconds: 180,
+		HealthCheckTimeoutSeconds:  9,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -133,6 +142,9 @@ func TestUpdateSocks5SettingsPreservesPhaseTwoFieldsForLegacyRequest(t *testing.
 	}
 	if loaded.MaxAttempts != 5 || loaded.DialTimeoutSeconds != 20 || loaded.FailureCooldownSeconds != 60 || !loaded.SpecificFallback {
 		t.Fatalf("legacy request overwrote phase-two fields: %+v", loaded)
+	}
+	if !loaded.HealthCheckEnabled || loaded.HealthCheckIntervalSeconds != 180 || loaded.HealthCheckTimeoutSeconds != 9 {
+		t.Fatalf("legacy request overwrote health check fields: %+v", loaded)
 	}
 }
 
@@ -158,8 +170,8 @@ func TestGetSocks5StatusAndConnectionsRequireAdmin(t *testing.T) {
 	if statusRecorder.Code != http.StatusOK {
 		t.Fatalf("status endpoint code = %d, body = %s", statusRecorder.Code, statusRecorder.Body.String())
 	}
-	if !strings.Contains(statusRecorder.Body.String(), `"activeConnections":0`) {
-		t.Fatalf("status response missing gateway stats: %s", statusRecorder.Body.String())
+	if !strings.Contains(statusRecorder.Body.String(), `"activeConnections":0`) || !strings.Contains(statusRecorder.Body.String(), `"health"`) {
+		t.Fatalf("status response missing gateway stats or health: %s", statusRecorder.Body.String())
 	}
 	connectionsRecorder := performSocks5JSONRequest(t, "admin", http.MethodGet, nil, GetSocks5Connections)
 	if connectionsRecorder.Code != http.StatusOK {
@@ -173,5 +185,18 @@ func TestGetSocks5StatusAndConnectionsRequireAdmin(t *testing.T) {
 		if recorder.Code != http.StatusForbidden {
 			t.Fatalf("non-admin status = %d, want %d", recorder.Code, http.StatusForbidden)
 		}
+	}
+}
+
+func TestProbeSocks5HealthRequiresRunningAdminGateway(t *testing.T) {
+	setupBackupAPITestDB(t)
+	socks5service.DefaultManager().Stop()
+	member := performSocks5JSONRequest(t, "member", http.MethodPost, nil, ProbeSocks5Health)
+	if member.Code != http.StatusForbidden {
+		t.Fatalf("member status = %d, want %d", member.Code, http.StatusForbidden)
+	}
+	admin := performSocks5JSONRequest(t, "admin", http.MethodPost, nil, ProbeSocks5Health)
+	if admin.Code != http.StatusOK || !strings.Contains(admin.Body.String(), `"code":500`) || !strings.Contains(admin.Body.String(), "healthProbeUnavailable") {
+		t.Fatalf("stopped gateway probe response = %s", admin.Body.String())
 	}
 }

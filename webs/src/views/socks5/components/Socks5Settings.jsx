@@ -44,6 +44,9 @@ const defaultConfig = {
   maxConnectionsPerClient: 32,
   idleTimeoutSeconds: 600,
   maxConnectionDurationSeconds: 0,
+  healthCheckEnabled: false,
+  healthCheckIntervalSeconds: 60,
+  healthCheckTimeoutSeconds: 5,
   running: false,
   boundAddress: ''
 };
@@ -107,7 +110,10 @@ export default function Socks5Settings({ showMessage }) {
         maxConnections: Number(form.maxConnections) || 256,
         maxConnectionsPerClient: Number(form.maxConnectionsPerClient) || 32,
         idleTimeoutSeconds: Number(form.idleTimeoutSeconds) || 0,
-        maxConnectionDurationSeconds: Number(form.maxConnectionDurationSeconds) || 0
+        maxConnectionDurationSeconds: Number(form.maxConnectionDurationSeconds) || 0,
+        healthCheckEnabled: Boolean(form.healthCheckEnabled),
+        healthCheckIntervalSeconds: Number(form.healthCheckIntervalSeconds) || 60,
+        healthCheckTimeoutSeconds: Number(form.healthCheckTimeoutSeconds) || 5
       });
       syncConfig(response.data);
       showMessage(t('settings.socks5.messages.saved'));
@@ -149,7 +155,11 @@ export default function Socks5Settings({ showMessage }) {
     Number(form.idleTimeoutSeconds) < 0 ||
     Number(form.idleTimeoutSeconds) > 86400 ||
     Number(form.maxConnectionDurationSeconds) < 0 ||
-    Number(form.maxConnectionDurationSeconds) > 604800;
+    Number(form.maxConnectionDurationSeconds) > 604800 ||
+    Number(form.healthCheckIntervalSeconds) < 10 ||
+    Number(form.healthCheckIntervalSeconds) > 3600 ||
+    Number(form.healthCheckTimeoutSeconds) < 1 ||
+    Number(form.healthCheckTimeoutSeconds) > 30;
 
   return (
     <Card variant="outlined">
@@ -310,6 +320,40 @@ export default function Socks5Settings({ showMessage }) {
                 slotProps={{ htmlInput: { min: 0, max: 604800 } }}
               />
             </Stack>
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(form.healthCheckEnabled)}
+                    onChange={(event) => setForm((prev) => ({ ...prev, healthCheckEnabled: event.target.checked }))}
+                  />
+                }
+                label={t('settings.socks5.form.healthCheckEnabled')}
+              />
+              <FormHelperText>{t('settings.socks5.form.healthCheckEnabledHelper')}</FormHelperText>
+            </Box>
+            {form.healthCheckEnabled && (
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label={t('settings.socks5.form.healthCheckIntervalSeconds')}
+                  value={form.healthCheckIntervalSeconds}
+                  onChange={(event) => setForm((prev) => ({ ...prev, healthCheckIntervalSeconds: event.target.value }))}
+                  helperText={t('settings.socks5.form.healthCheckIntervalSecondsHelper')}
+                  slotProps={{ htmlInput: { min: 10, max: 3600 } }}
+                />
+                <TextField
+                  fullWidth
+                  type="number"
+                  label={t('settings.socks5.form.healthCheckTimeoutSeconds')}
+                  value={form.healthCheckTimeoutSeconds}
+                  onChange={(event) => setForm((prev) => ({ ...prev, healthCheckTimeoutSeconds: event.target.value }))}
+                  helperText={t('settings.socks5.form.healthCheckTimeoutSecondsHelper')}
+                  slotProps={{ htmlInput: { min: 1, max: 30 } }}
+                />
+              </Stack>
+            )}
             <FormControlLabel
               control={
                 <Switch

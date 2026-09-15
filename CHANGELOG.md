@@ -6,7 +6,15 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Added optional active SOCKS5 node health sweeps, per-node status and latency reporting, exponential cooldown, and manual probe controls.
+- Added upload/download totals, per-connection traffic, duration, and idle time to the SOCKS5 monitor.
+
+### Changed
+
+- SOCKS5 shutdown now cancels connections that are still in the handshake phase.
+
 
 ## [1.5.0] - 2026-09-15
 

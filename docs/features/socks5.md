@@ -19,6 +19,8 @@ SublinkPro can expose selected stored proxy nodes through a local SOCKS5 gateway
 - Maximum connection duration (`maxConnectionDurationSeconds`, default `0`, range `0-604800`; `0` disables it)
 - Administrator-only live monitoring with active/total/success/failure counters and upload/download byte counters
 - Administrator controls to disconnect one active connection or all active connections
+- Optional active node health checks with a fixed HTTPS probe target, bounded concurrency, latency reporting, exponential failure cooldown, and manual probe control
+- Node health visualization for healthy, unhealthy, checking, and unknown nodes
 - Runtime start/stop when settings are saved; no process restart is required
 
 Retries happen before the SOCKS5 success reply is sent. A failed adapter is discarded, and adapters are closed when the gateway is stopped or reapplied. If every candidate is cooling down, the node whose cooldown expires first is probed so the pool cannot remain permanently unavailable.
@@ -36,7 +38,8 @@ UDP `ASSOCIATE`, `BIND`, sticky sessions, multi-user routing, and multi-port lis
 7. Configure idle timeout and maximum connection duration; set either value to `0` to disable that limit.
 8. For specific-node routing, enable fallback only if switching to another node is acceptable.
 9. Keep authentication enabled and set a username/password.
-10. Save the settings. Monitoring and connection termination controls are administrator-only.
+10. Optionally enable active node health checks, then choose a 10-3600 second interval and 1-30 second per-node timeout.
+11. Save the settings. Monitoring, health probing, and connection termination controls are administrator-only.
 
 The gateway is disabled by default. Passwords are encrypted with the instance API encryption key. Settings responses expose `hasPassword` and, when present, `maskedPassword`; plaintext `password` is never returned. Omitting `password` preserves the saved password, while `clearPassword: true` clears it.
 
@@ -55,11 +58,14 @@ If you bind to `0.0.0.0` or another non-loopback address, authentication is mand
 All endpoints below require an authenticated administrator. The destructive `POST`/`DELETE` operations are also restricted in demo mode.
 
 - `GET /api/v1/settings/socks5` — read public gateway settings; the plaintext password is never returned.
-- `POST /api/v1/settings/socks5` — save and apply settings. JSON fields include `enabled`, `listenAddress`, `port`, `username`, optional `password`, `clearPassword`, `nodeId`, `selection` (`best`, `random`, `round_robin`, or `specific`), `requireAuth`, `maxAttempts` (1-5), `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`, `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections), `idleTimeoutSeconds` (0-86400), and `maxConnectionDurationSeconds` (0-604800). The four Phase 2.2 fields may be omitted to preserve saved values for legacy clients.
+- `POST /api/v1/settings/socks5` — save and apply settings. JSON fields include `enabled`, `listenAddress`, `port`, `username`, optional `password`, `clearPassword`, `nodeId`, `selection` (`best`, `random`, `round_robin`, or `specific`), `requireAuth`, `maxAttempts` (1-5), `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`, `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections), `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`, `healthCheckIntervalSeconds` (10-3600), and `healthCheckTimeoutSeconds` (1-30). Optional fields may be omitted to preserve saved values for legacy clients.
 - `POST /api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
-- `GET /api/v1/settings/socks5/status` — return `data.config` plus `data.stats` (`activeConnections`, `totalConnections`, `successfulConnections`, `failedConnections`, `uploadBytes`, `downloadBytes`).
+- `GET /api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health` with sweep state and per-node health details.
+- `POST /api/v1/settings/socks5/health/probe` — start an immediate health sweep. An already-running sweep is reused instead of starting a duplicate.
 - `GET /api/v1/settings/socks5/connections` — return the current active connection array. Each item includes `id`, `clientAddress`, `target`, `nodeName`, `phase`, `startedAt`, `lastActivity`, `uploadBytes`, and `downloadBytes`.
 - `DELETE /api/v1/settings/socks5/connections/:id` — disconnect one active connection by ID.
 - `DELETE /api/v1/settings/socks5/connections` — disconnect all active connections.
 
 The status counters and active connection list belong to the current gateway server lifetime; stopping or reapplying settings creates a new registry and resets them.
+
+Active health checks use a fixed Cloudflare HTTPS connectivity endpoint; administrators cannot configure an arbitrary probe URL. Sweeps use at most four workers and never overlap. Status responses include aggregate counts and at most the first 200 sorted node records to keep three-second monitoring polls bounded. Failed probes retire the failed adapter lease safely and apply exponential cooldown capped at one hour.

@@ -719,17 +719,20 @@ All SOCKS5 endpoints require an authenticated administrator. Destructive `POST`/
   `selection` (`best`, `random`, `round_robin`, or `specific`), `requireAuth`, `maxAttempts` (1-5),
   `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`,
   `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections),
-  `idleTimeoutSeconds` (0-86400), and `maxConnectionDurationSeconds` (0-604800).
-  The four Phase 2.2 fields may be omitted to preserve saved values for legacy clients. `0` disables either timeout.
+  `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`,
+  `healthCheckIntervalSeconds` (10-3600), and `healthCheckTimeoutSeconds` (1-30).
+  Optional fields may be omitted to preserve saved values for legacy clients. `0` disables either connection timeout.
 - **POST** `/api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
-- **GET** `/api/v1/settings/socks5/status` — return `data.config` plus `data.stats`.
+- **GET** `/api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health`.
   Stats include `activeConnections`, `totalConnections`, `successfulConnections`, `failedConnections`, `uploadBytes`, and `downloadBytes`.
+  Health includes sweep timing/counts and per-node status, latency, consecutive failures, cooldown, and a bounded error message.
+- **POST** `/api/v1/settings/socks5/health/probe` — trigger an immediate administrator-only health sweep. Duplicate concurrent sweeps are not started.
 - **GET** `/api/v1/settings/socks5/connections` — return the current active connection array. Each item includes
   `id`, `clientAddress`, `target`, `nodeName`, `phase`, `startedAt`, `lastActivity`, `uploadBytes`, and `downloadBytes`.
 - **DELETE** `/api/v1/settings/socks5/connections/:id` — disconnect one active connection by ID.
 - **DELETE** `/api/v1/settings/socks5/connections` — disconnect all active connections.
 
-`data.config` uses the same public settings shape as the settings endpoint, including `hasPassword`, optional `maskedPassword`, `running`, and `boundAddress`; it never includes plaintext `password`. Omitting `password` preserves the saved password, while `clearPassword: true` clears it. Status counters and active connections belong to the current gateway server lifetime and reset after stop/reapply. TCP CONNECT supports adapter reuse, pre-reply candidate retry, failure cooldown, connection limits, idle/duration timeouts, and live monitoring. UDP ASSOCIATE and BIND are not implemented.
+`data.config` uses the same public settings shape as the settings endpoint, including `hasPassword`, optional `maskedPassword`, `running`, and `boundAddress`; it never includes plaintext `password`. Omitting `password` preserves the saved password, while `clearPassword: true` clears it. Status counters and active connections belong to the current gateway server lifetime and reset after stop/reapply. TCP CONNECT supports adapter reuse, pre-reply candidate retry, exponential failure cooldown, connection limits, idle/duration timeouts, active health probing, and live monitoring. UDP ASSOCIATE and BIND are not implemented.
 
 **Database migration:** **POST** `/settings/database-migration/import` — **multipart/form-data** (upload a backup.zip / .db)
 

@@ -12,27 +12,106 @@ import (
 	"sublink/models"
 )
 
+type nodeHealthState struct {
+	NodeID              int
+	NodeName            string
+	Status              string
+	LatencyMs           int
+	LastCheckedAt       time.Time
+	LastSuccessAt       time.Time
+	LastFailureAt       time.Time
+	ConsecutiveFailures int
+	CooldownUntil       time.Time
+	LastError           string
+}
+
 type nodeHealth struct {
 	mu            sync.Mutex
 	cooldownUntil map[string]time.Time
+	states        map[string]*nodeHealthState
 	now           func() time.Time
 }
 
 func newNodeHealth() *nodeHealth {
-	return &nodeHealth{cooldownUntil: make(map[string]time.Time), now: time.Now}
+	return &nodeHealth{cooldownUntil: make(map[string]time.Time), states: make(map[string]*nodeHealthState), now: time.Now}
+}
+
+func (h *nodeHealth) stateLocked(node models.Node) *nodeHealthState {
+	key := adapterKey(node)
+	state := h.states[key]
+	if state == nil {
+		state = &nodeHealthState{NodeID: node.ID, NodeName: node.EffectiveName(), Status: "unknown"}
+		h.states[key] = state
+	}
+	state.NodeID = node.ID
+	state.NodeName = node.EffectiveName()
+	return state
+}
+
+func (h *nodeHealth) markChecking(node models.Node) {
+	h.mu.Lock()
+	state := h.stateLocked(node)
+	state.Status = "checking"
+	h.mu.Unlock()
+}
+
+func (h *nodeHealth) retain(nodes []models.Node) {
+	allowed := make(map[string]struct{}, len(nodes))
+	for _, node := range nodes {
+		allowed[adapterKey(node)] = struct{}{}
+	}
+	h.mu.Lock()
+	for key := range h.states {
+		if _, ok := allowed[key]; !ok {
+			delete(h.states, key)
+			delete(h.cooldownUntil, key)
+		}
+	}
+	h.mu.Unlock()
 }
 
 func (h *nodeHealth) recordFailure(node models.Node, cooldown time.Duration) {
-	if cooldown <= 0 {
-		return
-	}
+	h.recordFailureReason(node, cooldown, "")
+}
+
+func (h *nodeHealth) recordFailureReason(node models.Node, cooldown time.Duration, reason string) {
 	h.mu.Lock()
-	h.cooldownUntil[adapterKey(node)] = h.now().Add(cooldown)
+	now := h.now()
+	state := h.stateLocked(node)
+	state.Status = "unhealthy"
+	state.LastCheckedAt = now
+	state.LastFailureAt = now
+	state.ConsecutiveFailures++
+	state.LastError = sanitizeHealthError(reason)
+	if cooldown > 0 {
+		backoff := cooldown
+		for i := 1; i < state.ConsecutiveFailures && backoff < time.Hour; i++ {
+			backoff *= 2
+		}
+		if backoff > time.Hour {
+			backoff = time.Hour
+		}
+		state.CooldownUntil = now.Add(backoff)
+		h.cooldownUntil[adapterKey(node)] = state.CooldownUntil
+	}
 	h.mu.Unlock()
 }
 
 func (h *nodeHealth) recordSuccess(node models.Node) {
+	h.recordProbeSuccess(node, 0)
+}
+
+func (h *nodeHealth) recordProbeSuccess(node models.Node, latency int) {
 	h.mu.Lock()
+	now := h.now()
+	state := h.stateLocked(node)
+	state.Status = "healthy"
+	state.LatencyMs = latency
+	state.LastCheckedAt = now
+	state.LastSuccessAt = now
+	state.ConsecutiveFailures = 0
+	state.CooldownUntil = time.Time{}
+	state.LastError = ""
 	delete(h.cooldownUntil, adapterKey(node))
 	h.mu.Unlock()
 }
@@ -49,7 +128,11 @@ func (h *nodeHealth) filter(nodes []models.Node) []models.Node {
 	for _, node := range nodes {
 		until, cooling := h.cooldownUntil[adapterKey(node)]
 		if !cooling || !until.After(now) {
-			delete(h.cooldownUntil, adapterKey(node))
+			key := adapterKey(node)
+			delete(h.cooldownUntil, key)
+			if state := h.states[key]; state != nil {
+				state.CooldownUntil = time.Time{}
+			}
 			available = append(available, node)
 			continue
 		}

@@ -58,6 +58,9 @@ func UpdateSocks5Settings(c *gin.Context) {
 		MaxConnectionsPerClient      *int   `json:"maxConnectionsPerClient"`
 		IdleTimeoutSeconds           *int   `json:"idleTimeoutSeconds"`
 		MaxConnectionDurationSeconds *int   `json:"maxConnectionDurationSeconds"`
+		HealthCheckEnabled           *bool  `json:"healthCheckEnabled"`
+		HealthCheckIntervalSeconds   *int   `json:"healthCheckIntervalSeconds"`
+		HealthCheckTimeoutSeconds    *int   `json:"healthCheckTimeoutSeconds"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.FailWithI18n(c, "参数错误", "settings.socks5.api.invalidRequest", nil)
@@ -110,6 +113,18 @@ func UpdateSocks5Settings(c *gin.Context) {
 	if req.MaxConnectionDurationSeconds != nil {
 		maxConnectionDurationSeconds = *req.MaxConnectionDurationSeconds
 	}
+	healthCheckEnabled := current.HealthCheckEnabled
+	if req.HealthCheckEnabled != nil {
+		healthCheckEnabled = *req.HealthCheckEnabled
+	}
+	healthCheckIntervalSeconds := current.HealthCheckIntervalSeconds
+	if req.HealthCheckIntervalSeconds != nil {
+		healthCheckIntervalSeconds = *req.HealthCheckIntervalSeconds
+	}
+	healthCheckTimeoutSeconds := current.HealthCheckTimeoutSeconds
+	if req.HealthCheckTimeoutSeconds != nil {
+		healthCheckTimeoutSeconds = *req.HealthCheckTimeoutSeconds
+	}
 	cfg, err := socks5service.SaveConfig(socks5service.Config{
 		Enabled:                      req.Enabled,
 		ListenAddress:                req.ListenAddress,
@@ -127,6 +142,9 @@ func UpdateSocks5Settings(c *gin.Context) {
 		MaxConnectionsPerClient:      maxConnectionsPerClient,
 		IdleTimeoutSeconds:           idleTimeoutSeconds,
 		MaxConnectionDurationSeconds: maxConnectionDurationSeconds,
+		HealthCheckEnabled:           healthCheckEnabled,
+		HealthCheckIntervalSeconds:   healthCheckIntervalSeconds,
+		HealthCheckTimeoutSeconds:    healthCheckTimeoutSeconds,
 		ClearPassword:                req.ClearPassword,
 	})
 	if err != nil {
@@ -165,7 +183,7 @@ func GetSocks5Status(c *gin.Context) {
 		return
 	}
 	running, bound := socks5service.DefaultManager().Status()
-	utils.OkDetailedI18n(c, "SOCKS5 状态已加载", gin.H{"config": socks5service.ToPublicConfig(cfg, running, bound), "stats": socks5service.DefaultManager().GatewaySnapshot()}, "settings.socks5.api.statusLoaded", nil)
+	utils.OkDetailedI18n(c, "SOCKS5 状态已加载", gin.H{"config": socks5service.ToPublicConfig(cfg, running, bound), "stats": socks5service.DefaultManager().GatewaySnapshot(), "health": socks5service.DefaultManager().HealthSnapshot()}, "settings.socks5.api.statusLoaded", nil)
 }
 
 func GetSocks5Connections(c *gin.Context) {
@@ -198,4 +216,20 @@ func DeleteSocks5Connections(c *gin.Context) {
 	}
 	socks5service.DefaultManager().CloseAllConnections()
 	utils.OkDetailedI18n(c, "SOCKS5 连接已全部断开", nil, "settings.socks5.api.connectionsClosed", nil)
+}
+
+func ProbeSocks5Health(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	started, available := socks5service.DefaultManager().TriggerHealthProbe()
+	if !available {
+		utils.FailWithI18n(c, "SOCKS5 健康探测未启动，服务尚未运行", "settings.socks5.api.healthProbeUnavailable", nil)
+		return
+	}
+	if !started {
+		utils.OkDetailedI18n(c, "SOCKS5 健康探测正在执行", gin.H{"started": false, "health": socks5service.DefaultManager().HealthSnapshot()}, "settings.socks5.api.healthProbeRunning", nil)
+		return
+	}
+	utils.OkDetailedI18n(c, "SOCKS5 健康探测已启动", gin.H{"started": true, "health": socks5service.DefaultManager().HealthSnapshot()}, "settings.socks5.api.healthProbeStarted", nil)
 }
