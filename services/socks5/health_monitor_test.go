@@ -163,7 +163,8 @@ func TestServerCloseWaitsForHandshakeConnections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +174,8 @@ func TestServerCloseWaitsForHandshakeConnections(t *testing.T) {
 		_ = server.Serve(ctx, listener)
 		close(serveDone)
 	}()
-	client, err := net.Dial("tcp", listener.Addr().String())
+	var dialer net.Dialer
+	client, err := dialer.DialContext(context.Background(), "tcp", listener.Addr().String())
 	if err != nil {
 		t.Fatal(err)
 	}
