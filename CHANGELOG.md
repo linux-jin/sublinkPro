@@ -6,6 +6,10 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [1.8.0] - 2026-09-16
+
 ### Added
 
 - Added in-memory SOCKS5 sticky sessions keyed by client IP or authenticated SOCKS5 username, with a configurable sliding TTL.
