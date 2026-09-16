@@ -721,7 +721,8 @@ All SOCKS5 endpoints require an authenticated administrator. Destructive `POST`/
   `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections),
   `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`,
   `healthCheckIntervalSeconds` (10-3600), `healthCheckTimeoutSeconds` (1-30), and candidate-pool arrays
-  `candidateGroups`, `candidateSources`, `candidateProtocols`, and `candidateCountries`.
+  `candidateGroups`, `candidateSources`, `candidateProtocols`, `candidateCountries`, `stickySessionEnabled`,
+  `stickySessionMode` (`client_ip` or `username`), and `stickySessionTtlSeconds` (60-604800).
   Candidate-pool fields combine with AND; values inside one field combine with OR. Empty arrays do not restrict the pool.
   Optional fields may be omitted to preserve saved values for legacy clients. `0` disables either connection timeout.
 - **POST** `/api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
@@ -734,7 +735,7 @@ All SOCKS5 endpoints require an authenticated administrator. Destructive `POST`/
 - **DELETE** `/api/v1/settings/socks5/connections/:id` — disconnect one active connection by ID.
 - **DELETE** `/api/v1/settings/socks5/connections` — disconnect all active connections.
 
-`data.config` uses the same public settings shape as the settings endpoint, including `hasPassword`, optional `maskedPassword`, `running`, and `boundAddress`; it never includes plaintext `password`. Omitting `password` preserves the saved password, while `clearPassword: true` clears it. Status counters and active connections belong to the current gateway server lifetime and reset after stop/reapply. TCP CONNECT supports adapter reuse, pre-reply candidate retry, exponential failure cooldown, connection limits, idle/duration timeouts, active health probing, and live monitoring. UDP ASSOCIATE and BIND are not implemented.
+`data.config` uses the same public settings shape as the settings endpoint, including `hasPassword`, optional `maskedPassword`, `running`, and `boundAddress`; it never includes plaintext `password`. Omitting `password` preserves the saved password, while `clearPassword: true` clears it. Status counters, active connections, and in-memory sticky leases belong to the current gateway server lifetime and reset after stop/reapply. TCP CONNECT supports adapter reuse, pre-reply candidate retry, exponential failure cooldown, connection limits, idle/duration timeouts, active health probing, and live monitoring. UDP ASSOCIATE and BIND are not implemented.
 
 **Database migration:** **POST** `/settings/database-migration/import` — **multipart/form-data** (upload a backup.zip / .db)
 

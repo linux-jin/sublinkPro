@@ -252,14 +252,21 @@ func healthCandidateRank(candidate rankedNode) int {
 
 type nodeRouter struct {
 	health     *nodeHealth
+	sticky     *stickySessionTable
 	roundRobin atomic.Uint64
 }
 
-func newNodeRouter() *nodeRouter { return &nodeRouter{health: newNodeHealth()} }
+func newNodeRouter() *nodeRouter {
+	return &nodeRouter{health: newNodeHealth(), sticky: newStickySessionTable()}
+}
 
 var listCandidateNodesFunc = listCandidateNodes
 
 func (r *nodeRouter) candidates(cfg Config) ([]models.Node, error) {
+	return r.candidatesFor(cfg, "")
+}
+
+func (r *nodeRouter) candidatesFor(cfg Config, stickyKey string) ([]models.Node, error) {
 	nodes, err := listCandidateNodesFunc(cfg)
 	if err != nil {
 		return nil, err
@@ -268,18 +275,33 @@ func (r *nodeRouter) candidates(cfg Config) ([]models.Node, error) {
 		return nil, errors.New("no proxy nodes are available")
 	}
 
-	switch cfg.Selection {
-	case "best":
+	if cfg.Selection == "best" {
 		nodes = r.health.rank(nodes, true)
+	} else {
+		nodes = r.health.filter(nodes)
+	}
+
+	stickyHit := false
+	if cfg.StickySessionEnabled && stickyKey != "" && cfg.Selection != "specific" {
+		nodes, stickyHit = r.sticky.promote(stickyKey, nodes)
+	}
+
+	switch cfg.Selection {
 	case "random":
-		nodes = r.health.filter(nodes)
-		rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
+		start := 0
+		if stickyHit {
+			start = 1
+		}
+		rand.Shuffle(len(nodes)-start, func(i, j int) {
+			i += start
+			j += start
+			nodes[i], nodes[j] = nodes[j], nodes[i]
+		})
 	case "round_robin":
-		nodes = r.health.filter(nodes)
-		start := int((r.roundRobin.Add(1) - 1) % uint64(len(nodes)))
-		nodes = append(append(make([]models.Node, 0, len(nodes)), nodes[start:]...), nodes[:start]...)
-	default:
-		nodes = r.health.filter(nodes)
+		if !stickyHit {
+			start := int((r.roundRobin.Add(1) - 1) % uint64(len(nodes)))
+			nodes = append(append(make([]models.Node, 0, len(nodes)), nodes[start:]...), nodes[:start]...)
+		}
 	}
 	if cfg.MaxAttempts < len(nodes) {
 		nodes = nodes[:cfg.MaxAttempts]

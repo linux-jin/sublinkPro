@@ -65,6 +65,9 @@ func UpdateSocks5Settings(c *gin.Context) {
 		CandidateSources             *[]string `json:"candidateSources"`
 		CandidateProtocols           *[]string `json:"candidateProtocols"`
 		CandidateCountries           *[]string `json:"candidateCountries"`
+		StickySessionEnabled         *bool     `json:"stickySessionEnabled"`
+		StickySessionMode            *string   `json:"stickySessionMode"`
+		StickySessionTTLSeconds      *int      `json:"stickySessionTtlSeconds"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.FailWithI18n(c, "参数错误", "settings.socks5.api.invalidRequest", nil)
@@ -145,6 +148,18 @@ func UpdateSocks5Settings(c *gin.Context) {
 	if req.CandidateCountries != nil {
 		candidateCountries = *req.CandidateCountries
 	}
+	stickySessionEnabled := current.StickySessionEnabled
+	if req.StickySessionEnabled != nil {
+		stickySessionEnabled = *req.StickySessionEnabled
+	}
+	stickySessionMode := current.StickySessionMode
+	if req.StickySessionMode != nil {
+		stickySessionMode = *req.StickySessionMode
+	}
+	stickySessionTTLSeconds := current.StickySessionTTLSeconds
+	if req.StickySessionTTLSeconds != nil {
+		stickySessionTTLSeconds = *req.StickySessionTTLSeconds
+	}
 	cfg, err := socks5service.SaveConfig(socks5service.Config{
 		Enabled:                      req.Enabled,
 		ListenAddress:                req.ListenAddress,
@@ -169,6 +184,9 @@ func UpdateSocks5Settings(c *gin.Context) {
 		CandidateSources:             candidateSources,
 		CandidateProtocols:           candidateProtocols,
 		CandidateCountries:           candidateCountries,
+		StickySessionEnabled:         stickySessionEnabled,
+		StickySessionMode:            stickySessionMode,
+		StickySessionTTLSeconds:      stickySessionTTLSeconds,
 		ClearPassword:                req.ClearPassword,
 	})
 	if err != nil {

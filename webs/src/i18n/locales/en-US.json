@@ -681,7 +681,17 @@
         "idleTimeoutSeconds": "Idle timeout (seconds)",
         "idleTimeoutSecondsHelper": "0 disables idle timeout.",
         "maxConnectionDurationSeconds": "Maximum connection duration (seconds)",
-        "maxConnectionDurationSecondsHelper": "0 disables the duration limit."
+        "maxConnectionDurationSecondsHelper": "0 disables the duration limit.",
+        "stickySessionEnabled": "Enable sticky sessions",
+        "stickySessionEnabledHelper": "Prefer the last successful outbound node for the same client during the TTL. Unhealthy, cooling, or out-of-pool nodes are automatically replaced.",
+        "stickySessionSpecificHelper": "Strict specific-node routing already fixes the outbound node, so sticky sessions are not needed.",
+        "stickySessionMode": "Sticky key",
+        "stickySessionModeClientIp": "Client IP",
+        "stickySessionModeUsername": "SOCKS5 username",
+        "stickySessionTtlSeconds": "Sticky TTL (seconds)",
+        "stickySessionTtlSecondsHelper": "Range: 60-604800 seconds. Each successful connection refreshes the TTL.",
+        "stickySessionUsernameHelper": "The gateway currently has one shared SOCKS5 credential. In username mode, all clients using that username share the same outbound node.",
+        "stickySessionUsernameAuthRequired": "Username sticky mode requires SOCKS5 username/password authentication."
       },
       "actions": {
         "save": "Save settings",

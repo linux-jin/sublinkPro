@@ -65,6 +65,9 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 		"candidateSources":             []string{"airport-a"},
 		"candidateProtocols":           []string{"VLESS", "trojan"},
 		"candidateCountries":           []string{"jp", "US"},
+		"stickySessionEnabled":         true,
+		"stickySessionMode":            "client_ip",
+		"stickySessionTtlSeconds":      900,
 	}, UpdateSocks5Settings)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
@@ -97,6 +100,9 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	}
 	if len(loaded.CandidateGroups) != 2 || loaded.CandidateGroups[0] != "premium" || loaded.CandidateSources[0] != "airport-a" || loaded.CandidateProtocols[0] != "vless" || loaded.CandidateCountries[0] != "JP" {
 		t.Fatalf("unexpected candidate pool settings: %+v", loaded)
+	}
+	if !loaded.StickySessionEnabled || loaded.StickySessionMode != "client_ip" || loaded.StickySessionTTLSeconds != 900 {
+		t.Fatalf("unexpected sticky session settings: %+v", loaded)
 	}
 	if _, err := socks5service.SaveConfig(socks5service.Config{
 		Enabled:       false,
@@ -137,6 +143,9 @@ func TestUpdateSocks5SettingsPreservesPhaseTwoFieldsForLegacyRequest(t *testing.
 		CandidateSources:           []string{"airport-a"},
 		CandidateProtocols:         []string{"vless"},
 		CandidateCountries:         []string{"JP"},
+		StickySessionEnabled:       true,
+		StickySessionMode:          "client_ip",
+		StickySessionTTLSeconds:    1200,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -164,18 +173,22 @@ func TestUpdateSocks5SettingsPreservesPhaseTwoFieldsForLegacyRequest(t *testing.
 	if !reflect.DeepEqual(loaded.CandidateGroups, []string{"premium"}) || !reflect.DeepEqual(loaded.CandidateSources, []string{"airport-a"}) || !reflect.DeepEqual(loaded.CandidateProtocols, []string{"vless"}) || !reflect.DeepEqual(loaded.CandidateCountries, []string{"JP"}) {
 		t.Fatalf("legacy request overwrote candidate pool fields: %+v", loaded)
 	}
+	if !loaded.StickySessionEnabled || loaded.StickySessionMode != "client_ip" || loaded.StickySessionTTLSeconds != 1200 {
+		t.Fatalf("legacy request overwrote sticky session fields: %+v", loaded)
+	}
 
 	clearRecorder := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
-		"enabled":            false,
-		"listenAddress":      "127.0.0.1",
-		"port":               1081,
-		"username":           "legacy",
-		"selection":          "best",
-		"requireAuth":        false,
-		"candidateGroups":    []string{},
-		"candidateSources":   []string{},
-		"candidateProtocols": []string{},
-		"candidateCountries": []string{},
+		"enabled":              false,
+		"listenAddress":        "127.0.0.1",
+		"port":                 1081,
+		"username":             "legacy",
+		"selection":            "best",
+		"requireAuth":          false,
+		"candidateGroups":      []string{},
+		"candidateSources":     []string{},
+		"candidateProtocols":   []string{},
+		"candidateCountries":   []string{},
+		"stickySessionEnabled": false,
 	}, UpdateSocks5Settings)
 	if clearRecorder.Code != http.StatusOK {
 		t.Fatalf("clear status = %d, body = %s", clearRecorder.Code, clearRecorder.Body.String())
@@ -186,6 +199,9 @@ func TestUpdateSocks5SettingsPreservesPhaseTwoFieldsForLegacyRequest(t *testing.
 	}
 	if len(cleared.CandidateGroups) != 0 || len(cleared.CandidateSources) != 0 || len(cleared.CandidateProtocols) != 0 || len(cleared.CandidateCountries) != 0 {
 		t.Fatalf("explicit empty candidate pool did not clear settings: %+v", cleared)
+	}
+	if cleared.StickySessionEnabled {
+		t.Fatalf("explicit false did not disable sticky sessions: %+v", cleared)
 	}
 }
 

@@ -11,6 +11,7 @@ SublinkPro can expose selected stored proxy nodes through a local SOCKS5 gateway
 - Optional username/password authentication (enabled by default)
 - Best-node, random-node, round-robin, or specific-node selection
 - Candidate node pools filtered by one or more groups, sources, protocols, and countries/regions; fields combine with AND and values inside one field combine with OR
+- Optional in-memory sticky sessions keyed by client IP or authenticated SOCKS5 username, with a 60-604800 second sliding TTL
 - Mihomo outbound adapter pooling keyed by node ID and link hash, with an idle LRU cap
 - Configurable per-request retry (up to 5 candidate nodes), dial timeout, and failed-node cooldown
 - Optional fallback from a specific node; disabled by default to keep specific routing strict
@@ -27,7 +28,7 @@ SublinkPro can expose selected stored proxy nodes through a local SOCKS5 gateway
 
 Retries happen before the SOCKS5 success reply is sent. Active-probe failures are skipped while another routable candidate exists; if every candidate is unhealthy, routing fails open and keeps candidates available for recovery. A successful real connection clears the routing exclusion without erasing the most recent active-probe latency. A failed adapter is discarded, and adapters are closed when the gateway is stopped or reapplied. If every candidate is cooling down, the node whose cooldown expires first is probed so the pool cannot remain permanently unavailable.
 
-UDP `ASSOCIATE`, `BIND`, sticky sessions, multi-user routing, and multi-port listeners are not included yet. Phase 2.2 adds administrator-only live connection monitoring, aggregate counters, traffic byte counters, and connection termination controls.
+UDP `ASSOCIATE`, `BIND`, multi-user credential routing, and multi-port listeners are not included yet. Sticky leases are in-memory and reset whenever the gateway is stopped or settings are reapplied. Phase 2.2 adds administrator-only live connection monitoring, aggregate counters, traffic byte counters, and connection termination controls.
 
 ## Configure
 
@@ -39,10 +40,11 @@ UDP `ASSOCIATE`, `BIND`, sticky sessions, multi-user routing, and multi-port lis
 6. Configure maximum attempts, per-node dial timeout, and failed-node cooldown.
 7. Configure global and per-client connection limits.
 8. Configure idle timeout and maximum connection duration; set either value to `0` to disable that limit.
-9. For specific-node routing, enable fallback only if switching to another node is acceptable.
-10. Keep authentication enabled and set a username/password.
-11. Optionally enable active node health checks, then choose a 10-3600 second interval and 1-30 second per-node timeout.
-12. Save the settings. Monitoring, health probing, and connection termination controls are administrator-only.
+9. Optionally enable sticky sessions and choose client IP or authenticated SOCKS5 username as the affinity key. Configure a 60-604800 second TTL; each successful connection refreshes it.
+10. For specific-node routing, enable fallback only if switching to another node is acceptable.
+11. Keep authentication enabled and set a username/password.
+12. Optionally enable active node health checks, then choose a 10-3600 second interval and 1-30 second per-node timeout.
+13. Save the settings. Monitoring, health probing, and connection termination controls are administrator-only.
 
 The gateway is disabled by default. Passwords are encrypted with the instance API encryption key. Settings responses expose `hasPassword` and, when present, `maskedPassword`; plaintext `password` is never returned. Omitting `password` preserves the saved password, while `clearPassword: true` clears it.
 
@@ -61,7 +63,7 @@ If you bind to `0.0.0.0` or another non-loopback address, authentication is mand
 All endpoints below require an authenticated administrator. The destructive `POST`/`DELETE` operations are also restricted in demo mode.
 
 - `GET /api/v1/settings/socks5` — read public gateway settings; the plaintext password is never returned.
-- `POST /api/v1/settings/socks5` — save and apply settings. JSON fields include `enabled`, `listenAddress`, `port`, `username`, optional `password`, `clearPassword`, `nodeId`, `selection` (`best`, `random`, `round_robin`, or `specific`), `requireAuth`, `maxAttempts` (1-5), `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`, `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections), `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`, `healthCheckIntervalSeconds` (10-3600), `healthCheckTimeoutSeconds` (1-30), `candidateGroups`, `candidateSources`, `candidateProtocols`, and `candidateCountries`. Candidate pool fields are string arrays; fields are combined with AND and values within each field use OR. Optional fields may be omitted to preserve saved values for legacy clients.
+- `POST /api/v1/settings/socks5` — save and apply settings. JSON fields include `enabled`, `listenAddress`, `port`, `username`, optional `password`, `clearPassword`, `nodeId`, `selection` (`best`, `random`, `round_robin`, or `specific`), `requireAuth`, `maxAttempts` (1-5), `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`, `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections), `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`, `healthCheckIntervalSeconds` (10-3600), `healthCheckTimeoutSeconds` (1-30), `candidateGroups`, `candidateSources`, `candidateProtocols`, `candidateCountries`, `stickySessionEnabled`, `stickySessionMode` (`client_ip` or `username`), and `stickySessionTtlSeconds` (60-604800). Candidate pool fields are string arrays; fields are combined with AND and values within each field use OR. Optional fields may be omitted to preserve saved values for legacy clients.
 - `POST /api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
 - `GET /api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health` with sweep state and per-node health details.
 - `POST /api/v1/settings/socks5/health/probe` — start an immediate health sweep. An already-running sweep is reused instead of starting a duplicate.

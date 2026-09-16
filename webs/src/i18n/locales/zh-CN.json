@@ -681,7 +681,17 @@
         "idleTimeoutSeconds": "空闲超时（秒）",
         "idleTimeoutSecondsHelper": "设置为 0 表示不限制。",
         "maxConnectionDurationSeconds": "最大连接时长（秒）",
-        "maxConnectionDurationSecondsHelper": "设置为 0 表示不限制。"
+        "maxConnectionDurationSecondsHelper": "设置为 0 表示不限制。",
+        "stickySessionEnabled": "启用粘性会话",
+        "stickySessionEnabledHelper": "在 TTL 内让同一客户端优先复用上次成功的出站节点；节点异常、冷却或移出候选池时会自动重新选择。",
+        "stickySessionSpecificHelper": "严格指定节点模式已经固定出站节点，不需要粘性会话。",
+        "stickySessionMode": "粘性键",
+        "stickySessionModeClientIp": "客户端 IP",
+        "stickySessionModeUsername": "SOCKS5 用户名",
+        "stickySessionTtlSeconds": "粘性有效期（秒）",
+        "stickySessionTtlSecondsHelper": "范围 60-604800 秒；每次连接成功会刷新有效期。",
+        "stickySessionUsernameHelper": "当前网关只有一组共享 SOCKS5 凭据，使用用户名模式时所有使用该用户名的客户端会共享同一出口节点。",
+        "stickySessionUsernameAuthRequired": "用户名粘性模式必须启用 SOCKS5 用户名/密码认证。"
       },
       "actions": {
         "save": "保存设置",

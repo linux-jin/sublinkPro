@@ -33,6 +33,18 @@ func TestNormalizeConfigDefaultsAndValidation(t *testing.T) {
 	if len(pool.CandidateGroups) != 2 || pool.CandidateGroups[0] != "premium" || pool.CandidateProtocols[0] != "vless" || pool.CandidateCountries[0] != "JP" {
 		t.Fatalf("candidate pool was not normalized: %+v", pool)
 	}
+	if pool.StickySessionMode != "client_ip" || pool.StickySessionTTLSeconds != 1800 {
+		t.Fatalf("unexpected sticky defaults: %+v", pool)
+	}
+	if _, err := NormalizeConfig(Config{StickySessionEnabled: true, StickySessionMode: "username", StickySessionTTLSeconds: 300, RequireAuth: false}); err == nil {
+		t.Fatal("expected username sticky sessions to require authentication")
+	}
+	if _, err := NormalizeConfig(Config{StickySessionMode: "invalid", StickySessionTTLSeconds: 300}); err == nil {
+		t.Fatal("expected sticky mode validation error")
+	}
+	if _, err := NormalizeConfig(Config{StickySessionTTLSeconds: 59}); err == nil {
+		t.Fatal("expected sticky TTL validation error")
+	}
 }
 
 func TestServerHandlesAuthenticatedConnectAndPumpsTraffic(t *testing.T) {

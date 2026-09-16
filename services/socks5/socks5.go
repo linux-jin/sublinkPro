@@ -43,6 +43,9 @@ const (
 	settingCandidateSources             = "socks5_candidate_sources"
 	settingCandidateProtocols           = "socks5_candidate_protocols"
 	settingCandidateCountries           = "socks5_candidate_countries"
+	settingStickySessionEnabled         = "socks5_sticky_session_enabled"
+	settingStickySessionMode            = "socks5_sticky_session_mode"
+	settingStickySessionTTLSeconds      = "socks5_sticky_session_ttl_seconds"
 
 	defaultListenAddress                = "127.0.0.1"
 	defaultPort                         = 1080
@@ -56,6 +59,8 @@ const (
 	defaultMaxConnectionDurationSeconds = 0
 	defaultHealthCheckIntervalSeconds   = 60
 	defaultHealthCheckTimeoutSeconds    = 5
+	defaultStickySessionMode            = "client_ip"
+	defaultStickySessionTTLSeconds      = 1800
 	handshakeTimeout                    = 15 * time.Second
 )
 
@@ -84,6 +89,9 @@ type Config struct {
 	CandidateSources             []string
 	CandidateProtocols           []string
 	CandidateCountries           []string
+	StickySessionEnabled         bool
+	StickySessionMode            string
+	StickySessionTTLSeconds      int
 	ClearPassword                bool
 }
 
@@ -113,12 +121,15 @@ type PublicConfig struct {
 	CandidateSources             []string `json:"candidateSources"`
 	CandidateProtocols           []string `json:"candidateProtocols"`
 	CandidateCountries           []string `json:"candidateCountries"`
+	StickySessionEnabled         bool     `json:"stickySessionEnabled"`
+	StickySessionMode            string   `json:"stickySessionMode"`
+	StickySessionTTLSeconds      int      `json:"stickySessionTtlSeconds"`
 	Running                      bool     `json:"running"`
 	BoundAddress                 string   `json:"boundAddress,omitempty"`
 }
 
 func defaultConfig() Config {
-	return Config{ListenAddress: defaultListenAddress, Port: defaultPort, Selection: defaultSelection, RequireAuth: true, MaxAttempts: defaultMaxAttempts, DialTimeoutSeconds: defaultDialTimeoutSeconds, FailureCooldownSeconds: defaultFailureCooldownSeconds, MaxConnections: defaultMaxConnections, MaxConnectionsPerClient: defaultMaxConnectionsPerClient, IdleTimeoutSeconds: defaultIdleTimeoutSeconds, MaxConnectionDurationSeconds: defaultMaxConnectionDurationSeconds, HealthCheckIntervalSeconds: defaultHealthCheckIntervalSeconds, HealthCheckTimeoutSeconds: defaultHealthCheckTimeoutSeconds}
+	return Config{ListenAddress: defaultListenAddress, Port: defaultPort, Selection: defaultSelection, RequireAuth: true, MaxAttempts: defaultMaxAttempts, DialTimeoutSeconds: defaultDialTimeoutSeconds, FailureCooldownSeconds: defaultFailureCooldownSeconds, MaxConnections: defaultMaxConnections, MaxConnectionsPerClient: defaultMaxConnectionsPerClient, IdleTimeoutSeconds: defaultIdleTimeoutSeconds, MaxConnectionDurationSeconds: defaultMaxConnectionDurationSeconds, HealthCheckIntervalSeconds: defaultHealthCheckIntervalSeconds, HealthCheckTimeoutSeconds: defaultHealthCheckTimeoutSeconds, StickySessionMode: defaultStickySessionMode, StickySessionTTLSeconds: defaultStickySessionTTLSeconds}
 }
 
 func LoadConfig() (Config, error) {
@@ -186,7 +197,13 @@ func LoadConfig() (Config, error) {
 	if value, err := models.GetSetting(settingHealthCheckEnabled); err == nil && strings.TrimSpace(value) != "" {
 		cfg.HealthCheckEnabled = value == "true"
 	}
-	for key, target := range map[string]*int{settingMaxConnections: &cfg.MaxConnections, settingMaxConnectionsPerClient: &cfg.MaxConnectionsPerClient, settingIdleTimeoutSeconds: &cfg.IdleTimeoutSeconds, settingMaxConnectionDurationSeconds: &cfg.MaxConnectionDurationSeconds, settingHealthCheckIntervalSeconds: &cfg.HealthCheckIntervalSeconds, settingHealthCheckTimeoutSeconds: &cfg.HealthCheckTimeoutSeconds} {
+	if value, err := models.GetSetting(settingStickySessionEnabled); err == nil && strings.TrimSpace(value) != "" {
+		cfg.StickySessionEnabled = value == "true"
+	}
+	if value, err := models.GetSetting(settingStickySessionMode); err == nil && strings.TrimSpace(value) != "" {
+		cfg.StickySessionMode = strings.ToLower(strings.TrimSpace(value))
+	}
+	for key, target := range map[string]*int{settingMaxConnections: &cfg.MaxConnections, settingMaxConnectionsPerClient: &cfg.MaxConnectionsPerClient, settingIdleTimeoutSeconds: &cfg.IdleTimeoutSeconds, settingMaxConnectionDurationSeconds: &cfg.MaxConnectionDurationSeconds, settingHealthCheckIntervalSeconds: &cfg.HealthCheckIntervalSeconds, settingHealthCheckTimeoutSeconds: &cfg.HealthCheckTimeoutSeconds, settingStickySessionTTLSeconds: &cfg.StickySessionTTLSeconds} {
 		if value, err := models.GetSetting(key); err == nil && strings.TrimSpace(value) != "" {
 			parsed, parseErr := strconv.Atoi(value)
 			if parseErr != nil {
@@ -289,6 +306,23 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if cfg.HealthCheckTimeoutSeconds < 1 || cfg.HealthCheckTimeoutSeconds > 30 {
 		return cfg, errors.New("SOCKS5 health check timeout must be between 1 and 30 seconds")
 	}
+	switch strings.ToLower(strings.TrimSpace(cfg.StickySessionMode)) {
+	case "", "client_ip":
+		cfg.StickySessionMode = defaultStickySessionMode
+	case "username":
+		cfg.StickySessionMode = "username"
+	default:
+		return cfg, errors.New("SOCKS5 sticky session mode must be client_ip or username")
+	}
+	if cfg.StickySessionTTLSeconds == 0 {
+		cfg.StickySessionTTLSeconds = defaultStickySessionTTLSeconds
+	}
+	if cfg.StickySessionTTLSeconds < 60 || cfg.StickySessionTTLSeconds > 604800 {
+		return cfg, errors.New("SOCKS5 sticky session TTL must be between 60 and 604800 seconds")
+	}
+	if cfg.StickySessionEnabled && cfg.StickySessionMode == "username" && !cfg.RequireAuth {
+		return cfg, errors.New("SOCKS5 username sticky sessions require authentication")
+	}
 	cfg.CandidateGroups = normalizeStringList(cfg.CandidateGroups, nil)
 	cfg.CandidateSources = normalizeStringList(cfg.CandidateSources, nil)
 	cfg.CandidateProtocols = normalizeStringList(cfg.CandidateProtocols, strings.ToLower)
@@ -375,6 +409,9 @@ func SaveConfig(input Config) (Config, error) {
 		settingCandidateSources:             encodeStringListSetting(cfg.CandidateSources),
 		settingCandidateProtocols:           encodeStringListSetting(cfg.CandidateProtocols),
 		settingCandidateCountries:           encodeStringListSetting(cfg.CandidateCountries),
+		settingStickySessionEnabled:         strconv.FormatBool(cfg.StickySessionEnabled),
+		settingStickySessionMode:            cfg.StickySessionMode,
+		settingStickySessionTTLSeconds:      strconv.Itoa(cfg.StickySessionTTLSeconds),
 	}
 	if cfg.ClearPassword {
 		values[settingPassword] = ""
@@ -411,7 +448,9 @@ func ToPublicConfig(cfg Config, running bool, boundAddress string) PublicConfig 
 		HealthCheckTimeoutSeconds: cfg.HealthCheckTimeoutSeconds,
 		CandidateGroups:           append([]string{}, cfg.CandidateGroups...), CandidateSources: append([]string{}, cfg.CandidateSources...),
 		CandidateProtocols: append([]string{}, cfg.CandidateProtocols...), CandidateCountries: append([]string{}, cfg.CandidateCountries...),
-		Running: running, BoundAddress: boundAddress,
+		StickySessionEnabled: cfg.StickySessionEnabled, StickySessionMode: cfg.StickySessionMode,
+		StickySessionTTLSeconds: cfg.StickySessionTTLSeconds,
+		Running:                 running, BoundAddress: boundAddress,
 	}
 }
 
@@ -514,8 +553,11 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 		_ = client.Close()
 	}()
 	_ = client.SetDeadline(time.Now().Add(handshakeTimeout))
+	authUsername := ""
 	if s.cfg.RequireAuth {
-		if err := s.authenticate(client); err != nil {
+		var authErr error
+		authUsername, authErr = s.authenticate(client)
+		if authErr != nil {
 			return
 		}
 	} else if err := negotiateNoAuth(client); err != nil {
@@ -528,7 +570,8 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 	session.mu.Lock()
 	session.Target = net.JoinHostPort(host, strconv.Itoa(int(port)))
 	session.mu.Unlock()
-	nodes, err := s.router.candidates(s.cfg)
+	affinityKey := stickySessionKey(s.cfg, session.ClientAddress, authUsername)
+	nodes, err := s.router.candidatesFor(s.cfg, affinityKey)
 	if err != nil {
 		_ = writeReply(client, 0x01)
 		return
@@ -540,12 +583,14 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 		cancel()
 		if err == nil {
 			s.router.health.recordSuccess(node)
+			s.router.sticky.bind(affinityKey, node, time.Duration(s.cfg.StickySessionTTLSeconds)*time.Second)
 			session.setUpstream(upstream, node)
 			break
 		}
 		s.router.health.recordFailureReason(node, time.Duration(s.cfg.FailureCooldownSeconds)*time.Second, s.sanitizeProbeError(node, err))
 	}
 	if upstream == nil {
+		s.router.sticky.remove(affinityKey)
 		_ = writeReply(client, 0x01)
 		return
 	}
@@ -559,14 +604,14 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 	pumpWithSession(ctx, session, client, upstream, s.cfg.IdleTimeoutSeconds, s.cfg.MaxConnectionDurationSeconds)
 }
 
-func (s *Server) authenticate(conn net.Conn) error {
+func (s *Server) authenticate(conn net.Conn) (string, error) {
 	header := make([]byte, 2)
 	if _, err := io.ReadFull(conn, header); err != nil || header[0] != 0x05 {
-		return errors.New("invalid SOCKS5 greeting")
+		return "", errors.New("invalid SOCKS5 greeting")
 	}
 	methods := make([]byte, int(header[1]))
 	if _, err := io.ReadFull(conn, methods); err != nil {
-		return err
+		return "", err
 	}
 	offered := false
 	for _, method := range methods {
@@ -577,35 +622,37 @@ func (s *Server) authenticate(conn net.Conn) error {
 	}
 	if !offered {
 		_, _ = conn.Write([]byte{0x05, 0xff})
-		return errors.New("username/password authentication not offered")
+		return "", errors.New("username/password authentication not offered")
 	}
 	if _, err := conn.Write([]byte{0x05, 0x02}); err != nil {
-		return err
+		return "", err
 	}
 	authHeader := make([]byte, 2)
 	if _, err := io.ReadFull(conn, authHeader); err != nil || authHeader[0] != 0x01 {
-		return errors.New("invalid SOCKS5 auth version")
+		return "", errors.New("invalid SOCKS5 auth version")
 	}
 	username := make([]byte, int(authHeader[1]))
 	if _, err := io.ReadFull(conn, username); err != nil {
-		return err
+		return "", err
 	}
 	length := make([]byte, 1)
 	if _, err := io.ReadFull(conn, length); err != nil {
-		return err
+		return "", err
 	}
 	password := make([]byte, int(length[0]))
 	if _, err := io.ReadFull(conn, password); err != nil {
-		return err
+		return "", err
 	}
 	usernameOK := subtle.ConstantTimeCompare(username, []byte(s.cfg.Username)) == 1
 	passwordOK := subtle.ConstantTimeCompare(password, []byte(s.cfg.Password)) == 1
 	if !usernameOK || !passwordOK {
 		_, _ = conn.Write([]byte{0x01, 0x01})
-		return errors.New("invalid SOCKS5 credentials")
+		return "", errors.New("invalid SOCKS5 credentials")
 	}
-	_, err := conn.Write([]byte{0x01, 0x00})
-	return err
+	if _, err := conn.Write([]byte{0x01, 0x00}); err != nil {
+		return "", err
+	}
+	return string(username), nil
 }
 
 func negotiateNoAuth(conn net.Conn) error {

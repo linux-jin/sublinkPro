@@ -46,6 +46,9 @@ const defaultConfig = {
   maxConnectionsPerClient: 32,
   idleTimeoutSeconds: 600,
   maxConnectionDurationSeconds: 0,
+  stickySessionEnabled: false,
+  stickySessionMode: 'client_ip',
+  stickySessionTtlSeconds: 1800,
   healthCheckEnabled: false,
   healthCheckIntervalSeconds: 60,
   healthCheckTimeoutSeconds: 5,
@@ -114,6 +117,9 @@ export default function Socks5Settings({ showMessage }) {
         maxConnectionsPerClient: Number(form.maxConnectionsPerClient) || 32,
         idleTimeoutSeconds: Number(form.idleTimeoutSeconds) || 0,
         maxConnectionDurationSeconds: Number(form.maxConnectionDurationSeconds) || 0,
+        stickySessionEnabled: Boolean(form.stickySessionEnabled),
+        stickySessionMode: form.stickySessionMode,
+        stickySessionTtlSeconds: Number(form.stickySessionTtlSeconds) || 1800,
         healthCheckEnabled: Boolean(form.healthCheckEnabled),
         healthCheckIntervalSeconds: Number(form.healthCheckIntervalSeconds) || 60,
         healthCheckTimeoutSeconds: Number(form.healthCheckTimeoutSeconds) || 5,
@@ -163,6 +169,10 @@ export default function Socks5Settings({ showMessage }) {
     Number(form.idleTimeoutSeconds) > 86400 ||
     Number(form.maxConnectionDurationSeconds) < 0 ||
     Number(form.maxConnectionDurationSeconds) > 604800 ||
+    (form.stickySessionEnabled &&
+      (Number(form.stickySessionTtlSeconds) < 60 ||
+        Number(form.stickySessionTtlSeconds) > 604800 ||
+        (form.stickySessionMode === 'username' && !form.requireAuth))) ||
     Number(form.healthCheckIntervalSeconds) < 10 ||
     Number(form.healthCheckIntervalSeconds) > 3600 ||
     Number(form.healthCheckTimeoutSeconds) < 1 ||
@@ -321,6 +331,58 @@ export default function Socks5Settings({ showMessage }) {
                 slotProps={{ htmlInput: { min: 0, max: 604800 } }}
               />
             </Stack>
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(form.stickySessionEnabled)}
+                    onChange={(event) => setForm((prev) => ({ ...prev, stickySessionEnabled: event.target.checked }))}
+                    disabled={form.selection === 'specific'}
+                  />
+                }
+                label={t('settings.socks5.form.stickySessionEnabled')}
+              />
+              <FormHelperText>
+                {form.selection === 'specific'
+                  ? t('settings.socks5.form.stickySessionSpecificHelper')
+                  : t('settings.socks5.form.stickySessionEnabledHelper')}
+              </FormHelperText>
+            </Box>
+            {form.stickySessionEnabled && form.selection !== 'specific' && (
+              <Stack spacing={1.25}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t('settings.socks5.form.stickySessionMode')}</InputLabel>
+                    <Select
+                      label={t('settings.socks5.form.stickySessionMode')}
+                      value={form.stickySessionMode}
+                      onChange={(event) => setForm((prev) => ({ ...prev, stickySessionMode: event.target.value }))}
+                    >
+                      <MenuItem value="client_ip">{t('settings.socks5.form.stickySessionModeClientIp')}</MenuItem>
+                      <MenuItem value="username">{t('settings.socks5.form.stickySessionModeUsername')}</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label={t('settings.socks5.form.stickySessionTtlSeconds')}
+                    value={form.stickySessionTtlSeconds}
+                    onChange={(event) => setForm((prev) => ({ ...prev, stickySessionTtlSeconds: event.target.value }))}
+                    helperText={t('settings.socks5.form.stickySessionTtlSecondsHelper')}
+                    slotProps={{ htmlInput: { min: 60, max: 604800 } }}
+                  />
+                </Stack>
+                {form.stickySessionMode === 'username' && (
+                  <Alert severity={form.requireAuth ? 'info' : 'error'}>
+                    {t(
+                      form.requireAuth
+                        ? 'settings.socks5.form.stickySessionUsernameHelper'
+                        : 'settings.socks5.form.stickySessionUsernameAuthRequired'
+                    )}
+                  </Alert>
+                )}
+              </Stack>
+            )}
             <Box>
               <FormControlLabel
                 control={
