@@ -67,7 +67,7 @@ English | [简体中文](README.zh-CN.md)
 | 🌐 **Host management** | Domain mappings, DNS configuration, CDN preferred IPs | [📖](docs/features/host.md) |
 | ☁️ **Cloudflare Tunnel** | Expose the admin UI without a public IP, with cloudflared managed from the page | [📖](docs/features/cloudflare-tunnel.md) |
 | 💾 **WebDAV backup** | Encrypt WebDAV credentials, upload system backups on demand or by cron, list remote ZIP files, and restore from the page | [📖](docs/features/backup.md) |
-| 🧦 **SOCKS5 gateway** | Local TCP CONNECT gateway with node failover, connection limits, timeouts, and live admin monitoring | [📖](docs/features/socks5.md) |
+| 🧦 **SOCKS5 gateway** | Health-aware TCP CONNECT gateway with candidate pools, failover, connection limits, and live admin monitoring | [📖](docs/features/socks5.md) |
 | 🤖 **Telegram Bot** | Remote speed tests, subscription management, system monitoring | [📖](docs/features/telegram-bot.md) |
 | 📜 **Script system** | Node filtering, content post processing, chained scripts | [📖](docs/script_support.md) |
 | 🔔 **Webhooks** | Supports PushDeer, Bark, DingTalk, ServerChan, and other notification platforms | [📖](docs/configuration.md) |
@@ -78,11 +78,11 @@ English | [简体中文](README.zh-CN.md)
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.6.0`
+**Latest stable release:** `v1.7.0`
 
-- Added active SOCKS5 node health sweeps, latency tracking, exponential cooldown, and manual probe execution.
-- Expanded the SOCKS5 live monitor with aggregate byte totals, per-connection transfer, duration, and idle metrics.
-- Added graceful SOCKS5 shutdown coordination with handshake cancellation.
+- Added SOCKS5 candidate pools filtered by groups, sources, protocols, and countries/regions.
+- Added searchable, grouped, server-paginated selection for specific SOCKS5 outbound nodes.
+- Connected active health results to routing so `best` prioritizes measured latency and skips failed probes when alternatives exist.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 

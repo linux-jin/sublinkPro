@@ -6,6 +6,10 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [1.7.0] - 2026-09-16
+
 ### Added
 
 - Added SOCKS5 candidate node pool filters for groups, sources, protocols, and countries/regions.
