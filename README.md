@@ -96,11 +96,11 @@ The fork follows this maintenance model:
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.10.0`
+**Latest stable release:** `v1.11.0`
 
-- Added a server-paginated SOCKS5 node load table with search, health filtering, sorting, and live P2C scores.
-- Exposed per-node active, success, failure, latency-source, cooldown, and last-selection details.
-- Added safe runtime-stat reset controls that keep active connections running.
+- Added independent SOCKS5 routing profiles with profile-specific candidate pools, selection strategies, retries, cooldown, and sticky-session settings.
+- Added username-based profile selection with optional account-scoped affinity through `username@profile` and `username@profile.account`.
+- Preserved extended Clash/Mihomo proxy fields and made node speed tests honor configured `DialerProxyName` front proxies.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 

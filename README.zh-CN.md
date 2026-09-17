@@ -96,11 +96,11 @@
 
 ## 🆕 版本状态
 
-**最新稳定版：** `v1.10.0`
+**最新稳定版：** `v1.11.0`
 
-- 新增服务端分页的 SOCKS5 节点负载表，支持搜索、健康筛选、排序和实时 P2C 评分。
-- 展示逐节点活动连接、成功、失败、延迟来源、冷却状态和最近选择时间。
-- 新增安全的运行统计重置操作，不会中断当前活动连接。
+- SOCKS5 新增独立路由 Profile，可分别配置候选节点池、选路策略、重试、冷却和粘性会话。
+- 支持通过 `username@profile` 选择路由配置，并可使用 `username@profile.account` 实现账号级出口粘性。
+- Clash/Mihomo 扩展节点字段可以完整保留，节点测速也会正确使用已配置的 `DialerProxyName` 前置代理。
 
 完整版本历史请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)，正式发布包参见 [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases)。
 

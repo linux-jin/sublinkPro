@@ -6,11 +6,24 @@
 
 ## [未发布]
 
+暂无未发布改动。
+
+## [1.11.0] - 2026 年 9 月 17 日
+
 ### 新增
 
 - SOCKS5 新增多路由配置，每个 Profile 可独立设置候选节点池、选路策略、重试、冷却和粘性会话。
 - 新增向后兼容的用户名选路：`username` 使用默认配置，`username@profile` 选择路由配置，`username@profile.account` 增加账号级出口粘性。
 - 新增路由配置 CRUD、连接监控 Profile 信息、按 Profile 查看节点负载，以及覆盖所有已启用 Profile 的合并健康探测。
+
+### 修复
+
+- Clash/Mihomo YAML 导入、仅元数据编辑、订阅刷新和再次导出时，保留 `smux` 扩展选项等未建模节点字段。
+- 节点延迟与速度测试现在会正确使用其配置的 `DialerProxyName` 前置代理。
+
+### 调整
+
+- 同步上游最新依赖更新，并在 README 中明确本增强分支与 `ZeroDeng01/sublinkPro` 的关系。
 
 ## [1.10.0] - 2026 年 9 月 17 日
 

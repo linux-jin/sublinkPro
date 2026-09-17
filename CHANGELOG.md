@@ -6,11 +6,24 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [1.11.0] - 2026-09-17
+
 ### Added
 
 - Added SOCKS5 routing profiles with independent candidate pools, selection strategies, retries, cooldown, and sticky-session settings.
 - Added backward-compatible username routing: `username` uses the default profile, `username@profile` selects a profile, and `username@profile.account` adds account-scoped affinity.
 - Added routing-profile CRUD, profile-aware connection monitoring, profile-filtered node load views, and union health probing across enabled profiles.
+
+### Fixed
+
+- Preserved unmodeled Clash/Mihomo proxy fields, such as extended `smux` options, across YAML import, metadata-only edits, subscription refreshes, and Clash/Mihomo export.
+- Made latency and speed tests honor a node's configured `DialerProxyName` front proxy.
+
+### Changed
+
+- Synchronized the latest upstream dependency updates and clarified the relationship between this enhanced fork and `ZeroDeng01/sublinkPro` in the README.
 
 ## [1.10.0] - 2026-09-17
 
