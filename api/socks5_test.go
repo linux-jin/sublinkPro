@@ -29,6 +29,22 @@ func performSocks5JSONRequest(t *testing.T, username, method string, payload any
 	return recorder
 }
 
+func performSocks5JSONRequestWithParams(t *testing.T, username, method string, payload any, params gin.Params, handler func(*gin.Context)) *httptest.ResponseRecorder {
+	t.Helper()
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequestWithContext(context.Background(), method, "/", bytes.NewReader(body))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	ctx.Params = params
+	ctx.Set("username", username)
+	handler(ctx)
+	return recorder
+}
+
 func TestGetSocks5SettingsRequiresAdmin(t *testing.T) {
 	setupBackupAPITestDB(t)
 	socks5service.DefaultManager().Stop()
@@ -275,5 +291,42 @@ func TestSocks5RoutingEndpointsRequireAdmin(t *testing.T) {
 		if recorder.Code != http.StatusForbidden {
 			t.Fatalf("non-admin routing status = %d, want %d", recorder.Code, http.StatusForbidden)
 		}
+	}
+}
+
+func TestSocks5RoutingProfileCRUD(t *testing.T) {
+	setupBackupAPITestDB(t)
+	socks5service.DefaultManager().Stop()
+
+	create := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
+		"id": "japan", "name": "Japan", "enabled": true, "selection": "smart",
+		"maxAttempts": 3, "dialTimeoutSeconds": 15, "failureCooldownSeconds": 30,
+		"candidateCountries": []string{"jp"}, "stickySessionEnabled": true, "stickySessionTtlSeconds": 900,
+	}, CreateSocks5RoutingProfile)
+	if create.Code != http.StatusOK || !strings.Contains(create.Body.String(), `"id":"japan"`) {
+		t.Fatalf("create profile status=%d body=%s", create.Code, create.Body.String())
+	}
+
+	list := performSocks5JSONRequest(t, "admin", http.MethodGet, nil, ListSocks5RoutingProfiles)
+	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), `"id":"default"`) || !strings.Contains(list.Body.String(), `"id":"japan"`) {
+		t.Fatalf("list profiles status=%d body=%s", list.Code, list.Body.String())
+	}
+
+	update := performSocks5JSONRequestWithParams(t, "admin", http.MethodPut, map[string]any{
+		"name": "Japan Premium", "enabled": true, "selection": "round_robin",
+		"maxAttempts": 2, "dialTimeoutSeconds": 20, "candidateCountries": []string{"JP"},
+		"stickySessionEnabled": true, "stickySessionTtlSeconds": 1200,
+	}, gin.Params{{Key: "id", Value: "japan"}}, UpdateSocks5RoutingProfile)
+	if update.Code != http.StatusOK || !strings.Contains(update.Body.String(), `"name":"Japan Premium"`) || !strings.Contains(update.Body.String(), `"selection":"round_robin"`) {
+		t.Fatalf("update profile status=%d body=%s", update.Code, update.Body.String())
+	}
+
+	remove := performSocks5JSONRequestWithParams(t, "admin", http.MethodDelete, nil, gin.Params{{Key: "id", Value: "japan"}}, DeleteSocks5RoutingProfile)
+	if remove.Code != http.StatusOK {
+		t.Fatalf("delete profile status=%d body=%s", remove.Code, remove.Body.String())
+	}
+	list = performSocks5JSONRequest(t, "admin", http.MethodGet, nil, ListSocks5RoutingProfiles)
+	if strings.Contains(list.Body.String(), `"id":"japan"`) {
+		t.Fatalf("deleted profile still listed: %s", list.Body.String())
 	}
 }

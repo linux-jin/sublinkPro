@@ -106,6 +106,29 @@ func TestNodeRouterRoundRobin(t *testing.T) {
 	}
 }
 
+func TestNodeRouterRoundRobinScopesProfilesIndependently(t *testing.T) {
+	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}, {ID: 3, Link: "c"}}
+	withCandidateNodes(t, nodes)
+	router := newNodeRouter()
+	cfg := Config{Selection: "round_robin", MaxAttempts: 3, DialTimeoutSeconds: 30}
+
+	japanFirst, err := router.candidatesForScope(cfg, "", "japan")
+	if err != nil {
+		t.Fatal(err)
+	}
+	japanSecond, err := router.candidatesForScope(cfg, "", "japan")
+	if err != nil {
+		t.Fatal(err)
+	}
+	usFirst, err := router.candidatesForScope(cfg, "", "us")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual([]int{japanFirst[0].ID, japanSecond[0].ID, usFirst[0].ID}, []int{1, 2, 1}) {
+		t.Fatalf("profile round robin was not isolated: japan=%v/%v us=%v", japanFirst, japanSecond, usFirst)
+	}
+}
+
 func TestNodeRouterRoundRobinSkipsProbeExcludedNodesBeforeRotation(t *testing.T) {
 	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}, {ID: 3, Link: "c"}}
 	withCandidateNodes(t, nodes)

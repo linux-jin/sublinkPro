@@ -229,6 +229,141 @@ func GetSocks5Status(c *gin.Context) {
 	utils.OkDetailedI18n(c, "SOCKS5 状态已加载", gin.H{"config": socks5service.ToPublicConfig(cfg, running, bound), "stats": socks5service.DefaultManager().GatewaySnapshot(), "health": socks5service.DefaultManager().HealthSnapshot()}, "settings.socks5.api.statusLoaded", nil)
 }
 
+type socks5RoutingProfileRequest struct {
+	ID                      string   `json:"id"`
+	Name                    string   `json:"name"`
+	Enabled                 *bool    `json:"enabled"`
+	Selection               string   `json:"selection"`
+	NodeID                  int      `json:"nodeId"`
+	MaxAttempts             int      `json:"maxAttempts"`
+	DialTimeoutSeconds      int      `json:"dialTimeoutSeconds"`
+	FailureCooldownSeconds  int      `json:"failureCooldownSeconds"`
+	SpecificFallback        bool     `json:"specificFallback"`
+	CandidateGroups         []string `json:"candidateGroups"`
+	CandidateSources        []string `json:"candidateSources"`
+	CandidateProtocols      []string `json:"candidateProtocols"`
+	CandidateCountries      []string `json:"candidateCountries"`
+	StickySessionEnabled    bool     `json:"stickySessionEnabled"`
+	StickySessionTTLSeconds int      `json:"stickySessionTtlSeconds"`
+}
+
+func (req socks5RoutingProfileRequest) profile(id string, defaultEnabled bool) socks5service.RoutingProfile {
+	enabled := defaultEnabled
+	if req.Enabled != nil {
+		enabled = *req.Enabled
+	}
+	if id == "" {
+		id = req.ID
+	}
+	return socks5service.RoutingProfile{
+		ID: id, Name: req.Name, Enabled: enabled, Selection: req.Selection, NodeID: req.NodeID,
+		MaxAttempts: req.MaxAttempts, DialTimeoutSeconds: req.DialTimeoutSeconds,
+		FailureCooldownSeconds: req.FailureCooldownSeconds, SpecificFallback: req.SpecificFallback,
+		CandidateGroups: req.CandidateGroups, CandidateSources: req.CandidateSources,
+		CandidateProtocols: req.CandidateProtocols, CandidateCountries: req.CandidateCountries,
+		StickySessionEnabled: req.StickySessionEnabled, StickySessionTTLSeconds: req.StickySessionTTLSeconds,
+	}
+}
+
+func ListSocks5RoutingProfiles(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	cfg, err := socks5service.LoadConfig()
+	if err != nil {
+		utils.FailWithI18n(c, "读取 SOCKS5 设置失败: "+err.Error(), "settings.socks5.api.loadFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	profiles, err := socks5service.ListRoutingProfiles(cfg)
+	if err != nil {
+		utils.FailWithI18n(c, "读取 SOCKS5 路由配置失败: "+err.Error(), "settings.socks5.api.profileLoadFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	utils.OkDetailedI18n(c, "SOCKS5 路由配置已加载", profiles, "settings.socks5.api.profilesLoaded", nil)
+}
+
+func CreateSocks5RoutingProfile(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	var req socks5RoutingProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.FailWithI18n(c, "参数错误: "+err.Error(), "settings.socks5.api.invalidRequest", nil)
+		return
+	}
+	cfg, err := socks5service.LoadConfig()
+	if err != nil {
+		utils.FailWithI18n(c, "读取 SOCKS5 设置失败: "+err.Error(), "settings.socks5.api.loadFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	profile, err := socks5service.CreateRoutingProfile(cfg, req.profile("", true))
+	if err != nil {
+		utils.FailWithI18n(c, "创建 SOCKS5 路由配置失败: "+err.Error(), "settings.socks5.api.profileSaveFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	if err := socks5service.DefaultManager().ReloadRoutingProfiles(); err != nil {
+		utils.FailWithI18n(c, "应用 SOCKS5 路由配置失败: "+err.Error(), "settings.socks5.api.profileApplyFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	utils.OkDetailedI18n(c, "SOCKS5 路由配置已创建", profile, "settings.socks5.api.profileCreated", nil)
+}
+
+func UpdateSocks5RoutingProfile(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" || len(id) > 32 {
+		utils.FailWithI18n(c, "SOCKS5 路由配置 ID 无效", "settings.socks5.api.invalidProfile", nil)
+		return
+	}
+	var req socks5RoutingProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.FailWithI18n(c, "参数错误: "+err.Error(), "settings.socks5.api.invalidRequest", nil)
+		return
+	}
+	cfg, err := socks5service.LoadConfig()
+	if err != nil {
+		utils.FailWithI18n(c, "读取 SOCKS5 设置失败: "+err.Error(), "settings.socks5.api.loadFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	profile, err := socks5service.UpdateRoutingProfile(cfg, id, req.profile(id, false))
+	if err != nil {
+		utils.FailWithI18n(c, "更新 SOCKS5 路由配置失败: "+err.Error(), "settings.socks5.api.profileSaveFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	if err := socks5service.DefaultManager().ReloadRoutingProfiles(); err != nil {
+		utils.FailWithI18n(c, "应用 SOCKS5 路由配置失败: "+err.Error(), "settings.socks5.api.profileApplyFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	utils.OkDetailedI18n(c, "SOCKS5 路由配置已更新", profile, "settings.socks5.api.profileUpdated", nil)
+}
+
+func DeleteSocks5RoutingProfile(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" || len(id) > 32 {
+		utils.FailWithI18n(c, "SOCKS5 路由配置 ID 无效", "settings.socks5.api.invalidProfile", nil)
+		return
+	}
+	cfg, err := socks5service.LoadConfig()
+	if err != nil {
+		utils.FailWithI18n(c, "读取 SOCKS5 设置失败: "+err.Error(), "settings.socks5.api.loadFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	if err := socks5service.DeleteRoutingProfile(cfg, id); err != nil {
+		utils.FailWithI18n(c, "删除 SOCKS5 路由配置失败: "+err.Error(), "settings.socks5.api.profileDeleteFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	if err := socks5service.DefaultManager().ReloadRoutingProfiles(); err != nil {
+		utils.FailWithI18n(c, "应用 SOCKS5 路由配置失败: "+err.Error(), "settings.socks5.api.profileApplyFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	utils.OkDetailedI18n(c, "SOCKS5 路由配置已删除", nil, "settings.socks5.api.profileDeleted", nil)
+}
+
 func GetSocks5RoutingSnapshot(c *gin.Context) {
 	if !requireSocks5Admin(c) {
 		return
@@ -236,7 +371,7 @@ func GetSocks5RoutingSnapshot(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "25"))
 	snapshot, err := socks5service.DefaultManager().RoutingSnapshot(socks5service.RoutingSnapshotQuery{
-		Keyword: c.Query("keyword"), Status: c.Query("status"), SortBy: c.Query("sortBy"),
+		ProfileID: c.Query("profileId"), Keyword: c.Query("keyword"), Status: c.Query("status"), SortBy: c.Query("sortBy"),
 		SortOrder: c.Query("sortOrder"), Page: page, PageSize: pageSize,
 	})
 	if err != nil {

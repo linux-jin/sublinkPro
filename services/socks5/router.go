@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"sublink/models"
@@ -261,15 +260,16 @@ func healthCandidateRank(candidate rankedNode) int {
 }
 
 type nodeRouter struct {
-	health      *nodeHealth
-	sticky      *stickySessionTable
-	runtime     *nodeRuntimeTable
-	randomIndex func(int) int
-	roundRobin  atomic.Uint64
+	health       *nodeHealth
+	sticky       *stickySessionTable
+	runtime      *nodeRuntimeTable
+	randomIndex  func(int) int
+	roundRobinMu sync.Mutex
+	roundRobin   map[string]uint64
 }
 
 func newNodeRouter() *nodeRouter {
-	return &nodeRouter{health: newNodeHealth(), sticky: newStickySessionTable(), runtime: newNodeRuntimeTable(), randomIndex: rand.Intn}
+	return &nodeRouter{health: newNodeHealth(), sticky: newStickySessionTable(), runtime: newNodeRuntimeTable(), randomIndex: rand.Intn, roundRobin: make(map[string]uint64)}
 }
 
 var listCandidateNodesFunc = listCandidateNodes
@@ -279,6 +279,10 @@ func (r *nodeRouter) candidates(cfg Config) ([]models.Node, error) {
 }
 
 func (r *nodeRouter) candidatesFor(cfg Config, stickyKey string) ([]models.Node, error) {
+	return r.candidatesForScope(cfg, stickyKey, defaultProfileID)
+}
+
+func (r *nodeRouter) candidatesForScope(cfg Config, stickyKey, scope string) ([]models.Node, error) {
 	nodes, err := listCandidateNodesFunc(cfg)
 	if err != nil {
 		return nil, err
@@ -313,7 +317,7 @@ func (r *nodeRouter) candidatesFor(cfg Config, stickyKey string) ([]models.Node,
 		})
 	case "round_robin":
 		if !stickyHit {
-			start := int((r.roundRobin.Add(1) - 1) % uint64(len(nodes)))
+			start := r.nextRoundRobin(scope, len(nodes))
 			nodes = append(append(make([]models.Node, 0, len(nodes)), nodes[start:]...), nodes[:start]...)
 		}
 	}
@@ -321,6 +325,21 @@ func (r *nodeRouter) candidatesFor(cfg Config, stickyKey string) ([]models.Node,
 		nodes = nodes[:cfg.MaxAttempts]
 	}
 	return nodes, nil
+}
+
+func (r *nodeRouter) nextRoundRobin(scope string, count int) int {
+	if count <= 0 {
+		return 0
+	}
+	scope = strings.ToLower(strings.TrimSpace(scope))
+	if scope == "" {
+		scope = defaultProfileID
+	}
+	r.roundRobinMu.Lock()
+	value := r.roundRobin[scope]
+	r.roundRobin[scope] = value + 1
+	r.roundRobinMu.Unlock()
+	return int(value % uint64(count))
 }
 
 func (r *nodeRouter) smartOrder(nodes []models.Node, stickyHit bool, maxAttempts int) []models.Node {

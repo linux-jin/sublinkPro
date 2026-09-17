@@ -28,11 +28,13 @@ import Typography from '@mui/material/Typography';
 import { useAuth } from 'contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { formatBytes } from 'views/airports/utils';
+import RoutingProfiles from './components/RoutingProfiles';
 import Socks5Settings from './components/Socks5Settings';
 import {
   closeAllSocks5Connections,
   closeSocks5Connection,
   getSocks5Connections,
+  getSocks5RoutingProfiles,
   getSocks5RoutingSnapshot,
   getSocks5Status,
   probeSocks5Health,
@@ -63,6 +65,8 @@ function Socks5Monitor({ showMessage }) {
   const [status, setStatus] = useState(null);
   const [connections, setConnections] = useState([]);
   const [routing, setRouting] = useState({ items: [], summary: {}, total: 0, page: 1, pageSize: 25 });
+  const [profiles, setProfiles] = useState([]);
+  const [selectedProfileID, setSelectedProfileID] = useState('default');
   const [probing, setProbing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [nodeKeyword, setNodeKeyword] = useState('');
@@ -87,6 +91,7 @@ function Socks5Monitor({ showMessage }) {
         getSocks5Status(),
         getSocks5Connections(),
         getSocks5RoutingSnapshot({
+          profileId: selectedProfileID,
           keyword: debouncedKeyword,
           status: nodeStatus === 'all' ? '' : nodeStatus,
           sortBy,
@@ -101,7 +106,21 @@ function Socks5Monitor({ showMessage }) {
     } catch (error) {
       if (error.response?.status !== 404) showMessage(error.response?.data?.msg || error.message, 'error');
     }
-  }, [debouncedKeyword, nodePage, nodePageSize, nodeStatus, showMessage, sortBy, sortOrder]);
+  }, [debouncedKeyword, nodePage, nodePageSize, nodeStatus, selectedProfileID, showMessage, sortBy, sortOrder]);
+
+  useEffect(() => {
+    let active = true;
+    getSocks5RoutingProfiles()
+      .then((response) => {
+        if (active) setProfiles(Array.isArray(response.data) ? response.data : []);
+      })
+      .catch((error) => {
+        if (active && error.response?.status !== 404) showMessage(error.response?.data?.msg || error.message, 'error');
+      });
+    return () => {
+      active = false;
+    };
+  }, [showMessage]);
 
   useEffect(() => {
     load();
@@ -115,6 +134,13 @@ function Socks5Monitor({ showMessage }) {
     const resolvedPage = Math.max(0, Number(routing.page || 1) - 1);
     if (resolvedPage !== nodePage) setNodePage(resolvedPage);
   }, [nodePage, routing.page]);
+
+  useEffect(() => {
+    if (profiles.length && !profiles.some((profile) => profile.id === selectedProfileID)) {
+      setSelectedProfileID('default');
+      setNodePage(0);
+    }
+  }, [profiles, selectedProfileID]);
 
   const disconnect = async (id) => {
     try {
@@ -232,6 +258,10 @@ function Socks5Monitor({ showMessage }) {
                   {connection.target || t('settings.socks5.monitor.connecting')} ·{' '}
                   {connection.nodeName || t('settings.socks5.monitor.waitingNode')}
                 </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {connection.profileName || connection.profileId || 'Default'}
+                  {connection.account ? ` · ${connection.account}` : ''}
+                </Typography>
                 <Typography variant="caption">
                   {connection.clientAddress} · {connection.phase} · ↑ {formatBytes(connection.uploadBytes ?? 0)} · ↓{' '}
                   {formatBytes(connection.downloadBytes ?? 0)} ·{' '}
@@ -278,6 +308,25 @@ function Socks5Monitor({ showMessage }) {
             />
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 1.5 }}>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel>{t('settings.socks5.monitor.profileFilter')}</InputLabel>
+              <Select
+                value={selectedProfileID}
+                label={t('settings.socks5.monitor.profileFilter')}
+                onChange={(event) => {
+                  setSelectedProfileID(event.target.value);
+                  setNodePage(0);
+                }}
+              >
+                {profiles
+                  .filter((profile) => profile.enabled)
+                  .map((profile) => (
+                    <MenuItem key={profile.id} value={profile.id}>
+                      {profile.name}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
             <TextField
               size="small"
               fullWidth
@@ -404,6 +453,7 @@ function Socks5Monitor({ showMessage }) {
 export default function Socks5GatewayPage() {
   const { user } = useAuth();
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [profileRevision, setProfileRevision] = useState(0);
   const isAdmin = [user?.role, ...(user?.roles || [])].some((role) => String(role || '').toLowerCase() === 'admin');
 
   const showMessage = useCallback((message, severity = 'success') => {
@@ -420,8 +470,9 @@ export default function Socks5GatewayPage() {
 
   return (
     <>
-      <Socks5Settings showMessage={showMessage} />
-      <Socks5Monitor showMessage={showMessage} />
+      <Socks5Settings showMessage={showMessage} onChanged={() => setProfileRevision((value) => value + 1)} />
+      <RoutingProfiles key={profileRevision} showMessage={showMessage} onChanged={() => setProfileRevision((value) => value + 1)} />
+      <Socks5Monitor key={`monitor-${profileRevision}`} showMessage={showMessage} />
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}

@@ -15,6 +15,7 @@ const (
 )
 
 type RoutingSnapshotQuery struct {
+	ProfileID string
 	Keyword   string
 	Status    string
 	SortBy    string
@@ -24,6 +25,8 @@ type RoutingSnapshotQuery struct {
 }
 
 type NodeRoutingSnapshot struct {
+	ProfileID             string     `json:"profileId"`
+	ProfileName           string     `json:"profileName"`
 	NodeID                int        `json:"nodeId"`
 	NodeName              string     `json:"nodeName"`
 	Group                 string     `json:"group,omitempty"`
@@ -58,12 +61,14 @@ type RoutingSnapshotSummary struct {
 }
 
 type RoutingSnapshotPage struct {
-	Items      []NodeRoutingSnapshot  `json:"items"`
-	Total      int                    `json:"total"`
-	Page       int                    `json:"page"`
-	PageSize   int                    `json:"pageSize"`
-	TotalPages int                    `json:"totalPages"`
-	Summary    RoutingSnapshotSummary `json:"summary"`
+	ProfileID   string                 `json:"profileId"`
+	ProfileName string                 `json:"profileName"`
+	Items       []NodeRoutingSnapshot  `json:"items"`
+	Total       int                    `json:"total"`
+	Page        int                    `json:"page"`
+	PageSize    int                    `json:"pageSize"`
+	TotalPages  int                    `json:"totalPages"`
+	Summary     RoutingSnapshotSummary `json:"summary"`
 }
 
 func emptyRoutingSnapshot(query RoutingSnapshotQuery) RoutingSnapshotPage {
@@ -72,6 +77,10 @@ func emptyRoutingSnapshot(query RoutingSnapshotQuery) RoutingSnapshotPage {
 }
 
 func normalizeRoutingSnapshotQuery(query RoutingSnapshotQuery) RoutingSnapshotQuery {
+	query.ProfileID = strings.ToLower(strings.TrimSpace(query.ProfileID))
+	if query.ProfileID == "" {
+		query.ProfileID = defaultProfileID
+	}
 	query.Keyword = strings.TrimSpace(query.Keyword)
 	query.Status = strings.ToLower(strings.TrimSpace(query.Status))
 	query.SortBy = strings.TrimSpace(query.SortBy)
@@ -95,7 +104,7 @@ func normalizeRoutingSnapshotQuery(query RoutingSnapshotQuery) RoutingSnapshotQu
 
 func (s *Server) RoutingSnapshot(query RoutingSnapshotQuery) (RoutingSnapshotPage, error) {
 	query = normalizeRoutingSnapshotQuery(query)
-	nodes, err := listCandidateNodesFunc(s.cfg)
+	profile, nodes, err := s.candidateNodesForProfile(query.ProfileID)
 	if err != nil {
 		return emptyRoutingSnapshot(query), err
 	}
@@ -108,7 +117,7 @@ func (s *Server) RoutingSnapshot(query RoutingSnapshotQuery) (RoutingSnapshotPag
 		key := adapterKey(node)
 		health := healthStates[key]
 		runtime := runtimeStates[key]
-		item := buildNodeRoutingSnapshot(node, health, runtime, now)
+		item := buildNodeRoutingSnapshot(profile, node, health, runtime, now)
 		items = append(items, item)
 		accumulateRoutingSummary(&summary, item)
 	}
@@ -133,6 +142,7 @@ func (s *Server) RoutingSnapshot(query RoutingSnapshotQuery) (RoutingSnapshotPag
 	}
 	pageItems := append([]NodeRoutingSnapshot(nil), items[start:end]...)
 	return RoutingSnapshotPage{
+		ProfileID: profile.ID, ProfileName: profile.Name,
 		Items: pageItems, Total: total, Page: query.Page, PageSize: query.PageSize,
 		TotalPages: totalPages, Summary: summary,
 	}, nil
@@ -151,7 +161,7 @@ func (s *Server) routingHealthStates(nodes []models.Node) map[string]nodeHealthS
 	return states
 }
 
-func buildNodeRoutingSnapshot(node models.Node, health nodeHealthState, runtime nodeRuntimeState, now time.Time) NodeRoutingSnapshot {
+func buildNodeRoutingSnapshot(profile RoutingProfile, node models.Node, health nodeHealthState, runtime nodeRuntimeState, now time.Time) NodeRoutingSnapshot {
 	status := health.Status
 	if status == "" {
 		status = "unknown"
@@ -174,6 +184,7 @@ func buildNodeRoutingSnapshot(node models.Node, health nodeHealthState, runtime 
 		status = "cooling"
 	}
 	return NodeRoutingSnapshot{
+		ProfileID: profile.ID, ProfileName: profile.Name,
 		NodeID: node.ID, NodeName: node.EffectiveName(), Group: node.Group, Source: node.Source,
 		Protocol: node.Protocol, Country: node.LinkCountry, Status: status, LatencyMs: latency,
 		LatencySource: latencySource, ActiveConnections: runtime.ActiveConnections,
@@ -215,7 +226,7 @@ func filterRoutingSnapshots(items []NodeRoutingSnapshot, query RoutingSnapshotQu
 		}
 		if keyword != "" {
 			haystack := strings.ToLower(strings.Join([]string{
-				item.NodeName, fmt.Sprintf("%d", item.NodeID), item.Group, item.Source, item.Protocol, item.Country,
+				item.ProfileID, item.ProfileName, item.NodeName, fmt.Sprintf("%d", item.NodeID), item.Group, item.Source, item.Protocol, item.Country,
 			}, " "))
 			if !strings.Contains(haystack, keyword) {
 				continue

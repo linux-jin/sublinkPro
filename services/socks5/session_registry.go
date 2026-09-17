@@ -19,6 +19,9 @@ type connectionInfo struct {
 	ClientAddress string
 	Target        string
 	NodeName      string
+	ProfileID     string
+	ProfileName   string
+	Account       string
 	Phase         string
 	StartedAt     time.Time
 	LastActivity  time.Time
@@ -29,6 +32,14 @@ type connectionInfo struct {
 	mu            sync.Mutex
 	client        net.Conn
 	upstream      net.Conn
+}
+
+func (c *connectionInfo) setRoutingIdentity(identity routingIdentity) {
+	c.mu.Lock()
+	c.ProfileID = identity.ProfileID
+	c.ProfileName = identity.ProfileName
+	c.Account = identity.Account
+	c.mu.Unlock()
 }
 
 func (c *connectionInfo) setUpstream(conn net.Conn, node models.Node) {
@@ -68,6 +79,7 @@ func (c *connectionInfo) snapshot() ConnectionSnapshot {
 	defer c.mu.Unlock()
 	return ConnectionSnapshot{
 		ID: c.ID, ClientAddress: c.ClientAddress, Target: c.Target, NodeName: c.NodeName,
+		ProfileID: c.ProfileID, ProfileName: c.ProfileName, Account: c.Account,
 		Phase: c.Phase, StartedAt: c.StartedAt, LastActivity: c.LastActivity,
 		UploadBytes: c.UploadBytes.Load(), DownloadBytes: c.DownloadBytes.Load(),
 	}
@@ -78,6 +90,9 @@ type ConnectionSnapshot struct {
 	ClientAddress string    `json:"clientAddress"`
 	Target        string    `json:"target"`
 	NodeName      string    `json:"nodeName"`
+	ProfileID     string    `json:"profileId"`
+	ProfileName   string    `json:"profileName"`
+	Account       string    `json:"account,omitempty"`
 	Phase         string    `json:"phase"`
 	StartedAt     time.Time `json:"startedAt"`
 	LastActivity  time.Time `json:"lastActivity"`

@@ -226,3 +226,90 @@ func TestServerRejectsUnsupportedCommand(t *testing.T) {
 		t.Fatal("server connection did not exit")
 	}
 }
+
+func TestServerRoutesProfileUsernameThroughProfileCandidatePool(t *testing.T) {
+	previous := listCandidateNodesFunc
+	selectedCountry := make(chan string, 1)
+	listCandidateNodesFunc = func(cfg Config) ([]models.Node, error) {
+		country := "default"
+		if len(cfg.CandidateCountries) > 0 {
+			country = cfg.CandidateCountries[0]
+		}
+		selectedCountry <- country
+		return []models.Node{{ID: 1, Name: country + " node", Link: "test://" + country}}, nil
+	}
+	t.Cleanup(func() { listCandidateNodesFunc = previous })
+
+	upstream, upstreamPeer := net.Pipe()
+	defer func() { _ = upstreamPeer.Close() }()
+	server, err := NewServer(Config{
+		Enabled: true, ListenAddress: "127.0.0.1", Username: "proxy", Password: "secret", RequireAuth: true,
+		Selection: "best", MaxAttempts: 1,
+	}, func(context.Context, models.Node, string, uint16) (net.Conn, error) { return upstream, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, err := normalizeRoutingProfile(server.cfg, RoutingProfile{
+		ID: "japan", Name: "Japan", Enabled: true, Selection: "smart", MaxAttempts: 2,
+		CandidateCountries: []string{"JP"}, StickySessionEnabled: true, StickySessionTTLSeconds: 900,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server.profiles.replace(server.cfg, []RoutingProfile{defaultRoutingProfile(server.cfg), profile})
+
+	client, serverConn := net.Pipe()
+	done := make(chan struct{})
+	go func() {
+		server.serveConn(context.Background(), serverConn)
+		close(done)
+	}()
+	if _, err := client.Write([]byte{0x05, 0x01, 0x02}); err != nil {
+		t.Fatal(err)
+	}
+	method := make([]byte, 2)
+	if _, err := io.ReadFull(client, method); err != nil {
+		t.Fatal(err)
+	}
+	username := []byte("proxy@japan.user01")
+	password := []byte("secret")
+	auth := []byte{0x01, byte(len(username))}
+	auth = append(auth, username...)
+	auth = append(auth, byte(len(password)))
+	auth = append(auth, password...)
+	if _, err := client.Write(auth); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.ReadFull(client, method); err != nil || method[1] != 0x00 {
+		t.Fatalf("profile auth failed: response=%x err=%v", method, err)
+	}
+	request := []byte{0x05, 0x01, 0x00, 0x03, 0x0b}
+	request = append(request, []byte("example.com")...)
+	request = append(request, 0x00, 0x50)
+	if _, err := client.Write(request); err != nil {
+		t.Fatal(err)
+	}
+	reply := make([]byte, 10)
+	if _, err := io.ReadFull(client, reply); err != nil || reply[1] != 0x00 {
+		t.Fatalf("profile connect failed: reply=%x err=%v", reply, err)
+	}
+	select {
+	case country := <-selectedCountry:
+		if country != "JP" {
+			t.Fatalf("profile candidate pool country = %q", country)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("profile candidate selection was not observed")
+	}
+	connections := server.Connections()
+	if len(connections) != 1 || connections[0].ProfileID != "japan" || connections[0].ProfileName != "Japan" || connections[0].Account != "user01" {
+		t.Fatalf("profile connection metadata = %+v", connections)
+	}
+	_ = client.Close()
+	_ = upstreamPeer.Close()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("profile session did not close")
+	}
+}

@@ -463,6 +463,7 @@ type Server struct {
 	dial        DialFunc
 	pool        *adapterPool
 	router      *nodeRouter
+	profiles    *routingProfileStore
 	registry    *sessionRegistry
 	healthProbe HealthProbeFunc
 	healthSweep healthSweepState
@@ -479,7 +480,11 @@ func NewServer(cfg Config, dial DialFunc) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	server := &Server{cfg: normalized, dial: dial, router: newNodeRouter(), registry: newSessionRegistry(normalized.MaxConnections, normalized.MaxConnectionsPerClient), closed: make(chan struct{})}
+	profiles, err := newRoutingProfileStore(normalized)
+	if err != nil {
+		return nil, err
+	}
+	server := &Server{cfg: normalized, dial: dial, router: newNodeRouter(), profiles: profiles, registry: newSessionRegistry(normalized.MaxConnections, normalized.MaxConnectionsPerClient), closed: make(chan struct{})}
 	if server.dial == nil {
 		server.pool = newAdapterPool(nil)
 		server.dial = server.dialWithPool
@@ -555,16 +560,23 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 		_ = client.Close()
 	}()
 	_ = client.SetDeadline(time.Now().Add(handshakeTimeout))
-	authUsername := ""
+	identity := defaultRoutingIdentity()
 	if s.cfg.RequireAuth {
 		var authErr error
-		authUsername, authErr = s.authenticate(client)
+		identity, authErr = s.authenticate(client)
 		if authErr != nil {
 			return
 		}
 	} else if err := negotiateNoAuth(client); err != nil {
 		return
 	}
+	profile, routingCfg, ok := s.profiles.resolve(identity.ProfileID)
+	if !ok {
+		_ = writeReply(client, 0x01)
+		return
+	}
+	identity.ProfileName = profile.Name
+	session.setRoutingIdentity(identity)
 	host, port, err := readConnectRequest(client)
 	if err != nil {
 		return
@@ -572,26 +584,26 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 	session.mu.Lock()
 	session.Target = net.JoinHostPort(host, strconv.Itoa(int(port)))
 	session.mu.Unlock()
-	affinityKey := stickySessionKey(s.cfg, session.ClientAddress, authUsername)
-	nodes, err := s.router.candidatesFor(s.cfg, affinityKey)
+	affinityKey := routingProfileStickyKey(profile, routingCfg, identity, session.ClientAddress)
+	nodes, err := s.router.candidatesForScope(routingCfg, affinityKey, profile.ID)
 	if err != nil {
 		_ = writeReply(client, 0x01)
 		return
 	}
 	var upstream net.Conn
 	for _, node := range nodes {
-		dialCtx, cancel := context.WithTimeout(ctx, time.Duration(s.cfg.DialTimeoutSeconds)*time.Second)
+		dialCtx, cancel := context.WithTimeout(ctx, time.Duration(routingCfg.DialTimeoutSeconds)*time.Second)
 		upstream, err = s.dial(dialCtx, node, host, port)
 		cancel()
 		if err == nil {
 			s.router.health.recordSuccess(node)
 			releaseRuntime = s.router.runtime.start(node)
-			s.router.sticky.bind(affinityKey, node, time.Duration(s.cfg.StickySessionTTLSeconds)*time.Second)
+			s.router.sticky.bind(affinityKey, node, time.Duration(routingCfg.StickySessionTTLSeconds)*time.Second)
 			session.setUpstream(upstream, node)
 			break
 		}
 		s.router.runtime.recordFailure(node)
-		s.router.health.recordFailureReason(node, time.Duration(s.cfg.FailureCooldownSeconds)*time.Second, s.sanitizeProbeError(node, err))
+		s.router.health.recordFailureReason(node, time.Duration(routingCfg.FailureCooldownSeconds)*time.Second, s.sanitizeProbeError(node, err))
 	}
 	if upstream == nil {
 		s.router.sticky.remove(affinityKey)
@@ -608,14 +620,15 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 	pumpWithSession(ctx, session, client, upstream, s.cfg.IdleTimeoutSeconds, s.cfg.MaxConnectionDurationSeconds)
 }
 
-func (s *Server) authenticate(conn net.Conn) (string, error) {
+func (s *Server) authenticate(conn net.Conn) (routingIdentity, error) {
+	invalidIdentity := routingIdentity{}
 	header := make([]byte, 2)
 	if _, err := io.ReadFull(conn, header); err != nil || header[0] != 0x05 {
-		return "", errors.New("invalid SOCKS5 greeting")
+		return invalidIdentity, errors.New("invalid SOCKS5 greeting")
 	}
 	methods := make([]byte, int(header[1]))
 	if _, err := io.ReadFull(conn, methods); err != nil {
-		return "", err
+		return invalidIdentity, err
 	}
 	offered := false
 	for _, method := range methods {
@@ -626,37 +639,48 @@ func (s *Server) authenticate(conn net.Conn) (string, error) {
 	}
 	if !offered {
 		_, _ = conn.Write([]byte{0x05, 0xff})
-		return "", errors.New("username/password authentication not offered")
+		return invalidIdentity, errors.New("username/password authentication not offered")
 	}
 	if _, err := conn.Write([]byte{0x05, 0x02}); err != nil {
-		return "", err
+		return invalidIdentity, err
 	}
 	authHeader := make([]byte, 2)
 	if _, err := io.ReadFull(conn, authHeader); err != nil || authHeader[0] != 0x01 {
-		return "", errors.New("invalid SOCKS5 auth version")
+		return invalidIdentity, errors.New("invalid SOCKS5 auth version")
 	}
 	username := make([]byte, int(authHeader[1]))
 	if _, err := io.ReadFull(conn, username); err != nil {
-		return "", err
+		return invalidIdentity, err
 	}
 	length := make([]byte, 1)
 	if _, err := io.ReadFull(conn, length); err != nil {
-		return "", err
+		return invalidIdentity, err
 	}
 	password := make([]byte, int(length[0]))
 	if _, err := io.ReadFull(conn, password); err != nil {
-		return "", err
+		return invalidIdentity, err
 	}
-	usernameOK := subtle.ConstantTimeCompare(username, []byte(s.cfg.Username)) == 1
+
+	baseUsername := []byte(s.cfg.Username)
+	baseMatch := subtle.ConstantTimeCompare(username, baseUsername) == 1
+	extendedBaseMatch := len(username) > len(baseUsername)+1 && username[len(baseUsername)] == '@' &&
+		subtle.ConstantTimeCompare(username[:len(baseUsername)], baseUsername) == 1
+	rawUsername := string(username)
+	profileID, account, extended, parsed := parseRoutingUsername(s.cfg.Username, rawUsername)
+	profile, _, profileFound := s.profiles.resolve(profileID)
+	usernameOK := (baseMatch || extendedBaseMatch) && parsed && profileFound
 	passwordOK := subtle.ConstantTimeCompare(password, []byte(s.cfg.Password)) == 1
 	if !usernameOK || !passwordOK {
 		_, _ = conn.Write([]byte{0x01, 0x01})
-		return "", errors.New("invalid SOCKS5 credentials")
+		return invalidIdentity, errors.New("invalid SOCKS5 credentials")
 	}
 	if _, err := conn.Write([]byte{0x01, 0x00}); err != nil {
-		return "", err
+		return invalidIdentity, err
 	}
-	return string(username), nil
+	return routingIdentity{
+		RawUsername: rawUsername, ProfileID: profile.ID, ProfileName: profile.Name,
+		Account: account, Extended: extended,
+	}, nil
 }
 
 func negotiateNoAuth(conn net.Conn) error {
@@ -899,6 +923,24 @@ func (m *Manager) HealthSnapshot() HealthSnapshot {
 		return HealthSnapshot{Nodes: []NodeHealthSnapshot{}}
 	}
 	return server.HealthSnapshot()
+}
+
+func (m *Manager) ReloadRoutingProfiles() error {
+	base, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+	profiles, err := ListRoutingProfiles(base)
+	if err != nil {
+		return err
+	}
+	m.mu.Lock()
+	server := m.server
+	m.mu.Unlock()
+	if server != nil {
+		server.profiles.replace(base, profiles)
+	}
+	return nil
 }
 
 func (m *Manager) RoutingSnapshot(query RoutingSnapshotQuery) (RoutingSnapshotPage, error) {

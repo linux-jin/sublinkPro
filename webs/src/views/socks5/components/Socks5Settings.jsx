@@ -66,7 +66,7 @@ function messageFromError(t, error, fallbackKey) {
   return t(fallbackKey, { message: response?.msg || error.message });
 }
 
-export default function Socks5Settings({ showMessage }) {
+export default function Socks5Settings({ showMessage, onChanged }) {
   const { t } = useTranslation();
   const [config, setConfig] = useState(defaultConfig);
   const [form, setForm] = useState({ ...defaultConfig, password: '', clearPassword: false });
@@ -130,6 +130,7 @@ export default function Socks5Settings({ showMessage }) {
       });
       syncConfig(response.data);
       showMessage(t('settings.socks5.messages.saved'));
+      onChanged?.();
     } catch (error) {
       showMessage(messageFromError(t, error, 'settings.socks5.messages.saveFailed'), 'error');
     } finally {

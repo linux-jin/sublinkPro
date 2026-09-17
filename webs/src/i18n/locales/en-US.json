@@ -639,6 +639,7 @@
         "nodeSearch": "Search nodes",
         "nodeSearchPlaceholder": "Name, ID, group, source, protocol, or country/region",
         "nodeStatusFilter": "Health status",
+        "profileFilter": "Routing profile",
         "routingStopped": "Start the SOCKS5 gateway to view candidate-node load and smart scores.",
         "noRoutingData": "No node routing data matches the current filters.",
         "rowsPerPage": "Rows per page",
@@ -658,6 +659,29 @@
           "failed": "Failed",
           "score": "Smart score",
           "lastSelected": "Last selected"
+        }
+      },
+      "profiles": {
+        "title": "SOCKS5 routing profiles",
+        "subheader": "Give different business accounts independent candidate pools, routing strategies, retries, and sticky sessions.",
+        "create": "New routing profile",
+        "default": "Default profile",
+        "createTitle": "Create SOCKS5 routing profile",
+        "editTitle": "Edit SOCKS5 routing profile",
+        "id": "Profile ID",
+        "idHelper": "1-32 lowercase letters, digits, underscores, or hyphens. The ID cannot be changed after creation.",
+        "name": "Display name",
+        "enabled": "Enable this routing profile",
+        "sticky": "Keep the outbound by Profile.Account",
+        "stickyHelper": "Usernames with an account use account affinity; profile-only usernames use client-IP affinity.",
+        "usernameHint": "Use {{username}} for the default profile; use {{username}}@japan or {{username}}@japan.user01 to select a routing profile. The gateway password stays the same.",
+        "authenticationRequired": "Username/password authentication is disabled, so clients can only use the default profile. Enable authentication to select other routing profiles through the username.",
+        "summary": "{{selection}} · {{candidates}} candidates · up to {{attempts}} attempts · {{filters}} filter values",
+        "deleteConfirm": "Delete routing profile “{{name}}”? Existing connections stay open, but new connections cannot use it.",
+        "messages": {
+          "created": "SOCKS5 routing profile created",
+          "updated": "SOCKS5 routing profile updated",
+          "deleted": "SOCKS5 routing profile deleted"
         }
       },
       "form": {
@@ -760,6 +784,15 @@
         "startFailed": "Failed to start SOCKS5 gateway: {{message}}",
         "stopped": "SOCKS5 gateway stopped",
         "statusLoaded": "SOCKS5 status loaded",
+        "profilesLoaded": "SOCKS5 routing profiles loaded",
+        "profileLoadFailed": "Failed to load SOCKS5 routing profiles: {{message}}",
+        "profileSaveFailed": "Failed to save SOCKS5 routing profile: {{message}}",
+        "profileApplyFailed": "Failed to apply SOCKS5 routing profile: {{message}}",
+        "profileDeleteFailed": "Failed to delete SOCKS5 routing profile: {{message}}",
+        "profileCreated": "SOCKS5 routing profile created",
+        "profileUpdated": "SOCKS5 routing profile updated",
+        "profileDeleted": "SOCKS5 routing profile deleted",
+        "invalidProfile": "Invalid SOCKS5 routing profile ID",
         "routingLoaded": "SOCKS5 node routing statistics loaded",
         "routingLoadFailed": "Failed to load SOCKS5 node routing statistics: {{message}}",
         "runtimeReset": "SOCKS5 node runtime statistics reset",

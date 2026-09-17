@@ -6,7 +6,11 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Added SOCKS5 routing profiles with independent candidate pools, selection strategies, retries, cooldown, and sticky-session settings.
+- Added backward-compatible username routing: `username` uses the default profile, `username@profile` selects a profile, and `username@profile.account` adds account-scoped affinity.
+- Added routing-profile CRUD, profile-aware connection monitoring, profile-filtered node load views, and union health probing across enabled profiles.
 
 ## [1.10.0] - 2026-09-17
 

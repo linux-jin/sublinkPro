@@ -203,8 +203,8 @@ func (s *Server) runHealthSweep(ctx context.Context) {
 		s.healthSweep.mu.Unlock()
 	}()
 
-	nodes, err := listCandidateNodesFunc(s.cfg)
-	if err != nil || len(nodes) == 0 {
+	nodes := s.allProfileCandidateNodes()
+	if len(nodes) == 0 {
 		return
 	}
 	s.router.health.retain(nodes)

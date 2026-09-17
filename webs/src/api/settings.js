@@ -283,6 +283,22 @@ export function getSocks5Status() {
   return request({ url: '/v1/settings/socks5/status', method: 'get' });
 }
 
+export function getSocks5RoutingProfiles() {
+  return request({ url: '/v1/settings/socks5/profiles', method: 'get' });
+}
+
+export function createSocks5RoutingProfile(data) {
+  return request({ url: '/v1/settings/socks5/profiles', method: 'post', data });
+}
+
+export function updateSocks5RoutingProfile(id, data) {
+  return request({ url: `/v1/settings/socks5/profiles/${encodeURIComponent(id)}`, method: 'put', data });
+}
+
+export function deleteSocks5RoutingProfile(id) {
+  return request({ url: `/v1/settings/socks5/profiles/${encodeURIComponent(id)}`, method: 'delete' });
+}
+
 export function getSocks5RoutingSnapshot(params) {
   return request({ url: '/v1/settings/socks5/routing', method: 'get', params });
 }
