@@ -4,30 +4,30 @@
   **✨ Powerful proxy subscription management and conversion ✨**
 
   <p>
-    <img src="https://img.shields.io/github/go-mod/go-version/ZeroDeng01/sublinkPro?style=flat-square&logo=go&logoColor=white" alt="Go Version"/>
-    <img src="https://img.shields.io/github/package-json/dependency-version/ZeroDeng01/sublinkPro/react?filename=webs%2Fpackage.json&style=flat-square&logo=react&logoColor=white&color=61DAFB" alt="React Version"/>
-    <img src="https://img.shields.io/github/package-json/dependency-version/ZeroDeng01/sublinkPro/@mui/material?filename=webs%2Fpackage.json&style=flat-square&logo=mui&logoColor=white&label=MUI&color=007FFF" alt="MUI Version"/>
-    <img src="https://img.shields.io/github/package-json/dependency-version/ZeroDeng01/sublinkPro/vite?filename=webs%2Fpackage.json&style=flat-square&logo=vite&logoColor=white&color=646CFF" alt="Vite Version"/>
+    <img src="https://img.shields.io/github/go-mod/go-version/linux-jin/sublinkPro?style=flat-square&logo=go&logoColor=white" alt="Go Version"/>
+    <img src="https://img.shields.io/github/package-json/dependency-version/linux-jin/sublinkPro/react?filename=webs%2Fpackage.json&style=flat-square&logo=react&logoColor=white&color=61DAFB" alt="React Version"/>
+    <img src="https://img.shields.io/github/package-json/dependency-version/linux-jin/sublinkPro/@mui/material?filename=webs%2Fpackage.json&style=flat-square&logo=mui&logoColor=white&label=MUI&color=007FFF" alt="MUI Version"/>
+    <img src="https://img.shields.io/github/package-json/dependency-version/linux-jin/sublinkPro/vite?filename=webs%2Fpackage.json&style=flat-square&logo=vite&logoColor=white&color=646CFF" alt="Vite Version"/>
   </p>
   <p>
-    <img src="https://img.shields.io/github/v/release/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Latest" alt="Latest Release"/>
-    <img src="https://img.shields.io/github/release-date/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Release%20Date" alt="Release Date"/>
+    <img src="https://img.shields.io/github/v/release/linux-jin/sublinkPro?style=flat-square&logo=github&label=Latest" alt="Latest Release"/>
+    <img src="https://img.shields.io/github/release-date/linux-jin/sublinkPro?style=flat-square&logo=github&label=Release%20Date" alt="Release Date"/>
   </p>
   <p>
     <img src="https://img.shields.io/badge/GHCR-ghcr.io%2Flinux--jin%2Fsublink--pro-2088FF?style=flat-square&logo=github&logoColor=white" alt="GHCR Image"/>
     <img src="https://img.shields.io/github/actions/workflow/status/linux-jin/sublinkPro/build-release.yml?branch=main&style=flat-square&logo=githubactions&label=Container%20Build" alt="Container Build"/>
   </p>
   <p>
-    <img src="https://img.shields.io/github/stars/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Stars" alt="GitHub Stars"/>
-    <img src="https://img.shields.io/github/forks/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Forks" alt="GitHub Forks"/>
-    <img src="https://img.shields.io/github/issues/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Issues" alt="GitHub Issues"/>
-    <img src="https://img.shields.io/github/license/ZeroDeng01/sublinkPro?style=flat-square&label=License" alt="License"/>
+    <img src="https://img.shields.io/github/stars/linux-jin/sublinkPro?style=flat-square&logo=github&label=Stars" alt="GitHub Stars"/>
+    <img src="https://img.shields.io/github/forks/linux-jin/sublinkPro?style=flat-square&logo=github&label=Forks" alt="GitHub Forks"/>
+    <img src="https://img.shields.io/github/issues/linux-jin/sublinkPro?style=flat-square&logo=github&label=Issues" alt="GitHub Issues"/>
+    <img src="https://img.shields.io/github/license/linux-jin/sublinkPro?style=flat-square&label=License" alt="License"/>
   </p>
   <p>
-    <a href="https://github.com/ZeroDeng01/sublinkPro/issues">
+    <a href="https://github.com/linux-jin/sublinkPro/issues">
       <img src="https://img.shields.io/badge/Feedback-Issues-blue?style=flat-square&logo=github" alt="Issues"/>
     </a>
-    <a href="https://github.com/ZeroDeng01/sublinkPro/releases">
+    <a href="https://github.com/linux-jin/sublinkPro/releases">
       <img src="https://img.shields.io/badge/Download-Releases-green?style=flat-square&logo=github" alt="Releases"/>
     </a>
   </p>
@@ -35,12 +35,20 @@
 
 English | [简体中文](README.zh-CN.md)
 
+> [!IMPORTANT]
+> This repository, [`linux-jin/sublinkPro`](https://github.com/linux-jin/sublinkPro), is a feature-enhanced community fork of the upstream project [`ZeroDeng01/sublinkPro`](https://github.com/ZeroDeng01/sublinkPro). It regularly incorporates upstream fixes and improvements while maintaining additional OpenVPN, WebDAV, SOCKS5, large-node-list, and container-delivery capabilities.
+
 ---
 
 ## 📖 Project Overview
 
-`SublinkPro` is a deeply refactored and enhanced project based on the excellent open source projects [sublinkX](https://github.com/gooaclok819/sublinkX) and [sublinkE](https://github.com/eun1e/sublinkE). Thanks to the original authors for their work and contributions.
+This repository is maintained by [`linux-jin`](https://github.com/linux-jin) as an enhanced fork of [`ZeroDeng01/sublinkPro`](https://github.com/ZeroDeng01/sublinkPro). The upstream project is itself a deeply refactored continuation of [sublinkX](https://github.com/gooaclok819/sublinkX) and [sublinkE](https://github.com/eun1e/sublinkE). Thanks to the upstream maintainer and all original contributors.
 
+The fork follows this maintenance model:
+
+- 🔄 **Track upstream**: periodically merge upstream fixes, protocol improvements, dependency updates, and general features
+- 🧩 **Maintain fork extensions**: OpenVPN YAML round-trip support, WebDAV backup automation, the SOCKS5 gateway, large-node-list optimizations, and GHCR multi-architecture images
+- 🐛 **Fork-specific feedback**: report issues related to these extensions in the [linux-jin/sublinkPro issue tracker](https://github.com/linux-jin/sublinkPro/issues)
 - 🎨 **Frontend framework**: Based on [Berry Free React Material UI Admin Template](https://github.com/codedthemes/berry-free-react-admin-template)
 - ⚡ **Backend stack**: Go + Gin + Gorm
 - 🔐 **Default account**: `admin` / `123456`, change it immediately after installation
@@ -55,6 +63,18 @@ English | [简体中文](README.zh-CN.md)
 
 ## ✨ Highlights
 
+### Additions maintained by this fork
+
+| Feature | Description | Details |
+|:---|:---|:---:|
+| 🔐 **OpenVPN YAML round-trip** | Import and export Mihomo/Clash `type: openvpn` proxy entries while preserving certificates, keys, transport options, and other supported fields | [📖](#-multi-protocol-support) |
+| 💾 **WebDAV backup and scheduling** | Encrypt WebDAV credentials, upload backups manually or by cron, browse remote ZIP files, restore from the page, and handle collection redirects used by services such as TeraCLOUD | [📖](docs/features/backup.md) |
+| 🧦 **SOCKS5 gateway and routing profiles** | Health-aware TCP CONNECT gateway with P2C and round-robin routing, sticky sessions, username-selected profiles, node filters, retries, cooldown, connection governance, and live load monitoring | [📖](docs/features/socks5.md) |
+| 🚀 **Large node-list optimization** | Compact server projections, reduced rendering overhead, server-side pagination, search and filtering, plus improved grouped node selection for large installations | — |
+| 📦 **Multi-architecture GHCR images** | Automated `amd64`, `arm64`, `arm/v7`, and `386` images; use `latest` for stable releases and `dev` for development builds | [📖](docs/installation.md) |
+
+### Upstream and shared capabilities
+
 | Feature | Description | Details |
 |:---|:---|:---:|
 | 🏷️ **Smart tag system** | Automatic rule based tagging, no code filtering, IP quality conditions | [📖](docs/features/tags.md) |
@@ -66,8 +86,6 @@ English | [简体中文](README.zh-CN.md)
 | 📋 **Subscription sharing** | Multiple links, expiration policies, access statistics | [📖](docs/features/subscription-share.md) |
 | 🌐 **Host management** | Domain mappings, DNS configuration, CDN preferred IPs | [📖](docs/features/host.md) |
 | ☁️ **Cloudflare Tunnel** | Expose the admin UI without a public IP, with cloudflared managed from the page | [📖](docs/features/cloudflare-tunnel.md) |
-| 💾 **WebDAV backup** | Encrypt WebDAV credentials, upload system backups on demand or by cron, list remote ZIP files, and restore from the page | [📖](docs/features/backup.md) |
-| 🧦 **SOCKS5 gateway** | Health-aware TCP CONNECT gateway with P2C routing, sticky sessions, paginated node-load insights, failover, and live monitoring | [📖](docs/features/socks5.md) |
 | 🤖 **Telegram Bot** | Remote speed tests, subscription management, system monitoring | [📖](docs/features/telegram-bot.md) |
 | 📜 **Script system** | Node filtering, content post processing, chained scripts | [📖](docs/script_support.md) |
 | 🔔 **Webhooks** | Supports PushDeer, Bark, DingTalk, ServerChan, and other notification platforms | [📖](docs/configuration.md) |
@@ -235,9 +253,9 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 
 <div align="center">
 
-[//]: # (  <img src="https://repobeez.abhijithganesh.com/api/insert/ZeroDeng01/sublinkPro" alt="Repobeez" height="0" width="0" style="display: none"/>)
+[//]: # (  <img src="https://repobeez.abhijithganesh.com/api/insert/linux-jin/sublinkPro" alt="Repobeez" height="0" width="0" style="display: none"/>)
   
-  ![Star History Chart](https://star-history.dera.page/svg?repos=ZeroDeng01/sublinkPro&type=Date)
+  ![Star History Chart](https://star-history.dera.page/svg?repos=linux-jin/sublinkPro&type=Date)
 </div>
 
 ---
@@ -247,7 +265,7 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 If this project helps you, you are welcome to:
 
 - ⭐ Star the project
-- 🐛 Open an [Issue](https://github.com/ZeroDeng01/sublinkPro/issues) for bugs or suggestions
+- 🐛 Open an [Issue](https://github.com/linux-jin/sublinkPro/issues) for bugs or suggestions
 - 🔧 Submit a Pull Request
 - 📖 Improve the docs and tutorials
 
@@ -261,8 +279,9 @@ If you need to buy a server, you can support the maintainer through the links be
 
 ### 🙏 Acknowledgements
 
-Thanks to these open source projects:
+Thanks to these open source projects and maintainers:
 
+- [ZeroDeng01/sublinkPro](https://github.com/ZeroDeng01/sublinkPro), the upstream project this fork follows and extends
 - [sublinkX](https://github.com/gooaclok819/sublinkX) / [sublinkE](https://github.com/eun1e/sublinkE), original projects
 - [Berry Free React Admin Template](https://github.com/codedthemes/berry-free-react-admin-template), frontend template
 - [Mihomo](https://github.com/MetaCubeX/mihomo), proxy core
@@ -270,5 +289,5 @@ Thanks to these open source projects:
 ---
 
 <div align="center">
-  <sub>Made with ❤️ by <a href="https://github.com/ZeroDeng01">ZeroDeng01</a></sub>
+  <sub>Fork maintained by <a href="https://github.com/linux-jin">linux-jin</a> · Based on <a href="https://github.com/ZeroDeng01/sublinkPro">ZeroDeng01/sublinkPro</a></sub>
 </div>

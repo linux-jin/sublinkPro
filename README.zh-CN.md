@@ -4,30 +4,30 @@
   **✨ 强大的代理订阅管理与转换工具 ✨**
 
   <p>
-    <img src="https://img.shields.io/github/go-mod/go-version/ZeroDeng01/sublinkPro?style=flat-square&logo=go&logoColor=white" alt="Go Version"/>
-    <img src="https://img.shields.io/github/package-json/dependency-version/ZeroDeng01/sublinkPro/react?filename=webs%2Fpackage.json&style=flat-square&logo=react&logoColor=white&color=61DAFB" alt="React Version"/>
-    <img src="https://img.shields.io/github/package-json/dependency-version/ZeroDeng01/sublinkPro/@mui/material?filename=webs%2Fpackage.json&style=flat-square&logo=mui&logoColor=white&label=MUI&color=007FFF" alt="MUI Version"/>
-    <img src="https://img.shields.io/github/package-json/dependency-version/ZeroDeng01/sublinkPro/vite?filename=webs%2Fpackage.json&style=flat-square&logo=vite&logoColor=white&color=646CFF" alt="Vite Version"/>
+    <img src="https://img.shields.io/github/go-mod/go-version/linux-jin/sublinkPro?style=flat-square&logo=go&logoColor=white" alt="Go Version"/>
+    <img src="https://img.shields.io/github/package-json/dependency-version/linux-jin/sublinkPro/react?filename=webs%2Fpackage.json&style=flat-square&logo=react&logoColor=white&color=61DAFB" alt="React Version"/>
+    <img src="https://img.shields.io/github/package-json/dependency-version/linux-jin/sublinkPro/@mui/material?filename=webs%2Fpackage.json&style=flat-square&logo=mui&logoColor=white&label=MUI&color=007FFF" alt="MUI Version"/>
+    <img src="https://img.shields.io/github/package-json/dependency-version/linux-jin/sublinkPro/vite?filename=webs%2Fpackage.json&style=flat-square&logo=vite&logoColor=white&color=646CFF" alt="Vite Version"/>
   </p>
   <p>
-    <img src="https://img.shields.io/github/v/release/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Latest" alt="Latest Release"/>
-    <img src="https://img.shields.io/github/release-date/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Release%20Date" alt="Release Date"/>
+    <img src="https://img.shields.io/github/v/release/linux-jin/sublinkPro?style=flat-square&logo=github&label=Latest" alt="Latest Release"/>
+    <img src="https://img.shields.io/github/release-date/linux-jin/sublinkPro?style=flat-square&logo=github&label=Release%20Date" alt="Release Date"/>
   </p>
   <p>
     <img src="https://img.shields.io/badge/GHCR-ghcr.io%2Flinux--jin%2Fsublink--pro-2088FF?style=flat-square&logo=github&logoColor=white" alt="GHCR Image"/>
     <img src="https://img.shields.io/github/actions/workflow/status/linux-jin/sublinkPro/build-release.yml?branch=main&style=flat-square&logo=githubactions&label=Container%20Build" alt="Container Build"/>
   </p>
   <p>
-    <img src="https://img.shields.io/github/stars/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Stars" alt="GitHub Stars"/>
-    <img src="https://img.shields.io/github/forks/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Forks" alt="GitHub Forks"/>
-    <img src="https://img.shields.io/github/issues/ZeroDeng01/sublinkPro?style=flat-square&logo=github&label=Issues" alt="GitHub Issues"/>
-    <img src="https://img.shields.io/github/license/ZeroDeng01/sublinkPro?style=flat-square&label=License" alt="License"/>
+    <img src="https://img.shields.io/github/stars/linux-jin/sublinkPro?style=flat-square&logo=github&label=Stars" alt="GitHub Stars"/>
+    <img src="https://img.shields.io/github/forks/linux-jin/sublinkPro?style=flat-square&logo=github&label=Forks" alt="GitHub Forks"/>
+    <img src="https://img.shields.io/github/issues/linux-jin/sublinkPro?style=flat-square&logo=github&label=Issues" alt="GitHub Issues"/>
+    <img src="https://img.shields.io/github/license/linux-jin/sublinkPro?style=flat-square&label=License" alt="License"/>
   </p>
   <p>
-    <a href="https://github.com/ZeroDeng01/sublinkPro/issues">
+    <a href="https://github.com/linux-jin/sublinkPro/issues">
       <img src="https://img.shields.io/badge/问题反馈-Issues-blue?style=flat-square&logo=github" alt="Issues"/>
     </a>
-    <a href="https://github.com/ZeroDeng01/sublinkPro/releases">
+    <a href="https://github.com/linux-jin/sublinkPro/releases">
       <img src="https://img.shields.io/badge/版本下载-Releases-green?style=flat-square&logo=github" alt="Releases"/>
     </a>
   </p>
@@ -35,12 +35,20 @@
 
 [English](README.md) | 简体中文
 
+> [!IMPORTANT]
+> 本仓库 [`linux-jin/sublinkPro`](https://github.com/linux-jin/sublinkPro) 是基于上游项目 [`ZeroDeng01/sublinkPro`](https://github.com/ZeroDeng01/sublinkPro) 维护的功能增强分支。项目会持续合并上游修复与改进，同时维护 OpenVPN、WebDAV、SOCKS5、大规模节点管理和容器发布等扩展能力。
+
 ---
 
 ## 📖 项目简介
 
-`SublinkPro` 是基于优秀的开源项目 [sublinkX](https://github.com/gooaclok819/sublinkX) / [sublinkE](https://github.com/eun1e/sublinkE) 进行二次开发，在原项目基础上做了彻底的重构与优化，并添加了更多功能。感谢原作者的付出与贡献。
+本仓库由 [`linux-jin`](https://github.com/linux-jin) 基于上游项目 [`ZeroDeng01/sublinkPro`](https://github.com/ZeroDeng01/sublinkPro) 继续维护和增强。上游项目本身是在 [sublinkX](https://github.com/gooaclok819/sublinkX) / [sublinkE](https://github.com/eun1e/sublinkE) 基础上进行深度重构和优化的项目。感谢上游维护者与所有原始贡献者的付出。
 
+本分支采用以下维护方式：
+
+- 🔄 **持续同步上游**：定期合并上游的问题修复、协议改进、依赖升级和通用功能
+- 🧩 **维护分支增强功能**：OpenVPN YAML 往返转换、WebDAV 自动备份、SOCKS5 网关、大规模节点列表优化以及 GHCR 多架构镜像
+- 🐛 **分支问题反馈**：与这些增强功能相关的问题，请提交到 [linux-jin/sublinkPro Issues](https://github.com/linux-jin/sublinkPro/issues)
 - 🎨 **前端框架**：基于 [Berry Free React Material UI Admin Template](https://github.com/codedthemes/berry-free-react-admin-template)
 - ⚡ **后端技术**：Go + Gin + Gorm
 - 🔐 **默认账号**：`admin` / `123456`（请安装后务必修改）
@@ -55,6 +63,18 @@
 
 ## ✨ 功能亮点
 
+### 本分支维护的增强功能
+
+| 功能 | 说明 | 详情 |
+|:---|:---|:---:|
+| 🔐 **OpenVPN YAML 往返转换** | 支持导入和导出 Mihomo/Clash `type: openvpn` 节点，并保留证书、密钥、传输选项及其他已支持字段 | [📖](#-多协议支持) |
+| 💾 **WebDAV 备份与定时任务** | 加密保存 WebDAV 凭据，支持手动或 Cron 定时上传、浏览远程 ZIP、页面恢复，并兼容 TeraCLOUD 等服务的集合重定向 | [📖](docs/features/backup.zh-CN.md) |
+| 🧦 **SOCKS5 网关与路由配置** | 健康感知 TCP CONNECT 网关，支持 P2C/轮询选路、粘性会话、用户名选择路由 Profile、节点过滤、重试、冷却、连接治理和实时负载监控 | [📖](docs/features/socks5.zh-CN.md) |
+| 🚀 **大规模节点管理优化** | 精简服务端列表数据、降低前端渲染开销，支持服务端分页、搜索与筛选，并改进大量节点下的分组选择体验 | — |
+| 📦 **GHCR 多架构镜像** | 自动构建 `amd64`、`arm64`、`arm/v7` 和 `386` 镜像；稳定版使用 `latest`，开发测试版使用 `dev` | [📖](docs/installation.zh-CN.md) |
+
+### 上游及共有能力
+
 | 功能 | 说明 | 详情 |
 |:---|:---|:---:|
 | 🏷️ **智能标签系统** | 自动规则打标签、零代码筛选、支持 IP 质量条件 | [📖](docs/features/tags.zh-CN.md) |
@@ -66,8 +86,6 @@
 | 📋 **订阅分享** | 多链接管理、过期策略、访问统计 | [📖](docs/features/subscription-share.zh-CN.md) |
 | 🌐 **Host 管理** | 域名映射、DNS 配置、CDN 优选 | [📖](docs/features/host.zh-CN.md) |
 | ☁️ **Cloudflare Tunnel** | 无公网 IP 暴露管理界面、页面托管 cloudflared | [📖](docs/features/cloudflare-tunnel.zh-CN.md) |
-| 💾 **WebDAV 备份** | 加密保存 WebDAV 凭据，支持手动或定时上传系统备份、查看远程 ZIP 并从页面恢复 | [📖](docs/features/backup.zh-CN.md) |
-| 🧦 **SOCKS5 网关** | 健康感知 TCP CONNECT 网关，支持 P2C 智能选路、粘性会话、分页节点负载分析、故障切换和实时监控 | [📖](docs/features/socks5.zh-CN.md) |
 | 🤖 **Telegram Bot** | 远程测速、订阅管理、系统监控 | [📖](docs/features/telegram-bot.zh-CN.md) |
 | 📜 **脚本系统** | 节点过滤、内容后处理、多脚本链式执行 | [📖](docs/script_support.zh-CN.md) |
 | 🔔 **Webhooks** | 支持 PushDeer、Bark、钉钉、方糖等多平台通知 | [📖](docs/configuration.zh-CN.md) |
@@ -235,9 +253,9 @@ docker-compose up -d
 
 <div align="center">
 
-[//]: # (  <img src="https://repobeez.abhijithganesh.com/api/insert/ZeroDeng01/sublinkPro" alt="Repobeez" height="0" width="0" style="display: none"/>)
+[//]: # (  <img src="https://repobeez.abhijithganesh.com/api/insert/linux-jin/sublinkPro" alt="Repobeez" height="0" width="0" style="display: none"/>)
   
-  ![Star History Chart](https://star-history.dera.page/svg?repos=ZeroDeng01/sublinkPro&type=Date)
+  ![Star History Chart](https://star-history.dera.page/svg?repos=linux-jin/sublinkPro&type=Date)
 </div>
 
 ---
@@ -247,7 +265,7 @@ docker-compose up -d
 如果这个项目对您有帮助，欢迎：
 
 - ⭐ **Star** 这个项目表示支持
-- 🐛 提交 [Issue](https://github.com/ZeroDeng01/sublinkPro/issues) 反馈问题或建议
+- 🐛 提交 [Issue](https://github.com/linux-jin/sublinkPro/issues) 反馈问题或建议
 - 🔧 提交 Pull Request 贡献代码
 - 📖 完善文档和使用教程
 
@@ -261,8 +279,9 @@ docker-compose up -d
 
 ### 🙏 致谢
 
-感谢以下项目的开源贡献：
+感谢以下项目与维护者的开源贡献：
 
+- [ZeroDeng01/sublinkPro](https://github.com/ZeroDeng01/sublinkPro) - 本分支持续跟随并扩展的上游项目
 - [sublinkX](https://github.com/gooaclok819/sublinkX) / [sublinkE](https://github.com/eun1e/sublinkE) - 原始项目
 - [Berry Free React Admin Template](https://github.com/codedthemes/berry-free-react-admin-template) - 前端模板
 - [Mihomo](https://github.com/MetaCubeX/mihomo) - 代理核心
@@ -270,5 +289,5 @@ docker-compose up -d
 ---
 
 <div align="center">
-  <sub>Made with ❤️ by <a href="https://github.com/ZeroDeng01">ZeroDeng01</a></sub>
+  <sub>增强分支由 <a href="https://github.com/linux-jin">linux-jin</a> 维护 · 基于上游 <a href="https://github.com/ZeroDeng01/sublinkPro">ZeroDeng01/sublinkPro</a></sub>
 </div>
