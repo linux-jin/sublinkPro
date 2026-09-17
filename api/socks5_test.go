@@ -48,7 +48,7 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 		"port":                         1080,
 		"username":                     "proxy-user",
 		"password":                     "proxy-secret",
-		"selection":                    "round_robin",
+		"selection":                    "smart",
 		"requireAuth":                  true,
 		"maxAttempts":                  4,
 		"dialTimeoutSeconds":           12,
@@ -89,7 +89,7 @@ func TestUpdateSocks5SettingsPersistsAndMasksPassword(t *testing.T) {
 	if loaded.Username != "proxy-user" || loaded.Password != "proxy-secret" || loaded.Enabled || !loaded.RequireAuth {
 		t.Fatalf("unexpected stored config: %+v", loaded)
 	}
-	if loaded.Selection != "round_robin" || loaded.MaxAttempts != 4 || loaded.DialTimeoutSeconds != 12 || loaded.FailureCooldownSeconds != 45 || !loaded.SpecificFallback {
+	if loaded.Selection != "smart" || loaded.MaxAttempts != 4 || loaded.DialTimeoutSeconds != 12 || loaded.FailureCooldownSeconds != 45 || !loaded.SpecificFallback {
 		t.Fatalf("unexpected phase-two settings: %+v", loaded)
 	}
 	if loaded.MaxConnections != 100 || loaded.MaxConnectionsPerClient != 8 || loaded.IdleTimeoutSeconds != 90 || loaded.MaxConnectionDurationSeconds != 3600 {

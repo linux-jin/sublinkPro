@@ -640,6 +640,7 @@
         "selectionBest": "最佳可用节点",
         "selectionRandom": "随机可用节点",
         "selectionRoundRobin": "轮询可用节点",
+        "selectionSmart": "智能负载均衡（P2C）",
         "selectionSpecific": "指定节点",
         "node": "出站节点",
         "nodePlaceholder": "选择节点",

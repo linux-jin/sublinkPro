@@ -9,7 +9,7 @@ SublinkPro 可以将已保存的代理节点通过本地 SOCKS5 网关暴露出�
 - 仅支持 TCP `CONNECT`
 - 支持 IPv4、IPv6 和域名目标
 - 可选用户名/密码认证（默认启用）
-- 支持最佳节点、随机节点、轮询节点或指定节点选择
+- 支持最佳节点、随机节点、轮询节点、P2C 智能负载均衡或指定节点选择
 - 支持按多个分组、来源、协议和国家/地区组合过滤候选节点池；不同条件之间为“且”，同一条件内多个值为“或”
 - 支持可选的内存粘性会话，可按客户端 IP 或已认证的 SOCKS5 用户名绑定，滑动 TTL 范围为 60-604800 秒
 - 按节点 ID 和链接哈希缓存复用 mihomo 出站适配器，并限制空闲 LRU 缓存规模
@@ -26,7 +26,7 @@ SublinkPro 可以将已保存的代理节点通过本地 SOCKS5 网关暴露出�
 - 健康感知选路：主动探测失败的节点会退出正常候选集，`best` 会在截取重试节点前优先使用最新主动探测延迟排序
 - 保存设置后即时启动/停止，无需重启进程
 
-所有自动切换均发生在发送 SOCKS5 成功响应之前。主动探测失败的节点会在仍有其他可路由节点时被跳过；若全部候选都异常，则采用 fail-open 方式保留候选以便恢复。真实连接成功会解除节点的选路排除状态，同时保留最近一次主动探测延迟。拨号失败的适配器会被丢弃，停止或重新应用网关配置时会关闭适配器池。如果全部候选节点都处于冷却状态，系统会探测最早到期的节点，避免节点池永久不可用。
+智能选路会用 P2C 选择首次尝试节点，综合主动探测延迟（或节点已存延迟）、活动连接负载和连续失败惩罚；其余重试节点按评分排序。粘性命中仍保持第一优先级，智能评分用于回退节点。所有自动切换均发生在发送 SOCKS5 成功响应之前。主动探测失败的节点会在仍有其他可路由节点时被跳过；若全部候选都异常，则采用 fail-open 方式保留候选以便恢复。真实连接成功会解除节点的选路排除状态，同时保留最近一次主动探测延迟。拨号失败的适配器会被丢弃，停止或重新应用网关配置时会关闭适配器池。如果全部候选节点都处于冷却状态，系统会探测最早到期的节点，避免节点池永久不可用。
 
 目前仍不包含 UDP `ASSOCIATE`、`BIND`、多用户凭据路由和多端口监听。粘性租约仅保存在内存中，停止网关或重新应用设置后会清空。第二阶段新增了管理员实时连接监控、聚合计数、流量字节统计以及连接终止控制。
 
@@ -63,7 +63,7 @@ curl --proxy socks5h://127.0.0.1:1080 \
 以下接口均要求登录并且仅管理员可用；有写入风险的 `POST`/`DELETE` 接口在演示模式下也会被限制。
 
 - `GET /api/v1/settings/socks5` — 读取公开网关设置，不返回明文密码。
-- `POST /api/v1/settings/socks5` — 保存并应用设置。JSON 字段包括 `enabled`、`listenAddress`、`port`、`username`、可选 `password`、`clearPassword`、`nodeId`、`selection`（`best`、`random`、`round_robin` 或 `specific`）、`requireAuth`、`maxAttempts`（1-5）、`dialTimeoutSeconds`（1-120）、`failureCooldownSeconds`（0-3600）、`specificFallback`、`maxConnections`（1-10000）、`maxConnectionsPerClient`（1..maxConnections）、`idleTimeoutSeconds`（0-86400）、`maxConnectionDurationSeconds`（0-604800）、`healthCheckEnabled`、`healthCheckIntervalSeconds`（10-3600）、`healthCheckTimeoutSeconds`（1-30）、`candidateGroups`、`candidateSources`、`candidateProtocols`、`candidateCountries`、`stickySessionEnabled`、`stickySessionMode`（`client_ip` 或 `username`）和 `stickySessionTtlSeconds`（60-604800）。候选池字段均为字符串数组；不同字段之间为“且”，字段内多个值为“或”。可选字段均可省略，以兼容旧客户端并保留已保存值。
+- `POST /api/v1/settings/socks5` — 保存并应用设置。JSON 字段包括 `enabled`、`listenAddress`、`port`、`username`、可选 `password`、`clearPassword`、`nodeId`、`selection`（`best`、`random`、`round_robin`、`smart` 或 `specific`）、`requireAuth`、`maxAttempts`（1-5）、`dialTimeoutSeconds`（1-120）、`failureCooldownSeconds`（0-3600）、`specificFallback`、`maxConnections`（1-10000）、`maxConnectionsPerClient`（1..maxConnections）、`idleTimeoutSeconds`（0-86400）、`maxConnectionDurationSeconds`（0-604800）、`healthCheckEnabled`、`healthCheckIntervalSeconds`（10-3600）、`healthCheckTimeoutSeconds`（1-30）、`candidateGroups`、`candidateSources`、`candidateProtocols`、`candidateCountries`、`stickySessionEnabled`、`stickySessionMode`（`client_ip` 或 `username`）和 `stickySessionTtlSeconds`（60-604800）。候选池字段均为字符串数组；不同字段之间为“且”，字段内多个值为“或”。可选字段均可省略，以兼容旧客户端并保留已保存值。
 - `POST /api/v1/settings/socks5/stop` — 停止监听，但不修改已保存设置。
 - `GET /api/v1/settings/socks5/status` — 返回 `data.config`、`data.stats` 和 `data.health`；后者包含探测运行状态和逐节点健康详情。
 - `POST /api/v1/settings/socks5/health/probe` — 立即启动一轮节点健康探测；已有探测运行时不会重复启动。

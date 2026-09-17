@@ -46,6 +46,9 @@ func TestNormalizeConfigPhaseTwoValidation(t *testing.T) {
 	if _, err := NormalizeConfig(Config{Selection: "specific", NodeID: 1, SpecificFallback: true, MaxAttempts: 1}); err == nil {
 		t.Fatal("expected specific fallback attempt validation error")
 	}
+	if smart, err := NormalizeConfig(Config{Selection: "smart"}); err != nil || smart.Selection != "smart" {
+		t.Fatalf("smart selection was rejected: cfg=%+v err=%v", smart, err)
+	}
 }
 
 func TestFilterCandidatePoolCombinesFields(t *testing.T) {
@@ -120,6 +123,75 @@ func TestNodeRouterRoundRobinSkipsProbeExcludedNodesBeforeRotation(t *testing.T)
 	}
 	if !reflect.DeepEqual([]int{first[0].ID, second[0].ID}, []int{2, 3}) {
 		t.Fatalf("excluded node distorted rotation: first=%v second=%v", first, second)
+	}
+}
+
+func TestNodeRouterSmartP2CPrefersLowerCompositeScore(t *testing.T) {
+	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}, {ID: 3, Link: "c"}}
+	withCandidateNodes(t, nodes)
+	router := newNodeRouter()
+	router.health.recordProbeSuccess(nodes[0], 20)
+	router.health.recordProbeSuccess(nodes[1], 50)
+	router.health.recordProbeSuccess(nodes[2], 80)
+	releases := make([]func(), 0, 5)
+	for range 5 {
+		releases = append(releases, router.runtime.start(nodes[0]))
+	}
+	defer func() {
+		for _, release := range releases {
+			release()
+		}
+	}()
+	picks := []int{0, 0}
+	router.randomIndex = func(_ int) int {
+		pick := picks[0]
+		picks = picks[1:]
+		return pick
+	}
+
+	candidates, err := router.candidates(Config{Selection: "smart", MaxAttempts: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual([]int{candidates[0].ID, candidates[1].ID, candidates[2].ID}, []int{2, 1, 3}) {
+		t.Fatalf("unexpected smart order: %+v", candidates)
+	}
+}
+
+func TestNodeRouterSmartAppliesFailurePenalty(t *testing.T) {
+	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}}
+	withCandidateNodes(t, nodes)
+	router := newNodeRouter()
+	router.health.recordProbeSuccess(nodes[0], 30)
+	router.health.recordProbeSuccess(nodes[1], 40)
+	router.health.recordFailureReason(nodes[0], 0, "dial failed")
+	router.randomIndex = func(int) int { return 0 }
+
+	candidates, err := router.candidates(Config{Selection: "smart", MaxAttempts: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if candidates[0].ID != 2 {
+		t.Fatalf("failure penalty was ignored: %+v", candidates)
+	}
+}
+
+func TestNodeRouterSmartKeepsStickyHitFirstAndScoresFallbacks(t *testing.T) {
+	nodes := []models.Node{{ID: 1, Link: "a"}, {ID: 2, Link: "b"}, {ID: 3, Link: "c"}}
+	withCandidateNodes(t, nodes)
+	router := newNodeRouter()
+	router.health.recordProbeSuccess(nodes[0], 100)
+	router.health.recordProbeSuccess(nodes[1], 20)
+	router.health.recordProbeSuccess(nodes[2], 50)
+	key := "client_ip:127.0.0.1"
+	router.sticky.bind(key, nodes[0], time.Minute)
+
+	candidates, err := router.candidatesFor(Config{Selection: "smart", MaxAttempts: 3, StickySessionEnabled: true}, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual([]int{candidates[0].ID, candidates[1].ID, candidates[2].ID}, []int{1, 2, 3}) {
+		t.Fatalf("sticky smart order = %+v", candidates)
 	}
 }
 

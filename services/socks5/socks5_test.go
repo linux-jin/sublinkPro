@@ -138,6 +138,62 @@ func TestServerHandlesAuthenticatedConnectAndPumpsTraffic(t *testing.T) {
 	}
 }
 
+func TestServerRuntimeStatsFollowConnectedSessionLifecycle(t *testing.T) {
+	node := models.Node{ID: 1, Link: "test://node", Name: "node"}
+	withCandidateNodes(t, []models.Node{node})
+	upstream, upstreamPeer := net.Pipe()
+	defer func() { _ = upstreamPeer.Close() }()
+	server, err := NewServer(Config{Selection: "smart", RequireAuth: false, MaxAttempts: 1}, func(context.Context, models.Node, string, uint16) (net.Conn, error) {
+		return upstream, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, serverConn := net.Pipe()
+	done := make(chan struct{})
+	go func() {
+		server.serveConn(context.Background(), serverConn)
+		close(done)
+	}()
+
+	if _, err := client.Write([]byte{0x05, 0x01, 0x00}); err != nil {
+		t.Fatal(err)
+	}
+	method := make([]byte, 2)
+	if _, err := io.ReadFull(client, method); err != nil {
+		t.Fatal(err)
+	}
+	request := []byte{0x05, 0x01, 0x00, 0x03, 0x0b}
+	request = append(request, []byte("example.com")...)
+	request = append(request, 0x00, 0x50)
+	if _, err := client.Write(request); err != nil {
+		t.Fatal(err)
+	}
+	reply := make([]byte, 10)
+	if _, err := io.ReadFull(client, reply); err != nil {
+		t.Fatal(err)
+	}
+	if reply[1] != 0x00 {
+		t.Fatalf("unexpected reply: %x", reply)
+	}
+	state := server.router.runtime.metrics(node)
+	if state.ActiveConnections != 1 || state.SuccessfulConnections != 1 {
+		t.Fatalf("unexpected connected runtime state: %+v", state)
+	}
+
+	_ = client.Close()
+	_ = upstreamPeer.Close()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("session did not close")
+	}
+	state = server.router.runtime.metrics(node)
+	if state.ActiveConnections != 0 || state.SuccessfulConnections != 1 {
+		t.Fatalf("runtime state was not released: %+v", state)
+	}
+}
+
 func TestServerRejectsUnsupportedCommand(t *testing.T) {
 	client, serverConn := net.Pipe()
 	defer func() { _ = client.Close() }()

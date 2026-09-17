@@ -640,6 +640,7 @@
         "selectionBest": "Best available node",
         "selectionRandom": "Random available node",
         "selectionRoundRobin": "Round-robin nodes",
+        "selectionSmart": "Smart load balancing (P2C)",
         "selectionSpecific": "Specific node",
         "node": "Outbound node",
         "nodePlaceholder": "Select a node",

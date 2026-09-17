@@ -230,6 +230,7 @@ export default function Socks5Settings({ showMessage }) {
                 <MenuItem value="best">{t('settings.socks5.form.selectionBest')}</MenuItem>
                 <MenuItem value="random">{t('settings.socks5.form.selectionRandom')}</MenuItem>
                 <MenuItem value="round_robin">{t('settings.socks5.form.selectionRoundRobin')}</MenuItem>
+                <MenuItem value="smart">{t('settings.socks5.form.selectionSmart')}</MenuItem>
                 <MenuItem value="specific">{t('settings.socks5.form.selectionSpecific')}</MenuItem>
               </Select>
             </FormControl>

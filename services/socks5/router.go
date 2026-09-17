@@ -142,6 +142,16 @@ func (h *nodeHealth) recordProbeSuccess(node models.Node, latency int) {
 	h.mu.Unlock()
 }
 
+func (h *nodeHealth) routingMetrics(node models.Node) (int, int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	state := h.states[adapterKey(node)]
+	if state == nil {
+		return 0, 0
+	}
+	return state.LatencyMs, state.ConsecutiveFailures
+}
+
 type rankedNode struct {
 	node       models.Node
 	status     string
@@ -251,13 +261,15 @@ func healthCandidateRank(candidate rankedNode) int {
 }
 
 type nodeRouter struct {
-	health     *nodeHealth
-	sticky     *stickySessionTable
-	roundRobin atomic.Uint64
+	health      *nodeHealth
+	sticky      *stickySessionTable
+	runtime     *nodeRuntimeTable
+	randomIndex func(int) int
+	roundRobin  atomic.Uint64
 }
 
 func newNodeRouter() *nodeRouter {
-	return &nodeRouter{health: newNodeHealth(), sticky: newStickySessionTable()}
+	return &nodeRouter{health: newNodeHealth(), sticky: newStickySessionTable(), runtime: newNodeRuntimeTable(), randomIndex: rand.Intn}
 }
 
 var listCandidateNodesFunc = listCandidateNodes
@@ -287,6 +299,8 @@ func (r *nodeRouter) candidatesFor(cfg Config, stickyKey string) ([]models.Node,
 	}
 
 	switch cfg.Selection {
+	case "smart":
+		nodes = r.smartOrder(nodes, stickyHit, cfg.MaxAttempts)
 	case "random":
 		start := 0
 		if stickyHit {
@@ -307,6 +321,57 @@ func (r *nodeRouter) candidatesFor(cfg Config, stickyKey string) ([]models.Node,
 		nodes = nodes[:cfg.MaxAttempts]
 	}
 	return nodes, nil
+}
+
+func (r *nodeRouter) smartOrder(nodes []models.Node, stickyHit bool, maxAttempts int) []models.Node {
+	if len(nodes) < 2 {
+		return nodes
+	}
+	fallbackStart := 0
+	if stickyHit {
+		fallbackStart = 1
+	} else {
+		count := len(nodes)
+		left := r.randomIndex(count)
+		right := r.randomIndex(count - 1)
+		if right >= left {
+			right++
+		}
+		if r.smartScore(nodes[right]) < r.smartScore(nodes[left]) {
+			left = right
+		}
+		nodes[0], nodes[left] = nodes[left], nodes[0]
+		fallbackStart = 1
+	}
+	limit := maxAttempts
+	if limit <= 0 || limit > len(nodes) {
+		limit = len(nodes)
+	}
+	for position := fallbackStart; position < limit; position++ {
+		best := position
+		bestScore := r.smartScore(nodes[best])
+		for candidate := position + 1; candidate < len(nodes); candidate++ {
+			candidateScore := r.smartScore(nodes[candidate])
+			if candidateScore < bestScore || candidateScore == bestScore && nodes[candidate].ID < nodes[best].ID {
+				best = candidate
+				bestScore = candidateScore
+			}
+		}
+		nodes[position], nodes[best] = nodes[best], nodes[position]
+	}
+	return nodes
+}
+
+func (r *nodeRouter) smartScore(node models.Node) float64 {
+	latency, failures := r.health.routingMetrics(node)
+	if latency <= 0 {
+		latency = node.DelayTime
+	}
+	if latency <= 0 {
+		latency = 500
+	}
+	runtime := r.runtime.metrics(node)
+	return float64(latency)*(1+float64(runtime.ActiveConnections)*0.5) + float64(failures)*100
 }
 
 func listCandidateNodes(cfg Config) ([]models.Node, error) {

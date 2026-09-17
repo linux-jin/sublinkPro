@@ -241,10 +241,10 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	switch strings.ToLower(strings.TrimSpace(cfg.Selection)) {
 	case "", "best":
 		cfg.Selection = defaultSelection
-	case "random", "round_robin", "specific":
+	case "random", "round_robin", "smart", "specific":
 		cfg.Selection = strings.ToLower(strings.TrimSpace(cfg.Selection))
 	default:
-		return cfg, errors.New("SOCKS5 selection must be best, random, round_robin, or specific")
+		return cfg, errors.New("SOCKS5 selection must be best, random, round_robin, smart, or specific")
 	}
 	if cfg.MaxAttempts == 0 {
 		cfg.MaxAttempts = defaultMaxAttempts
@@ -544,7 +544,9 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 		}
 	}()
 	established := false
+	releaseRuntime := func() {}
 	defer func() {
+		releaseRuntime()
 		close(watchDone)
 		if !established {
 			s.registry.recordFailure()
@@ -583,10 +585,12 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 		cancel()
 		if err == nil {
 			s.router.health.recordSuccess(node)
+			releaseRuntime = s.router.runtime.start(node)
 			s.router.sticky.bind(affinityKey, node, time.Duration(s.cfg.StickySessionTTLSeconds)*time.Second)
 			session.setUpstream(upstream, node)
 			break
 		}
+		s.router.runtime.recordFailure(node)
 		s.router.health.recordFailureReason(node, time.Duration(s.cfg.FailureCooldownSeconds)*time.Second, s.sanitizeProbeError(node, err))
 	}
 	if upstream == nil {

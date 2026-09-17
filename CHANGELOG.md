@@ -6,7 +6,10 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Added a SOCKS5 `smart` selection strategy using power-of-two choices (P2C), active connection load, health latency, and consecutive failure penalties.
+- Added bounded in-memory per-node runtime routing counters with exact active-connection lifecycle tracking.
 
 ## [1.8.0] - 2026-09-16
 

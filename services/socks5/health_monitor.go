@@ -208,6 +208,7 @@ func (s *Server) runHealthSweep(ctx context.Context) {
 		return
 	}
 	s.router.health.retain(nodes)
+	s.router.runtime.retain(nodes)
 	jobs := make(chan models.Node)
 	var wg sync.WaitGroup
 	workers := healthProbeConcurrency
