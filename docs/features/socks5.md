@@ -22,13 +22,14 @@ SublinkPro can expose selected stored proxy nodes through a local SOCKS5 gateway
 - Administrator-only live monitoring with active/total/success/failure counters and upload/download byte counters
 - Administrator controls to disconnect one active connection or all active connections
 - Optional active node health checks with a fixed HTTPS probe target, bounded concurrency, latency reporting, exponential failure cooldown, and manual probe control
-- Node health visualization for healthy, unhealthy, checking, and unknown nodes
+- Server-paginated node load visualization with search, health filtering, sorting, active connections, success/failure totals, latency sources, and live smart scores
+- Runtime-stat reset controls that preserve active connections while clearing per-node historical counters
 - Health-aware routing: active-probe failures are removed from normal candidate sets, and `best` prioritizes fresh active-probe latency before applying the retry limit
 - Runtime start/stop when settings are saved; no process restart is required
 
 Smart routing uses power-of-two choices for the first attempt, combining active-probe latency (or stored delay), active connection load, and consecutive failure penalties; remaining retry candidates are score-ordered. Sticky hits remain first and smart scoring applies to their fallbacks. Retries happen before the SOCKS5 success reply is sent. Active-probe failures are skipped while another routable candidate exists; if every candidate is unhealthy, routing fails open and keeps candidates available for recovery. A successful real connection clears the routing exclusion without erasing the most recent active-probe latency. A failed adapter is discarded, and adapters are closed when the gateway is stopped or reapplied. If every candidate is cooling down, the node whose cooldown expires first is probed so the pool cannot remain permanently unavailable.
 
-UDP `ASSOCIATE`, `BIND`, multi-user credential routing, and multi-port listeners are not included yet. Sticky leases are in-memory and reset whenever the gateway is stopped or settings are reapplied. Phase 2.2 adds administrator-only live connection monitoring, aggregate counters, traffic byte counters, and connection termination controls.
+UDP `ASSOCIATE`, `BIND`, multi-user credential routing, and multi-port listeners are not included yet. Sticky leases and per-node routing statistics are in-memory and reset whenever the gateway is stopped or settings are reapplied. The administrator monitor includes live connection controls plus a paginated candidate-node load table; resetting node statistics does not interrupt active connections.
 
 ## Configure
 
@@ -65,12 +66,14 @@ All endpoints below require an authenticated administrator. The destructive `POS
 - `GET /api/v1/settings/socks5` — read public gateway settings; the plaintext password is never returned.
 - `POST /api/v1/settings/socks5` — save and apply settings. JSON fields include `enabled`, `listenAddress`, `port`, `username`, optional `password`, `clearPassword`, `nodeId`, `selection` (`best`, `random`, `round_robin`, `smart`, or `specific`), `requireAuth`, `maxAttempts` (1-5), `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`, `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections), `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`, `healthCheckIntervalSeconds` (10-3600), `healthCheckTimeoutSeconds` (1-30), `candidateGroups`, `candidateSources`, `candidateProtocols`, `candidateCountries`, `stickySessionEnabled`, `stickySessionMode` (`client_ip` or `username`), and `stickySessionTtlSeconds` (60-604800). Candidate pool fields are string arrays; fields are combined with AND and values within each field use OR. Optional fields may be omitted to preserve saved values for legacy clients.
 - `POST /api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
-- `GET /api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health` with sweep state and per-node health details.
+- `GET /api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health` with sweep state and aggregate health details.
+- `GET /api/v1/settings/socks5/routing` — return a server-paginated candidate-node load page. Query parameters are `keyword`, `status` (`healthy`, `unhealthy`, `checking`, `cooling`, or `unknown`), `sortBy`, `sortOrder`, `page`, and `pageSize` (maximum `100`). Items include node metadata, health state, latency source, active/success/failure counters, consecutive failures, smart score, cooldown, and last selection time.
+- `POST /api/v1/settings/socks5/routing/reset` — clear per-node success/failure/last-selection counters without disconnecting active sessions.
 - `POST /api/v1/settings/socks5/health/probe` — start an immediate health sweep. An already-running sweep is reused instead of starting a duplicate.
 - `GET /api/v1/settings/socks5/connections` — return the current active connection array. Each item includes `id`, `clientAddress`, `target`, `nodeName`, `phase`, `startedAt`, `lastActivity`, `uploadBytes`, and `downloadBytes`.
 - `DELETE /api/v1/settings/socks5/connections/:id` — disconnect one active connection by ID.
 - `DELETE /api/v1/settings/socks5/connections` — disconnect all active connections.
 
-The status counters and active connection list belong to the current gateway server lifetime; stopping or reapplying settings creates a new registry and resets them.
+The status counters, per-node routing statistics, active connection list, and sticky leases belong to the current gateway server lifetime; stopping or reapplying settings resets them. The routing endpoint performs filtering, sorting, and pagination on the server so three-second UI refreshes render only the requested page.
 
 Active health checks follow the current selection: strict specific-node mode probes only that node, specific-node fallback probes that node plus the configured fallback pool, and other strategies probe the configured candidate pool. Probes use a fixed Cloudflare HTTPS connectivity endpoint; administrators cannot configure an arbitrary probe URL. Sweeps use at most four workers and never overlap. Status responses include aggregate counts and at most the first 200 sorted node records to keep three-second monitoring polls bounded. Failed probes retire the failed adapter lease safely and apply exponential cooldown capped at one hour.

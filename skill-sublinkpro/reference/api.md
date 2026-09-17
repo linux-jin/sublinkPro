@@ -727,6 +727,8 @@ All SOCKS5 endpoints require an authenticated administrator. Destructive `POST`/
   Optional fields may be omitted to preserve saved values for legacy clients. `0` disables either connection timeout.
 - **POST** `/api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
 - **GET** `/api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health`.
+- **GET** `/api/v1/settings/socks5/routing` — return a server-paginated candidate-node runtime page. Supports `keyword`, `status`, `sortBy`, `sortOrder`, `page`, and `pageSize` (maximum `100`). Items include health state, latency source, active/success/failure counters, smart score, cooldown, and last-selection time.
+- **POST** `/api/v1/settings/socks5/routing/reset` — reset per-node historical counters without disconnecting active sessions.
   Stats include `activeConnections`, `totalConnections`, `successfulConnections`, `failedConnections`, `uploadBytes`, and `downloadBytes`.
   Health includes sweep timing/counts and per-node status, latency, consecutive failures, cooldown, and a bounded error message.
 - **POST** `/api/v1/settings/socks5/health/probe` — trigger an immediate administrator-only health sweep. Duplicate concurrent sweeps are not started.

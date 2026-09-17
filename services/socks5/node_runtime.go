@@ -87,6 +87,33 @@ func (t *nodeRuntimeTable) metrics(node models.Node) nodeRuntimeState {
 	return *state
 }
 
+func (t *nodeRuntimeTable) snapshot(nodes []models.Node) map[string]nodeRuntimeState {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	result := make(map[string]nodeRuntimeState, len(nodes))
+	for _, node := range nodes {
+		key := adapterKey(node)
+		if state := t.states[key]; state != nil {
+			result[key] = *state
+		}
+	}
+	return result
+}
+
+func (t *nodeRuntimeTable) reset() {
+	t.mu.Lock()
+	for key, state := range t.states {
+		if state.ActiveConnections == 0 {
+			delete(t.states, key)
+			continue
+		}
+		state.SuccessfulConnections = 0
+		state.FailedConnections = 0
+		state.LastSelectedAt = time.Time{}
+	}
+	t.mu.Unlock()
+}
+
 func (t *nodeRuntimeTable) retain(nodes []models.Node) {
 	allowed := make(map[string]struct{}, len(nodes))
 	for _, node := range nodes {

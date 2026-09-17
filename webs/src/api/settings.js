@@ -283,6 +283,14 @@ export function getSocks5Status() {
   return request({ url: '/v1/settings/socks5/status', method: 'get' });
 }
 
+export function getSocks5RoutingSnapshot(params) {
+  return request({ url: '/v1/settings/socks5/routing', method: 'get', params });
+}
+
+export function resetSocks5RuntimeStats() {
+  return request({ url: '/v1/settings/socks5/routing/reset', method: 'post' });
+}
+
 export function getSocks5Connections() {
   return request({ url: '/v1/settings/socks5/connections', method: 'get' });
 }

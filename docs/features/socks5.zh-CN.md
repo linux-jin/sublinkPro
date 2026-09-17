@@ -22,13 +22,14 @@ SublinkPro 可以将已保存的代理节点通过本地 SOCKS5 网关暴露出�
 - 仅管理员可见的实时监控，展示活动/累计/成功/失败连接数及上下行字节数
 - 仅管理员可执行断开单条活动连接或断开全部连接
 - 可选节点主动健康探测，提供固定 HTTPS 探测目标、受控并发、延迟统计、指数失败冷却和手动立即探测
-- 展示健康、异常、探测中和未知节点的健康状态
+- 提供服务端分页的节点负载表，支持搜索、健康状态筛选、排序，并展示活动连接、成功/失败次数、延迟来源和实时智能评分
+- 支持重置节点运行统计；清空逐节点历史计数时不会中断活动连接
 - 健康感知选路：主动探测失败的节点会退出正常候选集，`best` 会在截取重试节点前优先使用最新主动探测延迟排序
 - 保存设置后即时启动/停止，无需重启进程
 
 智能选路会用 P2C 选择首次尝试节点，综合主动探测延迟（或节点已存延迟）、活动连接负载和连续失败惩罚；其余重试节点按评分排序。粘性命中仍保持第一优先级，智能评分用于回退节点。所有自动切换均发生在发送 SOCKS5 成功响应之前。主动探测失败的节点会在仍有其他可路由节点时被跳过；若全部候选都异常，则采用 fail-open 方式保留候选以便恢复。真实连接成功会解除节点的选路排除状态，同时保留最近一次主动探测延迟。拨号失败的适配器会被丢弃，停止或重新应用网关配置时会关闭适配器池。如果全部候选节点都处于冷却状态，系统会探测最早到期的节点，避免节点池永久不可用。
 
-目前仍不包含 UDP `ASSOCIATE`、`BIND`、多用户凭据路由和多端口监听。粘性租约仅保存在内存中，停止网关或重新应用设置后会清空。第二阶段新增了管理员实时连接监控、聚合计数、流量字节统计以及连接终止控制。
+目前仍不包含 UDP `ASSOCIATE`、`BIND`、多用户凭据路由和多端口监听。粘性租约和逐节点选路统计仅保存在内存中，停止网关或重新应用设置后会清空。管理员监控页面同时提供实时连接控制和分页候选节点负载表；重置节点统计不会中断活动连接。
 
 ## 配置
 
@@ -65,12 +66,14 @@ curl --proxy socks5h://127.0.0.1:1080 \
 - `GET /api/v1/settings/socks5` — 读取公开网关设置，不返回明文密码。
 - `POST /api/v1/settings/socks5` — 保存并应用设置。JSON 字段包括 `enabled`、`listenAddress`、`port`、`username`、可选 `password`、`clearPassword`、`nodeId`、`selection`（`best`、`random`、`round_robin`、`smart` 或 `specific`）、`requireAuth`、`maxAttempts`（1-5）、`dialTimeoutSeconds`（1-120）、`failureCooldownSeconds`（0-3600）、`specificFallback`、`maxConnections`（1-10000）、`maxConnectionsPerClient`（1..maxConnections）、`idleTimeoutSeconds`（0-86400）、`maxConnectionDurationSeconds`（0-604800）、`healthCheckEnabled`、`healthCheckIntervalSeconds`（10-3600）、`healthCheckTimeoutSeconds`（1-30）、`candidateGroups`、`candidateSources`、`candidateProtocols`、`candidateCountries`、`stickySessionEnabled`、`stickySessionMode`（`client_ip` 或 `username`）和 `stickySessionTtlSeconds`（60-604800）。候选池字段均为字符串数组；不同字段之间为“且”，字段内多个值为“或”。可选字段均可省略，以兼容旧客户端并保留已保存值。
 - `POST /api/v1/settings/socks5/stop` — 停止监听，但不修改已保存设置。
-- `GET /api/v1/settings/socks5/status` — 返回 `data.config`、`data.stats` 和 `data.health`；后者包含探测运行状态和逐节点健康详情。
+- `GET /api/v1/settings/socks5/status` — 返回 `data.config`、`data.stats` 和 `data.health`，包含探测运行状态和健康聚合信息。
+- `GET /api/v1/settings/socks5/routing` — 返回服务端分页的候选节点负载数据。查询参数包括 `keyword`、`status`（`healthy`、`unhealthy`、`checking`、`cooling` 或 `unknown`）、`sortBy`、`sortOrder`、`page` 和 `pageSize`（最大 `100`）。每项包含节点元数据、健康状态、延迟来源、活动/成功/失败计数、连续失败、智能评分、冷却时间和最近选择时间。
+- `POST /api/v1/settings/socks5/routing/reset` — 清空逐节点成功、失败和最近选择统计，但不主动断开现有连接。
 - `POST /api/v1/settings/socks5/health/probe` — 立即启动一轮节点健康探测；已有探测运行时不会重复启动。
 - `GET /api/v1/settings/socks5/connections` — 返回当前活动连接数组，每项包含 `id`、`clientAddress`、`target`、`nodeName`、`phase`、`startedAt`、`lastActivity`、`uploadBytes` 和 `downloadBytes`。
 - `DELETE /api/v1/settings/socks5/connections/:id` — 按连接 ID 断开一条活动连接。
 - `DELETE /api/v1/settings/socks5/connections` — 断开全部活动连接。
 
-状态统计、活动连接列表和粘性租约仅属于当前网关进程生命周期；停止或重新应用设置后会创建新的注册中心并清空这些内存状态。
+状态统计、逐节点选路统计、活动连接列表和粘性租约仅属于当前网关进程生命周期；停止或重新应用设置后会清空这些内存状态。节点负载接口在服务端完成筛选、排序和分页，使页面三秒刷新时只渲染当前请求页。
 
 主动健康探测遵循当前选择策略：严格指定节点模式只探测该节点，开启指定节点回退时探测指定节点及配置后的回退池，其他策略探测配置后的候选节点池。探测固定使用 Cloudflare HTTPS 连通性检测地址，不允许管理员配置任意探测 URL。每轮最多使用 4 个 worker 且不会重叠；状态响应包含完整聚合计数，但最多返回排序后的前 200 条节点记录，避免三秒轮询产生过大响应；失败探测会安全淘汰对应适配器租约，并使用最长一小时的指数冷却。

@@ -257,3 +257,23 @@ func TestProbeSocks5HealthRequiresRunningAdminGateway(t *testing.T) {
 		t.Fatalf("stopped gateway probe response = %s", admin.Body.String())
 	}
 }
+
+func TestSocks5RoutingEndpointsRequireAdmin(t *testing.T) {
+	setupBackupAPITestDB(t)
+	socks5service.DefaultManager().Stop()
+
+	routing := performSocks5JSONRequest(t, "admin", http.MethodGet, nil, GetSocks5RoutingSnapshot)
+	if routing.Code != http.StatusOK || !strings.Contains(routing.Body.String(), `"items":[]`) || !strings.Contains(routing.Body.String(), `"pageSize":25`) {
+		t.Fatalf("unexpected stopped routing response: status=%d body=%s", routing.Code, routing.Body.String())
+	}
+	reset := performSocks5JSONRequest(t, "admin", http.MethodPost, nil, ResetSocks5RuntimeStats)
+	if reset.Code != http.StatusOK || !strings.Contains(reset.Body.String(), "runtimeReset") {
+		t.Fatalf("unexpected runtime reset response: status=%d body=%s", reset.Code, reset.Body.String())
+	}
+	for _, handler := range []func(*gin.Context){GetSocks5RoutingSnapshot, ResetSocks5RuntimeStats} {
+		recorder := performSocks5JSONRequest(t, "member", http.MethodGet, nil, handler)
+		if recorder.Code != http.StatusForbidden {
+			t.Fatalf("non-admin routing status = %d, want %d", recorder.Code, http.StatusForbidden)
+		}
+	}
+}

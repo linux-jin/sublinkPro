@@ -6,7 +6,10 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Added an administrator-only, server-paginated SOCKS5 node load table with search, health filtering, sorting, latency-source details, and live P2C scores.
+- Added an API and UI action to reset per-node success, failure, and last-selection counters without interrupting active connections.
 
 ## [1.9.0] - 2026-09-17
 

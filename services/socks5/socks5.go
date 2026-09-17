@@ -901,6 +901,25 @@ func (m *Manager) HealthSnapshot() HealthSnapshot {
 	return server.HealthSnapshot()
 }
 
+func (m *Manager) RoutingSnapshot(query RoutingSnapshotQuery) (RoutingSnapshotPage, error) {
+	m.mu.Lock()
+	server := m.server
+	m.mu.Unlock()
+	if server == nil {
+		return emptyRoutingSnapshot(query), nil
+	}
+	return server.RoutingSnapshot(query)
+}
+
+func (m *Manager) ResetNodeRuntimeStats() {
+	m.mu.Lock()
+	server := m.server
+	m.mu.Unlock()
+	if server != nil {
+		server.router.runtime.reset()
+	}
+}
+
 func (m *Manager) TriggerHealthProbe() (started bool, available bool) {
 	m.mu.Lock()
 	server := m.server

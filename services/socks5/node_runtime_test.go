@@ -66,3 +66,22 @@ func TestNodeRuntimeTableRemainsBoundedWhenAllEntriesAreActive(t *testing.T) {
 		release()
 	}
 }
+
+func TestNodeRuntimeResetPreservesActiveConnections(t *testing.T) {
+	table := newNodeRuntimeTable()
+	node := models.Node{ID: 1, Link: "active"}
+	idle := models.Node{ID: 2, Link: "idle"}
+	release := table.start(node)
+	table.recordFailure(node)
+	table.recordFailure(idle)
+	table.reset()
+
+	state := table.metrics(node)
+	if state.ActiveConnections != 1 || state.SuccessfulConnections != 0 || state.FailedConnections != 0 || !state.LastSelectedAt.IsZero() {
+		t.Fatalf("active state was not reset safely: %+v", state)
+	}
+	if _, ok := table.states[adapterKey(idle)]; ok {
+		t.Fatal("idle runtime state was not removed by reset")
+	}
+	release()
+}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"sublink/models"
 	socks5service "sublink/services/socks5"
@@ -226,6 +227,31 @@ func GetSocks5Status(c *gin.Context) {
 	}
 	running, bound := socks5service.DefaultManager().Status()
 	utils.OkDetailedI18n(c, "SOCKS5 状态已加载", gin.H{"config": socks5service.ToPublicConfig(cfg, running, bound), "stats": socks5service.DefaultManager().GatewaySnapshot(), "health": socks5service.DefaultManager().HealthSnapshot()}, "settings.socks5.api.statusLoaded", nil)
+}
+
+func GetSocks5RoutingSnapshot(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "25"))
+	snapshot, err := socks5service.DefaultManager().RoutingSnapshot(socks5service.RoutingSnapshotQuery{
+		Keyword: c.Query("keyword"), Status: c.Query("status"), SortBy: c.Query("sortBy"),
+		SortOrder: c.Query("sortOrder"), Page: page, PageSize: pageSize,
+	})
+	if err != nil {
+		utils.FailWithI18n(c, "读取 SOCKS5 节点路由统计失败: "+err.Error(), "settings.socks5.api.routingLoadFailed", map[string]any{"message": err.Error()})
+		return
+	}
+	utils.OkDetailedI18n(c, "SOCKS5 节点路由统计已加载", snapshot, "settings.socks5.api.routingLoaded", nil)
+}
+
+func ResetSocks5RuntimeStats(c *gin.Context) {
+	if !requireSocks5Admin(c) {
+		return
+	}
+	socks5service.DefaultManager().ResetNodeRuntimeStats()
+	utils.OkDetailedI18n(c, "SOCKS5 节点运行统计已重置", nil, "settings.socks5.api.runtimeReset", nil)
 }
 
 func GetSocks5Connections(c *gin.Context) {

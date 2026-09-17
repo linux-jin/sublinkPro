@@ -608,9 +608,11 @@
         "cooldownUntil": "cooldown until {{value}}",
         "noHealthData": "No node health data yet. Run a probe or enable active health checks.",
         "healthStatus": {
+          "all": "All statuses",
           "healthy": "Healthy",
           "unhealthy": "Unhealthy",
           "checking": "Checking",
+          "cooling": "Cooling",
           "unknown": "Unknown"
         },
         "title": "SOCKS5 runtime monitor",
@@ -623,7 +625,40 @@
         "connecting": "Connecting",
         "waitingNode": "Waiting for node",
         "disconnect": "Disconnect",
-        "empty": "No active connections"
+        "empty": "No active connections",
+        "resetStats": "Reset node stats",
+        "resettingStats": "Resetting...",
+        "nodeRouting": "Node load and smart score",
+        "nodeRoutingHelper": "Shows active connections, success/failure totals, latency source, and the P2C smart score for each candidate node.",
+        "routingTotalNodes": "Candidates {{count}}",
+        "routingActiveNodes": "Nodes carrying traffic {{count}}",
+        "routingActiveConnections": "Node active connections {{count}}",
+        "routingCoolingNodes": "Cooling {{count}}",
+        "routingSuccesses": "Node successes {{count}}",
+        "routingFailures": "Node failures {{count}}",
+        "nodeSearch": "Search nodes",
+        "nodeSearchPlaceholder": "Name, ID, group, source, protocol, or country/region",
+        "nodeStatusFilter": "Health status",
+        "routingStopped": "Start the SOCKS5 gateway to view candidate-node load and smart scores.",
+        "noRoutingData": "No node routing data matches the current filters.",
+        "rowsPerPage": "Rows per page",
+        "excludedFromRouting": "Excluded from routing",
+        "consecutiveFailuresShort": "streak {{count}}",
+        "latencySource": {
+          "probe": "Active probe",
+          "stored": "Stored node latency",
+          "fallback": "Fallback value"
+        },
+        "columns": {
+          "node": "Node",
+          "status": "Status",
+          "latency": "Latency",
+          "active": "Active",
+          "successful": "Successful",
+          "failed": "Failed",
+          "score": "Smart score",
+          "lastSelected": "Last selected"
+        }
       },
       "form": {
         "healthCheckEnabled": "Enable active node health checks",
@@ -704,6 +739,7 @@
       "messages": {
         "healthProbeStarted": "SOCKS5 node health probe started",
         "healthProbeRunning": "A SOCKS5 node health probe is already running",
+        "runtimeStatsReset": "SOCKS5 node runtime statistics reset",
         "loadFailed": "Failed to load SOCKS5 settings: {{message}}",
         "saved": "SOCKS5 settings saved",
         "saveFailed": "Failed to save SOCKS5 settings: {{message}}",
@@ -724,6 +760,9 @@
         "startFailed": "Failed to start SOCKS5 gateway: {{message}}",
         "stopped": "SOCKS5 gateway stopped",
         "statusLoaded": "SOCKS5 status loaded",
+        "routingLoaded": "SOCKS5 node routing statistics loaded",
+        "routingLoadFailed": "Failed to load SOCKS5 node routing statistics: {{message}}",
+        "runtimeReset": "SOCKS5 node runtime statistics reset",
         "connectionsLoaded": "SOCKS5 connections loaded",
         "connectionClosed": "SOCKS5 connection disconnected",
         "connectionsClosed": "All SOCKS5 connections disconnected",

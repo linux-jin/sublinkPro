@@ -608,9 +608,11 @@
         "cooldownUntil": "冷却至 {{value}}",
         "noHealthData": "暂无节点健康数据，请立即探测或启用主动健康探测。",
         "healthStatus": {
+          "all": "全部状态",
           "healthy": "健康",
           "unhealthy": "异常",
           "checking": "探测中",
+          "cooling": "冷却中",
           "unknown": "未知"
         },
         "title": "SOCKS5 运行监控",
@@ -623,7 +625,40 @@
         "connecting": "连接中",
         "waitingNode": "等待节点",
         "disconnect": "断开",
-        "empty": "暂无活动连接"
+        "empty": "暂无活动连接",
+        "resetStats": "重置节点统计",
+        "resettingStats": "重置中...",
+        "nodeRouting": "节点负载与智能评分",
+        "nodeRoutingHelper": "按候选节点展示活动连接、成功/失败次数、延迟来源和 P2C 智能评分。",
+        "routingTotalNodes": "候选节点 {{count}}",
+        "routingActiveNodes": "承载连接 {{count}}",
+        "routingActiveConnections": "节点活动连接 {{count}}",
+        "routingCoolingNodes": "冷却节点 {{count}}",
+        "routingSuccesses": "节点成功 {{count}}",
+        "routingFailures": "节点失败 {{count}}",
+        "nodeSearch": "搜索节点",
+        "nodeSearchPlaceholder": "名称、ID、分组、来源、协议或国家/地区",
+        "nodeStatusFilter": "健康状态",
+        "routingStopped": "启动 SOCKS5 网关后将显示候选节点的实时负载和智能评分。",
+        "noRoutingData": "当前筛选条件下没有节点运行数据。",
+        "rowsPerPage": "每页行数",
+        "excludedFromRouting": "已排除选路",
+        "consecutiveFailuresShort": "连续 {{count}}",
+        "latencySource": {
+          "probe": "主动探测",
+          "stored": "节点记录",
+          "fallback": "默认值"
+        },
+        "columns": {
+          "node": "节点",
+          "status": "状态",
+          "latency": "延迟",
+          "active": "活动",
+          "successful": "成功",
+          "failed": "失败",
+          "score": "智能评分",
+          "lastSelected": "最近选择"
+        }
       },
       "form": {
         "healthCheckEnabled": "启用节点主动健康探测",
@@ -704,6 +739,7 @@
       "messages": {
         "healthProbeStarted": "SOCKS5 节点健康探测已启动",
         "healthProbeRunning": "SOCKS5 节点健康探测正在执行",
+        "runtimeStatsReset": "SOCKS5 节点运行统计已重置",
         "loadFailed": "获取 SOCKS5 设置失败：{{message}}",
         "saved": "SOCKS5 设置已保存",
         "saveFailed": "保存 SOCKS5 设置失败：{{message}}",
@@ -724,6 +760,9 @@
         "startFailed": "启动 SOCKS5 网关失败：{{message}}",
         "stopped": "SOCKS5 网关已停止",
         "statusLoaded": "SOCKS5 状态已加载",
+        "routingLoaded": "SOCKS5 节点路由统计已加载",
+        "routingLoadFailed": "读取 SOCKS5 节点路由统计失败：{{message}}",
+        "runtimeReset": "SOCKS5 节点运行统计已重置",
         "connectionsLoaded": "SOCKS5 连接已加载",
         "connectionClosed": "SOCKS5 连接已断开",
         "connectionsClosed": "SOCKS5 连接已全部断开",
