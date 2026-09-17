@@ -327,10 +327,7 @@ func (r *nodeRouter) smartOrder(nodes []models.Node, stickyHit bool, maxAttempts
 	if len(nodes) < 2 {
 		return nodes
 	}
-	fallbackStart := 0
-	if stickyHit {
-		fallbackStart = 1
-	} else {
+	if !stickyHit {
 		count := len(nodes)
 		left := r.randomIndex(count)
 		right := r.randomIndex(count - 1)
@@ -341,8 +338,8 @@ func (r *nodeRouter) smartOrder(nodes []models.Node, stickyHit bool, maxAttempts
 			left = right
 		}
 		nodes[0], nodes[left] = nodes[left], nodes[0]
-		fallbackStart = 1
 	}
+	const fallbackStart = 1
 	limit := maxAttempts
 	if limit <= 0 || limit > len(nodes) {
 		limit = len(nodes)
