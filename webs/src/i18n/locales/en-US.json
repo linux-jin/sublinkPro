@@ -1653,6 +1653,22 @@
     }
   },
   "nodes": {
+    "addResult": {
+      "title": "Node Add Result",
+      "stats": {
+        "added": "Added {{count}}",
+        "skipped": "Skipped {{count}}",
+        "failed": "Failed {{count}}",
+        "total": "{{count}} total"
+      },
+      "successAll": "Successfully added {{count}} nodes",
+      "skippedTitle": "Duplicate nodes (skipped)",
+      "failedTitle": "Failed to add",
+      "unknownNode": "Unknown node",
+      "duplicatePrefix": "Already exists:",
+      "sourceLabel": "Source: {{source}}",
+      "groupLabel": "Group: {{group}}"
+    },
     "common": {
       "unknownNode": "Unknown node"
     },

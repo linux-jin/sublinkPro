@@ -1653,6 +1653,22 @@
     }
   },
   "nodes": {
+    "addResult": {
+      "title": "节点添加结果",
+      "stats": {
+        "added": "成功 {{count}}",
+        "skipped": "跳过 {{count}}",
+        "failed": "失败 {{count}}",
+        "total": "共 {{count}} 个"
+      },
+      "successAll": "成功添加 {{count}} 个节点",
+      "skippedTitle": "重复节点（已跳过）",
+      "failedTitle": "添加失败",
+      "unknownNode": "未知节点",
+      "duplicatePrefix": "已存在：",
+      "sourceLabel": "来源：{{source}}",
+      "groupLabel": "分组：{{group}}"
+    },
     "common": {
       "unknownNode": "未知节点"
     },
