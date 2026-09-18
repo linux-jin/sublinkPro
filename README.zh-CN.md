@@ -112,15 +112,16 @@
 
 ## 🆕 版本状态
 
-**最新稳定版：** `v1.11.0`
+**最新稳定版：** `v1.12.0`
 
-**v1.11.0 之后已进入 `main` / `dev` 的功能：**
+**v1.12.0 主要功能：**
 
 - 新增 Loon `.lcf` 模板管理和原生完整配置输出；未配置模板时保留 Sub-Store 兼容转换。
+- 新增 SOCKS5 独立账号、加密密码、Profile 绑定和多监听入口。
 - 仓库内置脱敏公开版 `template/loon.lcf`，不包含私人证书、凭据、订阅、Host 映射和 Wi-Fi SSID。
 - 自动修复历史 `.lcf` 模板归类与订阅绑定，并补齐节点导入结果弹窗的中英文翻译。
 
-v1.11.0 稳定版主要新增 SOCKS5 独立路由 Profile、用户名选择 Profile、Clash/Mihomo 扩展字段保留，以及支持前置代理的节点测速。
+v1.12.0 新增原生 Loon 输出、SOCKS5 独立账号和多监听入口，并延续 v1.11.0 的路由 Profile、节点字段保留和前置代理测速能力。
 
 完整版本历史请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)，正式发布包参见 [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases)。
 

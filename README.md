@@ -112,15 +112,16 @@ The fork follows this maintenance model:
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.11.0`
+**Latest stable release:** `v1.12.0`
 
-**Current `main` / `dev` additions after v1.11.0:**
+**v1.12.0 highlights:**
 
 - Native Loon `.lcf` template management and full-profile generation, with Sub-Store retained as the no-template compatibility fallback.
+- Independent SOCKS5 accounts with encrypted passwords, direct routing-profile binding, and multiple listener endpoints.
 - A sanitized public `template/loon.lcf`; private certificates, credentials, subscriptions, host mappings, and SSIDs are not included.
 - Legacy `.lcf` assignments are automatically repaired, and node-import result dialogs now include complete Chinese and English translations.
 
-The v1.11.0 stable release introduced independent SOCKS5 routing profiles, username-based profile selection, extended Clash/Mihomo field preservation, and front-proxy-aware node speed tests.
+The v1.12.0 release adds native Loon output, independent SOCKS5 accounts and listeners, while retaining the routing, node-field, and front-proxy improvements from v1.11.0.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 
