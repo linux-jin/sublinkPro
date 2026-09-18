@@ -492,7 +492,7 @@ func DecodeLoon(proxyLines, proxyNames []string, file string) (string, error) {
 
 func loadLoonTemplate(file string) (string, error) {
 	if strings.TrimSpace(file) == "" {
-		return "", fmt.Errorf("Loon template is not configured")
+		return "", fmt.Errorf("loon template is not configured")
 	}
 	if strings.Contains(file, "://") {
 		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, file, nil)

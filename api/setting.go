@@ -39,9 +39,10 @@ func UpdateBaseTemplate(c *gin.Context) {
 	}
 
 	categoryName := "Clash"
-	if req.Category == "surge" {
+	switch req.Category {
+	case "surge":
 		categoryName = "Surge"
-	} else if req.Category == "loon" {
+	case "loon":
 		categoryName = "Loon"
 	}
 	utils.OkWithMsg(c, categoryName+" 基础模板保存成功")
