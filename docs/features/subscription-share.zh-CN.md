@@ -61,9 +61,10 @@
 
 ## 扩展客户端格式
 
-- 原生输出仍通过 `/c?client=clash`、`/c?client=mihomo`、`/c?client=surge`、`/c?client=v2ray` 提供。
-- 在 **用户中心 -> Sub-Store** 启用 sidecar 并选择目标后，分享链接还可以请求已选中的扩展目标：`loon`、`egern`、`stash`、`surfboard`、`shadowrocket`、`quanx`、`sing-box`、`uri`、`json`。
-- 扩展输出使用 SublinkPro 的 mihomo/Clash YAML 作为桥接格式，并调用外部 Sub-Store sidecar。sidecar parser 只转换代理节点，不保留策略组、规则、DNS 等完整 Clash 配置段。
+- 原生输出通过 `/c?client=clash`、`/c?client=mihomo`、`/c?client=surge`、`/c?client=v2ray` 提供。
+- 订阅选择 Loon `.lcf` 模板后，Loon 也由 SublinkPro 原生生成；该路径保留完整配置且不调用 Sub-Store。
+- 未选择 Loon 模板时，或输出 `egern`、`stash`、`surfboard`、`shadowrocket`、`quanx`、`sing-box`、`uri`、`json` 等格式时，可以在 **用户中心 -> Sub-Store** 启用对应目标。
+- Sub-Store 扩展输出使用 SublinkPro 的 mihomo/Clash YAML 作为桥接格式；sidecar parser 只转换代理节点，不保留策略组、规则、DNS 等完整 Clash 配置段。
 - 如果请求扩展客户端时未配置 sidecar，或目标未在用户中心选中，请求会返回明确错误，不会静默回退到 V2ray。
 
 ## 订阅更新间隔

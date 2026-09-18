@@ -62,8 +62,9 @@ Case 3: Access tracking
 ## Expanded Client Formats
 
 - Native outputs remain available through `/c?client=clash`, `/c?client=mihomo`, `/c?client=surge`, and `/c?client=v2ray`.
-- When **Application Settings -> Sub-Store** is enabled and targets are selected, share links can also request the selected expanded targets: `loon`, `egern`, `stash`, `surfboard`, `shadowrocket`, `quanx`, `sing-box`, `uri`, and `json`.
-- Expanded outputs use SublinkPro's mihomo/Clash YAML as the bridge format and call the external Sub-Store sidecar. The sidecar parser converts proxy nodes only; strategy groups, rules, DNS sections, and other full Clash configuration sections are not preserved in those expanded outputs.
+- Loon is also generated natively when the subscription selects a Loon `.lcf` template. This path preserves the complete profile and does not call Sub-Store.
+- Without a Loon template, or for targets such as `egern`, `stash`, `surfboard`, `shadowrocket`, `quanx`, `sing-box`, `uri`, and `json`, SublinkPro can use the optional Sub-Store sidecar when the target is enabled.
+- Sub-Store expanded outputs use SublinkPro's mihomo/Clash YAML as the bridge format. The sidecar parser converts proxy nodes only; strategy groups, rules, DNS sections, and other full Clash configuration sections are not preserved.
 - If an expanded client is requested while the sidecar is not configured or the target is not selected in Application Settings, the request returns a clear error instead of silently falling back to V2ray.
 
 ## Subscription Update Interval

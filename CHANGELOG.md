@@ -6,7 +6,20 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Added first-class Loon `.lcf` template management and native full-profile generation, including local node injection, Remote Filter expansion, and preservation of Loon rules, plugins, scripts, and MITM sections.
+- Added a sanitized public `template/loon.lcf` without private certificates, credentials, subscriptions, host mappings, or SSIDs.
+
+### Changed
+
+- Prioritized fork-maintained features in the README and clarified that native Loon output is preferred when a Loon template is configured.
+- Kept Sub-Store as the compatibility fallback for Loon subscriptions that do not select a native template.
+- Automatically repair legacy `.lcf` template categories and subscriptions that previously stored a Loon template in the Clash template slot.
+
+### Fixed
+
+- Added the missing Chinese and English translations for the node-import result dialog.
 
 ## [1.11.0] - 2026-09-17
 

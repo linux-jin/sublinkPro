@@ -36,7 +36,22 @@
 [English](README.md) | 简体中文
 
 > [!IMPORTANT]
-> 本仓库 [`linux-jin/sublinkPro`](https://github.com/linux-jin/sublinkPro) 是基于上游项目 [`ZeroDeng01/sublinkPro`](https://github.com/ZeroDeng01/sublinkPro) 维护的功能增强分支。项目会持续合并上游修复与改进，同时维护 OpenVPN、WebDAV、SOCKS5、大规模节点管理和容器发布等扩展能力。
+> 本仓库 [`linux-jin/sublinkPro`](https://github.com/linux-jin/sublinkPro) 是基于上游项目 [`ZeroDeng01/sublinkPro`](https://github.com/ZeroDeng01/sublinkPro) 维护的功能增强分支。项目会持续合并上游修复，同时将 Loon 原生完整配置、SOCKS5 网关、WebDAV 自动备份、OpenVPN 往返转换、大规模节点管理和多架构容器发布作为优先维护能力。
+
+---
+
+## 🚀 为什么选择本增强分支
+
+本分支新增的能力会作为一等功能优先维护，而不是放在上游共有功能之后：
+
+1. **Loon 原生完整配置输出**：为订阅选择 `.lcf` 模板后，由 SublinkPro 本地生成完整 Loon 配置，保留策略组、规则、插件、脚本和 MITM 等 section；未选择模板时仍保留 Sub-Store 兼容转换。
+2. **SOCKS5 网关与路由 Profile**：将已管理节点作为健康感知的 TCP CONNECT 出口，支持 P2C/轮询、重试、冷却、粘性会话、用户名选 Profile 和实时负载观察。
+3. **WebDAV 自动备份**：支持手动上传或使用五段 Cron 定时上传备份 ZIP，可浏览远程备份并直接从页面恢复。
+4. **OpenVPN YAML 往返转换**：导入、编辑、导出 Mihomo/Clash `type: openvpn` 节点，并保留支持的证书、密钥与传输字段。
+5. **大规模节点与容器运维**：服务端分页、搜索和筛选，减少前端渲染开销，改进分组选择，并提供 GHCR 多架构镜像。
+
+> [!TIP]
+> 稳定环境使用 `ghcr.io/linux-jin/sublink-pro:latest`；需要测试本分支最新功能时使用 `ghcr.io/linux-jin/sublink-pro:dev`。
 
 ---
 
@@ -47,7 +62,7 @@
 本分支采用以下维护方式：
 
 - 🔄 **持续同步上游**：定期合并上游的问题修复、协议改进、依赖升级和通用功能
-- 🧩 **维护分支增强功能**：OpenVPN YAML 往返转换、WebDAV 自动备份、SOCKS5 网关、大规模节点列表优化以及 GHCR 多架构镜像
+- 🧩 **维护分支增强功能**：Loon 原生完整配置、SOCKS5 网关、WebDAV 自动备份、OpenVPN YAML 往返转换、大规模节点列表优化以及 GHCR 多架构镜像
 - 🐛 **分支问题反馈**：与这些增强功能相关的问题，请提交到 [linux-jin/sublinkPro Issues](https://github.com/linux-jin/sublinkPro/issues)
 - 🎨 **前端框架**：基于 [Berry Free React Material UI Admin Template](https://github.com/codedthemes/berry-free-react-admin-template)
 - ⚡ **后端技术**：Go + Gin + Gorm
@@ -67,9 +82,10 @@
 
 | 功能 | 说明 | 详情 |
 |:---|:---|:---:|
-| 🔐 **OpenVPN YAML 往返转换** | 支持导入和导出 Mihomo/Clash `type: openvpn` 节点，并保留证书、密钥、传输选项及其他已支持字段 | [📖](#-多协议支持) |
-| 💾 **WebDAV 备份与定时任务** | 加密保存 WebDAV 凭据，支持手动或 Cron 定时上传、浏览远程 ZIP、页面恢复，并兼容 TeraCLOUD 等服务的集合重定向 | [📖](docs/features/backup.zh-CN.md) |
+| 🌙 **Loon 原生完整配置输出** | 管理并选择 `.lcf` 模板，注入本地生成节点、展开 Loon Remote Filter，保留规则/插件/脚本/MITM；仅在未配置原生模板时使用 Sub-Store 兼容转换 | [📖](#-多协议支持) |
 | 🧦 **SOCKS5 网关与路由配置** | 健康感知 TCP CONNECT 网关，支持 P2C/轮询选路、粘性会话、用户名选择路由 Profile、节点过滤、重试、冷却、连接治理和实时负载监控 | [📖](docs/features/socks5.zh-CN.md) |
+| 💾 **WebDAV 备份与定时任务** | 加密保存 WebDAV 凭据，支持手动或 Cron 定时上传、浏览远程 ZIP、页面恢复，并兼容 TeraCLOUD 等服务的集合重定向 | [📖](docs/features/backup.zh-CN.md) |
+| 🔐 **OpenVPN YAML 往返转换** | 支持导入和导出 Mihomo/Clash `type: openvpn` 节点，并保留证书、密钥、传输选项及其他已支持字段 | [📖](#-多协议支持) |
 | 🚀 **大规模节点管理优化** | 精简服务端列表数据、降低前端渲染开销，支持服务端分页、搜索与筛选，并改进大量节点下的分组选择体验 | — |
 | 📦 **GHCR 多架构镜像** | 自动构建 `amd64`、`arm64`、`arm/v7` 和 `386` 镜像；稳定版使用 `latest`，开发测试版使用 `dev` | [📖](docs/installation.zh-CN.md) |
 
@@ -98,9 +114,13 @@
 
 **最新稳定版：** `v1.11.0`
 
-- SOCKS5 新增独立路由 Profile，可分别配置候选节点池、选路策略、重试、冷却和粘性会话。
-- 支持通过 `username@profile` 选择路由配置，并可使用 `username@profile.account` 实现账号级出口粘性。
-- Clash/Mihomo 扩展节点字段可以完整保留，节点测速也会正确使用已配置的 `DialerProxyName` 前置代理。
+**v1.11.0 之后已进入 `main` / `dev` 的功能：**
+
+- 新增 Loon `.lcf` 模板管理和原生完整配置输出；未配置模板时保留 Sub-Store 兼容转换。
+- 仓库内置脱敏公开版 `template/loon.lcf`，不包含私人证书、凭据、订阅、Host 映射和 Wi-Fi SSID。
+- 自动修复历史 `.lcf` 模板归类与订阅绑定，并补齐节点导入结果弹窗的中英文翻译。
+
+v1.11.0 稳定版主要新增 SOCKS5 独立路由 Profile、用户名选择 Profile、Clash/Mihomo 扩展字段保留，以及支持前置代理的节点测速。
 
 完整版本历史请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)，正式发布包参见 [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases)。
 
@@ -188,6 +208,10 @@ docker-compose up -d
 
 | 文档 | 说明 |
 |:---|:---|
+| [🌙 Loon 原生输出](#-多协议支持) | 完整 `.lcf` 配置生成、本地节点注入与 Sub-Store 兼容回退 |
+| [🧦 SOCKS5 网关](docs/features/socks5.zh-CN.md) | 支持 Profile、P2C/轮询、重试、冷却、粘性会话、连接限制和实时监控的 TCP CONNECT 网关 |
+| [💾 系统备份与 WebDAV](docs/features/backup.zh-CN.md) | 手动/定时备份、远程列表和恢复 |
+| [🔐 OpenVPN 往返转换](#-多协议支持) | Mihomo/Clash OpenVPN YAML 导入、编辑与导出 |
 | [🏷️ 智能标签系统](docs/features/tags.zh-CN.md) | 自动规则打标签、零代码筛选、IP 质量规则 |
 | [⚡ 测速系统](docs/features/speedtest.zh-CN.md) | 测速原理、IP 质量检测、解锁检测、参数配置 |
 | [🌍 解锁检测](docs/features/unlock-check.zh-CN.md) | 流媒体 / AI 可用区检测、Provider 架构、扩展方式 |
@@ -197,8 +221,6 @@ docker-compose up -d
 | [📋 订阅分享](docs/features/subscription-share.zh-CN.md) | 多链接管理、过期策略、访问统计 |
 | [🌐 Host 管理](docs/features/host.zh-CN.md) | 域名映射、DNS 配置、测速持久化 |
 | [☁️ Cloudflare Tunnel](docs/features/cloudflare-tunnel.zh-CN.md) | 创建 Tunnel、获取 token、配置公网访问 |
-| [💾 系统备份与 WebDAV](docs/features/backup.zh-CN.md) | 手动/定时备份、远程列表和恢复 |
-| [🧦 SOCKS5 网关](docs/features/socks5.zh-CN.md) | 支持适配器复用、重试、冷却、连接限制和实时监控的本地 TCP CONNECT 网关 |
 | [🤖 Telegram 机器人](docs/features/telegram-bot.zh-CN.md) | 命令列表、配置指南 |
 | [📜 脚本功能](docs/script_support.zh-CN.md) | 节点过滤、内容后处理、函数参考 |
 | [🔐 双重验证（MFA）](docs/features/mfa.zh-CN.md) | TOTP 设置、恢复码、应急重置流程 |
@@ -219,6 +241,10 @@ docker-compose up -d
 | **v2ray** | base64 通用格式（不输出 Clash/mihomo 专属协议，如 Mieru、Snell、OpenVPN） |
 | **clash / mihomo** | ss, ssr, trojan, vmess, vless, hy, hy2, tuic, AnyTLS, Socks5, HTTP, HTTPS, Mieru, Snell, OpenVPN |
 | **surge** | ss, trojan, vmess, hy2, tuic, AnyTLS, Snell |
+| **loon（原生模板）** | ss, ssr, trojan, vmess, vless, hy2, AnyTLS, Socks5, HTTP, HTTPS, WireGuard；不支持的协议会跳过而不是降级转换 |
+
+> [!NOTE]
+> Loon 提供两条输出路径：订阅选择 Loon `.lcf` 模板后，由 SublinkPro 本地生成完整配置，不调用 Sub-Store；未选择模板时，继续保留原有 Sub-Store 节点转换作为向后兼容路径。仓库提供脱敏公开版 `template/loon.lcf`，私人证书和凭据需要自行安全管理。
 
 > [!NOTE]
 > Mieru 当前仅支持 Clash/mihomo YAML 导入与导出。Mieru 官方存在 `mieru://` / `mierus://` 分享链接，但未定义适合逐字段编辑的通用 URL schema；SublinkPro 为原始编辑与 Clash/mihomo 导入回写使用内部可编辑形态：`mieru://username:password@server:port?...#name`，端口范围使用 `portRange=2090-2099`。v2ray 与 Surge 当前不支持 Mieru，订阅输出会跳过该协议而不是降级转换。

@@ -36,7 +36,22 @@
 English | [简体中文](README.zh-CN.md)
 
 > [!IMPORTANT]
-> This repository, [`linux-jin/sublinkPro`](https://github.com/linux-jin/sublinkPro), is a feature-enhanced community fork of the upstream project [`ZeroDeng01/sublinkPro`](https://github.com/ZeroDeng01/sublinkPro). It regularly incorporates upstream fixes and improvements while maintaining additional OpenVPN, WebDAV, SOCKS5, large-node-list, and container-delivery capabilities.
+> This repository, [`linux-jin/sublinkPro`](https://github.com/linux-jin/sublinkPro), is a feature-enhanced community fork of the upstream project [`ZeroDeng01/sublinkPro`](https://github.com/ZeroDeng01/sublinkPro). It regularly incorporates upstream fixes while giving first-class priority to native Loon profiles, the SOCKS5 gateway, WebDAV automation, OpenVPN round-trip support, large-node management, and multi-architecture container delivery.
+
+---
+
+## 🚀 Why This Fork
+
+The additions maintained by this fork are treated as first-class product features, not secondary patches:
+
+1. **Native Loon profile generation** — select a `.lcf` template to generate a complete Loon profile locally, preserving policy groups, rules, plugins, scripts, and MITM sections. If no Loon template is selected, the existing Sub-Store conversion remains available as a compatibility fallback.
+2. **SOCKS5 gateway and routing profiles** — expose managed nodes through a health-aware TCP CONNECT gateway with P2C/round-robin selection, retries, cooldown, sticky sessions, profile routing, and live load visibility.
+3. **WebDAV backup automation** — upload backup ZIP files manually or on a five-field cron schedule, browse remote backups, and restore them from the web UI.
+4. **OpenVPN YAML round-trip** — import, edit, and export Mihomo/Clash `type: openvpn` entries while retaining supported certificates, keys, and transport fields.
+5. **Large-node and container operations** — server-side pagination/search/filtering, reduced rendering overhead, improved grouped selection, and multi-architecture GHCR images.
+
+> [!TIP]
+> Start with `ghcr.io/linux-jin/sublink-pro:latest` for stable deployments or `ghcr.io/linux-jin/sublink-pro:dev` to test the newest fork features.
 
 ---
 
@@ -47,7 +62,7 @@ This repository is maintained by [`linux-jin`](https://github.com/linux-jin) as 
 The fork follows this maintenance model:
 
 - 🔄 **Track upstream**: periodically merge upstream fixes, protocol improvements, dependency updates, and general features
-- 🧩 **Maintain fork extensions**: OpenVPN YAML round-trip support, WebDAV backup automation, the SOCKS5 gateway, large-node-list optimizations, and GHCR multi-architecture images
+- 🧩 **Maintain fork extensions**: native Loon profile generation, the SOCKS5 gateway, WebDAV backup automation, OpenVPN YAML round-trip support, large-node-list optimizations, and GHCR multi-architecture images
 - 🐛 **Fork-specific feedback**: report issues related to these extensions in the [linux-jin/sublinkPro issue tracker](https://github.com/linux-jin/sublinkPro/issues)
 - 🎨 **Frontend framework**: Based on [Berry Free React Material UI Admin Template](https://github.com/codedthemes/berry-free-react-admin-template)
 - ⚡ **Backend stack**: Go + Gin + Gorm
@@ -67,9 +82,10 @@ The fork follows this maintenance model:
 
 | Feature | Description | Details |
 |:---|:---|:---:|
-| 🔐 **OpenVPN YAML round-trip** | Import and export Mihomo/Clash `type: openvpn` proxy entries while preserving certificates, keys, transport options, and other supported fields | [📖](#-multi-protocol-support) |
-| 💾 **WebDAV backup and scheduling** | Encrypt WebDAV credentials, upload backups manually or by cron, browse remote ZIP files, restore from the page, and handle collection redirects used by services such as TeraCLOUD | [📖](docs/features/backup.md) |
+| 🌙 **Native Loon full-profile output** | Store and select `.lcf` templates, inject locally generated nodes, expand Loon Remote Filters, preserve rules/plugins/scripts/MITM, and fall back to Sub-Store only when no native template is configured | [📖](#-multi-protocol-support) |
 | 🧦 **SOCKS5 gateway and routing profiles** | Health-aware TCP CONNECT gateway with P2C and round-robin routing, sticky sessions, username-selected profiles, node filters, retries, cooldown, connection governance, and live load monitoring | [📖](docs/features/socks5.md) |
+| 💾 **WebDAV backup and scheduling** | Encrypt WebDAV credentials, upload backups manually or by cron, browse remote ZIP files, restore from the page, and handle collection redirects used by services such as TeraCLOUD | [📖](docs/features/backup.md) |
+| 🔐 **OpenVPN YAML round-trip** | Import and export Mihomo/Clash `type: openvpn` proxy entries while preserving certificates, keys, transport options, and other supported fields | [📖](#-multi-protocol-support) |
 | 🚀 **Large node-list optimization** | Compact server projections, reduced rendering overhead, server-side pagination, search and filtering, plus improved grouped node selection for large installations | — |
 | 📦 **Multi-architecture GHCR images** | Automated `amd64`, `arm64`, `arm/v7`, and `386` images; use `latest` for stable releases and `dev` for development builds | [📖](docs/installation.md) |
 
@@ -98,9 +114,13 @@ The fork follows this maintenance model:
 
 **Latest stable release:** `v1.11.0`
 
-- Added independent SOCKS5 routing profiles with profile-specific candidate pools, selection strategies, retries, cooldown, and sticky-session settings.
-- Added username-based profile selection with optional account-scoped affinity through `username@profile` and `username@profile.account`.
-- Preserved extended Clash/Mihomo proxy fields and made node speed tests honor configured `DialerProxyName` front proxies.
+**Current `main` / `dev` additions after v1.11.0:**
+
+- Native Loon `.lcf` template management and full-profile generation, with Sub-Store retained as the no-template compatibility fallback.
+- A sanitized public `template/loon.lcf`; private certificates, credentials, subscriptions, host mappings, and SSIDs are not included.
+- Legacy `.lcf` assignments are automatically repaired, and node-import result dialogs now include complete Chinese and English translations.
+
+The v1.11.0 stable release introduced independent SOCKS5 routing profiles, username-based profile selection, extended Clash/Mihomo field preservation, and front-proxy-aware node speed tests.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 
@@ -188,6 +208,10 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 
 | Document | Description |
 |:---|:---|
+| [🌙 Native Loon output](#-multi-protocol-support) | Complete `.lcf` profile generation with local node injection and Sub-Store compatibility fallback |
+| [🧦 SOCKS5 gateway](docs/features/socks5.md) | Local TCP CONNECT gateway with profiles, P2C/round-robin routing, retries, cooldown, sticky sessions, limits, and monitoring |
+| [💾 System backup and WebDAV](docs/features/backup.md) | Manual/scheduled backups, remote listing, and restore |
+| [🔐 OpenVPN round-trip](#-multi-protocol-support) | Mihomo/Clash OpenVPN YAML import, editing, and export |
 | [🏷️ Smart tag system](docs/features/tags.md) | Automatic rule based tagging, no code filtering, IP quality rules |
 | [⚡ Speed test system](docs/features/speedtest.md) | Test design, IP quality checks, unlock checks, parameter tuning |
 | [🌍 Unlock checks](docs/features/unlock-check.md) | Streaming and AI availability checks, Provider architecture, extensions |
@@ -197,8 +221,6 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 | [📋 Subscription sharing](docs/features/subscription-share.md) | Multiple links, expiration policies, access statistics |
 | [🌐 Host management](docs/features/host.md) | Domain mappings, DNS configuration, speed test persistence |
 | [☁️ Cloudflare Tunnel](docs/features/cloudflare-tunnel.md) | Create a Tunnel, get a token, configure public access |
-| [💾 System backup and WebDAV](docs/features/backup.md) | Manual/scheduled backups, remote listing, and restore |
-| [🧦 SOCKS5 gateway](docs/features/socks5.md) | Local TCP CONNECT gateway with adapter reuse, retries, cooldown, limits, and live monitoring |
 | [🤖 Telegram Bot](docs/features/telegram-bot.md) | Command list and setup guide |
 | [📜 Script support](docs/script_support.md) | Node filtering, content post processing, function reference |
 | [🔐 Multi factor authentication, MFA](docs/features/mfa.md) | TOTP setup, recovery codes, emergency reset flow |
@@ -219,6 +241,10 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 | **v2ray** | base64 common format, without Clash/mihomo specific protocols such as Mieru, Snell, and OpenVPN |
 | **clash / mihomo** | ss, ssr, trojan, vmess, vless, hy, hy2, tuic, AnyTLS, Socks5, HTTP, HTTPS, Mieru, Snell, OpenVPN |
 | **surge** | ss, trojan, vmess, hy2, tuic, AnyTLS, Snell |
+| **loon (native template)** | ss, ssr, trojan, vmess, vless, hy2, AnyTLS, Socks5, HTTP, HTTPS, WireGuard; unsupported protocols are skipped instead of downgraded |
+
+> [!NOTE]
+> Loon has two output paths. When a subscription selects a Loon `.lcf` template, SublinkPro generates the complete profile locally and does not call Sub-Store. Without a Loon template, the existing Sub-Store node-conversion path remains available for backward compatibility. The repository ships a sanitized public `template/loon.lcf`; personal certificates and credentials must be managed privately.
 
 > [!NOTE]
 > Mieru currently supports Clash/mihomo YAML import and export only. Official Mieru has `mieru://` and `mierus://` share links, but does not define a general URL schema suitable for field by field editing. For raw editing and Clash/mihomo import write back, SublinkPro uses an internal editable form: `mieru://username:password@server:port?...#name`, with port ranges written as `portRange=2090-2099`. v2ray and Surge don't support Mieru in SublinkPro. Subscription output skips that protocol instead of converting it to a downgraded form.
