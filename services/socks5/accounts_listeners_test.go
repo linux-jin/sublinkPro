@@ -58,8 +58,8 @@ func testBaseConfig(t *testing.T) Config {
 func authenticateForTest(t *testing.T, server *Server, username, password string) (routingIdentity, error) {
 	t.Helper()
 	client, serverConn := net.Pipe()
-	defer client.Close()
-	defer serverConn.Close()
+	defer func() { _ = client.Close() }()
+	defer func() { _ = serverConn.Close() }()
 	type result struct {
 		identity routingIdentity
 		err      error
@@ -158,11 +158,17 @@ func TestAccountValidationRejectsLegacyAndExtendedUsernames(t *testing.T) {
 
 func freePort(t *testing.T) int {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
+	addr, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		_ = listener.Close()
+		t.Fatalf("unexpected listener address type %T", listener.Addr())
+	}
+	port := addr.Port
 	_ = listener.Close()
 	return port
 }
@@ -187,25 +193,32 @@ func TestManagerRunsMultipleListenersAndPreservesOldGenerationOnBindFailure(t *t
 		t.Fatalf("unexpected listener statuses: %+v", statuses)
 	}
 	for _, port := range []int{firstPort, secondPort} {
-		conn, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), time.Second)
+		dialer := net.Dialer{Timeout: time.Second}
+		conn, err := dialer.DialContext(context.Background(), "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 		if err != nil {
 			t.Fatalf("dial listener %d: %v", port, err)
 		}
 		_ = conn.Close()
 	}
 
-	occupied, err := net.Listen("tcp", "127.0.0.1:0")
+	var listenConfig net.ListenConfig
+	occupied, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer occupied.Close()
-	occupiedPort := occupied.Addr().(*net.TCPAddr).Port
+	defer func() { _ = occupied.Close() }()
+	occupiedAddr, ok := occupied.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatalf("unexpected occupied listener address type %T", occupied.Addr())
+	}
+	occupiedPort := occupiedAddr.Port
 	failed := append(append([]ListenerSpec{}, listeners...), ListenerSpec{ID: "occupied", Enabled: true, ListenAddress: "127.0.0.1", Port: occupiedPort, DefaultProfileID: "default"})
 	if err := manager.ApplyListeners(base, failed); err == nil {
 		t.Fatal("expected occupied listener apply to fail")
 	}
 	for _, port := range []int{firstPort, secondPort} {
-		conn, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), time.Second)
+		dialer := net.Dialer{Timeout: time.Second}
+		conn, err := dialer.DialContext(context.Background(), "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 		if err != nil {
 			t.Fatalf("old listener %d was lost after failed apply: %v", port, err)
 		}
