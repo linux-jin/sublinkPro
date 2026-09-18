@@ -73,6 +73,11 @@ import useResolvedColorScheme from 'hooks/useResolvedColorScheme';
 // Monaco Editor
 import Editor, { DiffEditor } from '@monaco-editor/react';
 
+const TEMPLATE_CATEGORY_LABELS = { clash: 'Clash', surge: 'Surge', loon: 'Loon' };
+const BASE_TEMPLATE_FIELDS = { clash: 'clashTemplate', surge: 'surgeTemplate', loon: 'loonTemplate' };
+const getTemplateCategoryLabel = (category) => TEMPLATE_CATEGORY_LABELS[category] || TEMPLATE_CATEGORY_LABELS.clash;
+const getTemplateEditorLanguage = (category) => (category === 'clash' ? 'yaml' : 'ini');
+
 const createEmptyTemplateAIAssistant = () => ({
   sessionId: '',
   status: 'idle',
@@ -891,7 +896,7 @@ export default function TemplateList() {
     try {
       const res = await getBaseTemplates();
       if (res.data) {
-        const content = category === 'clash' ? res.data.clashTemplate : res.data.surgeTemplate;
+        const content = res.data[BASE_TEMPLATE_FIELDS[category]];
         setBaseTemplateContent(content || '');
       }
     } catch (error) {
@@ -906,7 +911,7 @@ export default function TemplateList() {
     setBaseTemplateSaving(true);
     try {
       await updateBaseTemplate(baseTemplateCategory, baseTemplateContent);
-      showMessage(t('templates.messages.baseTemplateSaveSuccess', { category: baseTemplateCategory === 'clash' ? 'Clash' : 'Surge' }));
+      showMessage(t('templates.messages.baseTemplateSaveSuccess', { category: getTemplateCategoryLabel(baseTemplateCategory) }));
       setBaseTemplateDialogOpen(false);
     } catch (error) {
       console.error(error);
@@ -1395,7 +1400,7 @@ export default function TemplateList() {
       {showDiffReview ? (
         <DiffEditor
           height={fullscreen ? '100%' : '350px'}
-          language={formData.category === 'surge' ? 'ini' : 'yaml'}
+          language={getTemplateEditorLanguage(formData.category)}
           original={aiAssistant.sourceText || ''}
           modified={aiAssistant.candidateText || ''}
           theme="template-ai-editor"
@@ -1418,7 +1423,7 @@ export default function TemplateList() {
       ) : (
         <Editor
           height={fullscreen ? '100%' : '350px'}
-          language={formData.category === 'surge' ? 'ini' : 'yaml'}
+          language={getTemplateEditorLanguage(formData.category)}
           value={formData.text}
           onChange={(value) => {
             setFormData({ ...formData, text: value || '' });
@@ -1595,7 +1600,7 @@ export default function TemplateList() {
   );
 
   const getCategoryChipSx = (category) => {
-    const semanticColor = category === 'surge' ? palette.secondary : palette.primary;
+    const semanticColor = category === 'surge' ? palette.secondary : category === 'loon' ? palette.warning : palette.primary;
 
     return {
       bgcolor: withAlpha(semanticColor.main, isDark ? 0.12 : 0.08),
@@ -1622,6 +1627,9 @@ export default function TemplateList() {
             </Button>
             <Button variant="outlined" size="small" color="secondary" onClick={() => handleOpenBaseTemplate('surge')}>
               {t('templates.baseTemplate.button', { category: 'Surge' })}
+            </Button>
+            <Button variant="outlined" size="small" color="warning" onClick={() => handleOpenBaseTemplate('loon')}>
+              {t('templates.baseTemplate.button', { category: 'Loon' })}
             </Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
               {t('templates.actions.addTemplate')}
@@ -1704,11 +1712,7 @@ export default function TemplateList() {
                     <Chip label={template.file} color="success" variant="outlined" size="small" />
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={template.category === 'surge' ? 'Surge' : 'Clash'}
-                      size="small"
-                      sx={getCategoryChipSx(template.category)}
-                    />
+                    <Chip label={getTemplateCategoryLabel(template.category)} size="small" sx={getCategoryChipSx(template.category)} />
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1844,6 +1848,7 @@ export default function TemplateList() {
                     >
                       <MenuItem value="clash">Clash</MenuItem>
                       <MenuItem value="surge">Surge</MenuItem>
+                      <MenuItem value="loon">Loon</MenuItem>
                     </Select>
                   </FormControl>
                 </Stack>
@@ -2138,7 +2143,7 @@ export default function TemplateList() {
       </Dialog>
 
       <Dialog open={baseTemplateDialogOpen} onClose={() => setBaseTemplateDialogOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>{t('templates.baseTemplate.title', { category: baseTemplateCategory === 'clash' ? 'Clash' : 'Surge' })}</DialogTitle>
+        <DialogTitle>{t('templates.baseTemplate.title', { category: getTemplateCategoryLabel(baseTemplateCategory) })}</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
             {t('templates.baseTemplate.description')}
@@ -2150,7 +2155,7 @@ export default function TemplateList() {
           ) : (
             <Editor
               height="400px"
-              language={baseTemplateCategory === 'surge' ? 'ini' : 'yaml'}
+              language={getTemplateEditorLanguage(baseTemplateCategory)}
               value={baseTemplateContent}
               onChange={(value) => setBaseTemplateContent(value || '')}
               theme="vs-dark"

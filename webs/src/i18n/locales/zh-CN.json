@@ -1391,7 +1391,7 @@
         "allowedTargets": "允许的输出目标",
         "selectedTargetsSummary": "已选择 {{count}} 个扩展目标",
         "allowedTargetsHelper": "只有选中的扩展目标会出现在订阅分享链接中，并允许通过 /c 转换。",
-        "bridgeNote": "扩展输出只转换代理节点。Clash 策略组、规则、DNS 与其他完整配置段不会被 Sub-Store 的一次性解析接口保留。"
+        "bridgeNote": "Loon 在订阅中选择 Loon 模板后会由 SublinkPro 原生生成完整配置；未选择模板时仍可使用 Sub-Store 兼容转换。其他扩展输出只转换代理节点，不保留 Clash 策略组、规则、DNS 等完整配置段。"
       },
       "actions": {
         "refresh": "刷新设置",
@@ -2857,6 +2857,7 @@
         "formatClash": "Clash",
         "formatMihomo": "Mihomo",
         "formatSurge": "Surge",
+        "formatLoon": "Loon",
         "formatV2ray": "V2ray",
         "expandedClients": "扩展客户端",
         "preview": "链接预览",
@@ -2903,6 +2904,9 @@
         "surgeTemplate": "Surge 模板",
         "surgeTemplateNone": "未选择",
         "surgeTemplateHelper": "未检测到可用模板，请检查 Surge 模板是否存在",
+        "loonTemplate": "Loon 模板",
+        "loonTemplateNone": "未选择（使用 Sub-Store 兼容转换）",
+        "loonTemplateHelper": "未检测到 Loon 模板；可在模板管理中添加 .lcf 模板，或继续使用 Sub-Store 兼容转换",
         "updateInterval": "更新间隔 (小时)",
         "updateIntervalHelper": "设置为0时，默认为1天。目前除surge外仅少量clash客户端兼容本参数！",
         "forceUdp": "强制开启 UDP",

@@ -11,22 +11,24 @@ import (
 func GetBaseTemplates(c *gin.Context) {
 	clashTemplate, _ := models.GetSetting("base_template_clash")
 	surgeTemplate, _ := models.GetSetting("base_template_surge")
+	loonTemplate, _ := models.GetSetting("base_template_loon")
 
 	utils.OkDetailed(c, "获取成功", gin.H{
 		"clashTemplate": clashTemplate,
 		"surgeTemplate": surgeTemplate,
+		"loonTemplate":  loonTemplate,
 	})
 }
 
 // UpdateBaseTemplate 更新基础模板配置
 func UpdateBaseTemplate(c *gin.Context) {
 	var req struct {
-		Category string `json:"category" binding:"required,oneof=clash surge"`
+		Category string `json:"category" binding:"required,oneof=clash surge loon"`
 		Content  string `json:"content"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.FailWithMsg(c, "参数错误：category 必须为 clash 或 surge")
+		utils.FailWithMsg(c, "参数错误：category 必须为 clash、surge 或 loon")
 		return
 	}
 
@@ -39,6 +41,8 @@ func UpdateBaseTemplate(c *gin.Context) {
 	categoryName := "Clash"
 	if req.Category == "surge" {
 		categoryName = "Surge"
+	} else if req.Category == "loon" {
+		categoryName = "Loon"
 	}
 	utils.OkWithMsg(c, categoryName+" 基础模板保存成功")
 }

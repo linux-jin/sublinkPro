@@ -195,7 +195,7 @@ func prepareClientResponse(c *gin.Context, clientType, token string) (preparedCl
 func resolveSubscriptionClient(c *gin.Context) string {
 	clientIndex := strings.ToLower(strings.TrimSpace(c.Query("client")))
 	switch clientIndex {
-	case "clash", "mihomo", "surge", "v2ray", "uri", "v2ray-uri":
+	case "clash", "mihomo", "surge", "loon", "v2ray", "uri", "v2ray-uri":
 		return clientIndex
 	}
 	if substore.IsSupportedTarget(clientIndex) {
@@ -221,6 +221,12 @@ func dispatchPreparedClientResponse(c *gin.Context, prepared preparedClientRespo
 		renderPreparedClash(c, prepared)
 	case "surge":
 		renderPreparedSurge(c, prepared)
+	case "loon":
+		if hasNativeLoonTemplate(prepared.Subscription.Config) {
+			renderPreparedLoon(c, prepared)
+			return
+		}
+		renderPreparedConvertedClient(c, prepared)
 	case "uri", "v2ray-uri":
 		renderPreparedConvertedClient(c, prepared)
 	default:
@@ -326,7 +332,8 @@ func writeSyntheticTemplateFile(pattern, content string) (string, error) {
 func buildPreparedResponseFromSubscription(sub models.Subcription, clientType string, shareID int) (preparedClientResponse, bool) {
 	preparedSub := sub
 	materializeClientType := clientType
-	if substore.IsSupportedTarget(clientType) || clientType == "uri" || clientType == "v2ray-uri" || clientType == "mihomo" {
+	usesNativeLoon := clientType == "loon" && hasNativeLoonTemplate(sub.Config)
+	if (substore.IsSupportedTarget(clientType) && !usesNativeLoon) || clientType == "uri" || clientType == "v2ray-uri" || clientType == "mihomo" {
 		materializeClientType = "clash"
 	}
 	if err := preparedSub.GetSub(materializeClientType); err != nil {
@@ -340,6 +347,14 @@ func buildPreparedResponseFromSubscription(sub models.Subcription, clientType st
 		ShareID:          shareID,
 		FallbackIdentity: fallbackIdentityOriginalEnvelope,
 	}, true
+}
+
+func hasNativeLoonTemplate(rawConfig string) bool {
+	var config protocol.OutputConfig
+	if err := json.Unmarshal([]byte(rawConfig), &config); err != nil {
+		return false
+	}
+	return strings.TrimSpace(config.Loon) != ""
 }
 
 func buildPreparedExpiredShareResponse(sub models.Subcription, clientType, message string, shareID int) (preparedClientResponse, bool) {
@@ -962,6 +977,80 @@ func renderPreparedSurge(c *gin.Context, prepared preparedClientResponse) {
 		DecodeClash = res
 	}
 	_, _ = c.Writer.WriteString(interval + "\n" + DecodeClash)
+}
+
+func renderPreparedLoon(c *gin.Context, prepared preparedClientResponse) {
+	resolved, shouldWriteBody := prepareRendererResponse(c, prepared)
+	filename := fmt.Sprintf("%s.lcf", resolved.SubName)
+	c.Writer.Header().Set("Content-Disposition", "inline; filename*=utf-8''"+url.QueryEscape(filename))
+	c.Writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	if !shouldWriteBody {
+		return
+	}
+
+	sub := resolved.Subscription
+	urls := make([]protocol.Urls, 0, len(sub.Nodes))
+	nodeNamePlan := buildClientNodeNamePlan(sub)
+
+	for idx, nodeItem := range sub.Nodes {
+		finalNodeName := nodeNamePlan.NodeNameAt(idx, nodeItem.ID)
+		nodeLink := utils.RenameNodeLink(nodeItem.Link, finalNodeName)
+		switch {
+		case strings.Contains(nodeItem.Link, ","):
+			links := strings.Split(nodeItem.Link, ",")
+			splitNames := nodeNamePlan.SplitNamesAt(idx)
+			for i, link := range links {
+				linkName := finalNodeName
+				if i < len(splitNames) && splitNames[i] != "" {
+					linkName = splitNames[i]
+				}
+				urls = append(urls, protocol.Urls{Url: utils.RenameNodeLink(link, linkName)})
+			}
+		case (strings.HasPrefix(nodeItem.Link, "http://") || strings.HasPrefix(nodeItem.Link, "https://")) && !protocol.IsHTTPLink(nodeItem.Link):
+			resp, err := getRemoteSubscription(c.Request.Context(), nodeItem.Link)
+			if err != nil {
+				utils.Error("Error getting Loon subscription link: %v", err)
+				continue
+			}
+			body, readErr := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if readErr != nil {
+				utils.Error("Error reading Loon subscription link: %v", readErr)
+				continue
+			}
+			for _, link := range strings.Split(utils.Base64Decode(string(body)), "\n") {
+				if strings.TrimSpace(link) != "" {
+					urls = append(urls, protocol.Urls{Url: link})
+				}
+			}
+		default:
+			urls = append(urls, protocol.Urls{Url: nodeLink})
+		}
+	}
+
+	var config protocol.OutputConfig
+	if err := json.Unmarshal([]byte(sub.Config), &config); err != nil {
+		_, _ = c.Writer.WriteString("配置读取错误")
+		return
+	}
+	if config.ReplaceServerWithHost {
+		config.HostMap = models.GetHostMap()
+	}
+
+	output, err := protocol.EncodeLoon(urls, config)
+	if err != nil {
+		_, _ = c.Writer.WriteString(err.Error())
+		return
+	}
+	for _, script := range sub.ScriptsWithSort {
+		result, scriptErr := utils.RunScript(script.Content, output, "loon")
+		if scriptErr != nil {
+			utils.Error("Script execution failed: %v", scriptErr)
+			continue
+		}
+		output = result
+	}
+	_, _ = c.Writer.WriteString(output)
 }
 
 // getSubscriptionUsage 计算订阅的流量使用情况

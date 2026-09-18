@@ -22,3 +22,10 @@ sublinkPro.exe
 /.omo/
 /docs/superpowers/
 /.agents/.tmp/
+# Local Codex planning and private user templates
+/task_plan.md
+/findings.md
+/progress.md
+/template/forHome.yaml
+/template/forJob.yaml
+/template/forLoon.lcf

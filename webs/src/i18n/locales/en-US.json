@@ -1391,7 +1391,7 @@
         "allowedTargets": "Allowed output targets",
         "selectedTargetsSummary": "{{count}} expanded targets selected",
         "allowedTargetsHelper": "Only selected expanded targets appear in subscription share links and can be converted by /c.",
-        "bridgeNote": "Expanded outputs convert proxy nodes only. Clash strategy groups, rules, DNS sections, and other full configuration sections are not preserved by the Sub-Store one-shot parser."
+        "bridgeNote": "Loon is generated natively as a full profile when a Loon template is selected for the subscription; without one, the Sub-Store compatibility conversion remains available. Other expanded outputs convert proxy nodes only and do not preserve full Clash sections."
       },
       "actions": {
         "refresh": "Refresh settings",
@@ -2857,6 +2857,7 @@
         "formatClash": "Clash",
         "formatMihomo": "Mihomo",
         "formatSurge": "Surge",
+        "formatLoon": "Loon",
         "formatV2ray": "V2ray",
         "expandedClients": "Expanded Clients",
         "preview": "Link Preview",
@@ -2903,6 +2904,9 @@
         "surgeTemplate": "Surge Template",
         "surgeTemplateNone": "Not selected",
         "surgeTemplateHelper": "No available template detected. Please check if the Surge template exists.",
+        "loonTemplate": "Loon Template",
+        "loonTemplateNone": "Not selected (use Sub-Store compatibility conversion)",
+        "loonTemplateHelper": "No Loon template detected. Add an .lcf template in Template Management or keep using the Sub-Store compatibility conversion.",
         "updateInterval": "Update Interval (Hours)",
         "updateIntervalHelper": "When set to 0, it defaults to 1 day. Currently, besides surge, only a few clash clients support this parameter!",
         "forceUdp": "Force Enable UDP",

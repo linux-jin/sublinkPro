@@ -115,6 +115,7 @@ export default function SubscriptionList() {
     name: '',
     clash: './template/clash.yaml',
     surge: './template/surge.conf',
+    loon: '',
     udp: false,
     cert: false,
     replaceServerWithHost: false,
@@ -538,6 +539,7 @@ export default function SubscriptionList() {
       name: '',
       clash: './template/clash.yaml',
       surge: './template/surge.conf',
+      loon: '',
       udp: false,
       cert: false,
       replaceServerWithHost: false,
@@ -616,6 +618,7 @@ export default function SubscriptionList() {
       name: sub.Name,
       clash: config?.clash || './template/clash.yaml',
       surge: config?.surge || './template/surge.conf',
+      loon: config?.loon || '',
       udp: config?.udp || false,
       cert: config?.cert || false,
       replaceServerWithHost: config?.replaceServerWithHost || false,
@@ -705,6 +708,7 @@ export default function SubscriptionList() {
       const config = JSON.stringify({
         clash: formData.clash,
         surge: formData.surge,
+        loon: formData.loon,
         udp: formData.udp,
         cert: formData.cert,
         replaceServerWithHost: formData.replaceServerWithHost

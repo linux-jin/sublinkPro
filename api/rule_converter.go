@@ -20,7 +20,7 @@ import (
 // ConvertRulesRequest 规则转换请求
 type ConvertRulesRequest struct {
 	RuleSource       string `json:"ruleSource"`       // 远程 ACL 配置 URL
-	Category         string `json:"category"`         // clash / surge
+	Category         string `json:"category"`         // clash / surge / loon
 	Expand           bool   `json:"expand"`           // 是否展开规则
 	Template         string `json:"template"`         // 当前模板内容
 	UseProxy         bool   `json:"useProxy"`         // 是否使用代理
@@ -78,10 +78,17 @@ func ConvertRules(c *gin.Context) {
 	if req.Category == "" {
 		req.Category = "clash"
 	}
+	req.Category = strings.ToLower(strings.TrimSpace(req.Category))
+	if !models.IsSupportedTemplateCategory(req.Category) {
+		utils.FailWithMsg(c, "不支持的模板类别: "+req.Category)
+		return
+	}
 
-	// 检测模板类型与选择的类别是否匹配
+	// 检测模板类型与选择的类别是否匹配。Loon 与 Surge 的最小模板
+	// 共享核心 section，因此显式选择 Loon 时允许通用 INI 模板。
 	templateType := detectTemplateType(req.Template)
-	if templateType != "" && templateType != req.Category {
+	compatibleTemplateType := templateType == req.Category || (req.Category == "loon" && templateType == "surge")
+	if templateType != "" && !compatibleTemplateType {
 		utils.FailWithMsg(c, fmt.Sprintf("模板内容与选择的类别不匹配：检测到 %s 格式的模板，但选择的类别是 %s", templateType, req.Category))
 		return
 	}
@@ -103,10 +110,14 @@ func ConvertRules(c *gin.Context) {
 
 	// 根据类型生成配置
 	var proxyGroupsStr, rulesStr string
-	if req.Category == "surge" {
+	switch req.Category {
+	case "surge":
 		proxyGroupsStr = generateSurgeProxyGroups(proxyGroups, req.EnableIncludeAll)
 		rulesStr, err = generateSurgeRules(rulesets, req.Expand, req.UseProxy, req.ProxyLink)
-	} else {
+	case "loon":
+		proxyGroupsStr = generateLoonProxyGroups(proxyGroups, req.EnableIncludeAll)
+		rulesStr, err = generateLoonRules(rulesets, req.Expand, req.UseProxy, req.ProxyLink)
+	default:
 		proxyGroupsStr = generateClashProxyGroups(proxyGroups, req.EnableIncludeAll)
 		rulesStr, err = generateClashRules(rulesets, req.Expand, req.UseProxy, req.ProxyLink)
 	}
@@ -957,6 +968,58 @@ func generateSurgeProxyGroups(groups []ACLProxyGroup, enableIncludeAll bool) str
 	return strings.Join(lines, "\n")
 }
 
+// generateLoonProxyGroups creates Loon proxy groups plus temporary Remote
+// Filter definitions. The native renderer resolves the filter references against
+// locally generated nodes and removes [Remote Filter] from the final profile.
+func generateLoonProxyGroups(groups []ACLProxyGroup, enableIncludeAll bool) string {
+	filterLines := []string{"[Remote Filter]"}
+	groupLines := []string{"[Proxy Group]"}
+
+	for index, group := range groups {
+		tokens := append([]string{}, group.Proxies...)
+		if group.Filter != "" {
+			filterName := fmt.Sprintf("__SublinkPro_Filter_%d", index+1)
+			pattern := strings.TrimPrefix(strings.TrimSuffix(group.Filter, ")"), "(")
+			filterLines = append(filterLines, fmt.Sprintf(`%s = NameRegex,SublinkPro,FilterKey="%s"`, filterName, strings.ReplaceAll(pattern, `"`, `\"`)))
+			tokens = append(tokens, filterName)
+		} else if group.IncludeAll || (len(tokens) == 0 && !enableIncludeAll) {
+			tokens = append(tokens, "__ALL_PROXIES__")
+		} else if len(tokens) == 0 && enableIncludeAll {
+			tokens = append(tokens, "__ALL_PROXIES__")
+		}
+
+		parts := []string{group.Type}
+		parts = append(parts, tokens...)
+		if group.Type == "url-test" || group.Type == "fallback" || group.Type == "load-balance" {
+			testURL := group.URL
+			if testURL == "" {
+				testURL = "http://www.gstatic.com/generate_204"
+			}
+			interval := group.Interval
+			if interval <= 0 {
+				interval = 300
+			}
+			parts = append(parts, fmt.Sprintf("url=%s", testURL), fmt.Sprintf("interval=%d", interval))
+			switch group.Type {
+			case "url-test":
+				if group.Tolerance > 0 {
+					parts = append(parts, fmt.Sprintf("tolerance=%d", group.Tolerance))
+				}
+			case "fallback":
+				parts = append(parts, "max-timeout=3000")
+			case "load-balance":
+				parts = append(parts, "algorithm=PCC", "max-timeout=3000")
+			}
+		}
+		groupLines = append(groupLines, fmt.Sprintf("%s = %s", group.Name, strings.Join(parts, ",")))
+	}
+
+	if len(filterLines) == 1 {
+		return strings.Join(groupLines, "\n")
+	}
+	return strings.Join(filterLines, "\n") + "\n\n" + strings.Join(groupLines, "\n")
+}
+
 // generateSurgeRules 生成 Surge 格式的规则
 func generateSurgeRules(rulesets []ACLRuleset, expand bool, useProxy bool, proxyLink string) (string, error) {
 	var lines []string
@@ -1005,6 +1068,57 @@ func generateSurgeRules(rulesets []ACLRuleset, expand bool, useProxy bool, proxy
 	return strings.Join(lines, "\n"), nil
 }
 
+// generateLoonRules emits local rules in [Rule] and leaves compatible remote
+// rule lists in [Remote Rule]. Clash providers are expanded because Loon cannot
+// consume their provider YAML directly.
+func generateLoonRules(rulesets []ACLRuleset, expand bool, useProxy bool, proxyLink string) (string, error) {
+	localLines := []string{"[Rule]"}
+	remoteLines := []string{"[Remote Rule]"}
+
+	if expand {
+		for _, rule := range expandRulesParallel(rulesets, useProxy, proxyLink) {
+			if strings.HasPrefix(rule, "MATCH,") {
+				rule = "FINAL," + strings.TrimPrefix(rule, "MATCH,")
+			}
+			localLines = append(localLines, rule)
+		}
+	} else {
+		for index, ruleset := range rulesets {
+			source := parseRulesetSource(ruleset.RuleURL)
+			if source.IsInline {
+				rule := source.InlineRule
+				ruleType := strings.SplitN(rule, ",", 2)[0]
+				if ruleType == "FINAL" || ruleType == "MATCH" {
+					localLines = append(localLines, fmt.Sprintf("FINAL,%s", ruleset.Group))
+				} else {
+					localLines = append(localLines, buildInlineRule(rule, ruleset.Group))
+				}
+				continue
+			}
+			if source.URL == "" {
+				continue
+			}
+			if strings.HasPrefix(source.SourceType, "clash-") {
+				content, err := fetchRemoteContent(source.URL, useProxy, proxyLink)
+				if err != nil {
+					utils.Error("获取规则失败 %s: %v", source.URL, err)
+					continue
+				}
+				localLines = append(localLines, parseRemoteRulesForSurge(content, source, ruleset.Group)...)
+				continue
+			}
+			tag := fmt.Sprintf("SublinkPro-%d-%s", index+1, strings.ReplaceAll(ruleset.Group, ",", "-"))
+			remoteLines = append(remoteLines, fmt.Sprintf("%s, policy=%s, tag=%s, enabled=true", source.URL, ruleset.Group, tag))
+		}
+	}
+
+	sections := []string{strings.Join(localLines, "\n")}
+	if len(remoteLines) > 1 {
+		sections = append(sections, strings.Join(remoteLines, "\n"))
+	}
+	return strings.Join(sections, "\n\n"), nil
+}
+
 func parseRemoteRulesForSurge(content string, source parsedRulesetSource, group string) []string {
 	rules := parseRemoteRules(content, source, group)
 	for i, rule := range rules {
@@ -1017,10 +1131,14 @@ func parseRemoteRulesForSurge(content string, source parsedRulesetSource, group 
 
 // mergeToTemplate 将生成的代理组和规则合并到模板内容中
 func mergeToTemplate(template, proxyGroups, rules, category string) string {
-	if category == "surge" {
+	switch category {
+	case "surge":
 		return mergeSurgeTemplate(template, proxyGroups, rules)
+	case "loon":
+		return mergeLoonTemplate(template, proxyGroups, rules)
+	default:
+		return mergeClashTemplate(template, proxyGroups, rules)
 	}
-	return mergeClashTemplate(template, proxyGroups, rules)
 }
 
 // mergeClashTemplate 合并 Clash 模板
@@ -1120,13 +1238,51 @@ func mergeSurgeTemplate(template, proxyGroups, rules string) string {
 	return resultStr
 }
 
+// mergeLoonTemplate replaces only generated policy/rule sections and preserves
+// the rest of a complete Loon profile, including plugins, scripts, MITM and DNS.
+func mergeLoonTemplate(template, proxyGroups, rules string) string {
+	lines := strings.Split(template, "\n")
+	result := make([]string, 0, len(lines))
+	skipSection := false
+	replacedSections := map[string]bool{
+		"[Proxy Group]":   true,
+		"[Remote Filter]": true,
+		"[Rule]":          true,
+		"[Remote Rule]":   true,
+	}
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+			skipSection = replacedSections[trimmed]
+			if skipSection {
+				continue
+			}
+		}
+		if !skipSection {
+			result = append(result, line)
+		}
+	}
+
+	base := strings.TrimRight(strings.Join(result, "\n"), "\n")
+	return base + "\n\n" + proxyGroups + "\n\n" + rules
+}
+
 // detectTemplateType 检测模板类型
 func detectTemplateType(template string) string {
 	if strings.TrimSpace(template) == "" {
 		return ""
 	}
 
-	// Surge 特征: [General], [Proxy], [Proxy Group], [Rule] sections
+	// Loon-specific sections must be checked before the shared Surge-style core.
+	loonPatterns := []string{"[Remote Proxy]", "[Remote Filter]", "[Remote Rule]", "[Plugin]"}
+	for _, pattern := range loonPatterns {
+		if strings.Contains(template, pattern) {
+			return "loon"
+		}
+	}
+
+	// Surge and minimal Loon profiles share these core sections.
 	surgePatterns := []string{"[General]", "[Proxy]", "[Proxy Group]", "[Rule]"}
 	for _, pattern := range surgePatterns {
 		if strings.Contains(template, pattern) {
@@ -1155,6 +1311,18 @@ func getDefaultTemplate(category string) string {
 	}
 
 	// 回退到硬编码默认值
+	if category == "loon" {
+		return `[General]
+
+[Proxy]
+
+[Proxy Group]
+节点选择 = select,__ALL_PROXIES__
+
+[Rule]
+FINAL,节点选择
+`
+	}
 	if category == "surge" {
 		return `[General]
 loglevel = notify

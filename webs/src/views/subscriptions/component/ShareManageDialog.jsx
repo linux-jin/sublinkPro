@@ -72,8 +72,9 @@ const NATIVE_CLIENT_LINKS = [
   { key: 'v2ray', client: 'v2ray' }
 ];
 
+const LOON_CLIENT_LINK = { key: 'loon', client: 'loon' };
+
 const EXPANDED_CLIENT_LINKS = [
-  { key: 'loon', client: 'loon' },
   { key: 'egern', client: 'egern' },
   { key: 'stash', client: 'stash' },
   { key: 'surfboard', client: 'surfboard' },
@@ -868,10 +869,24 @@ export default function ShareManageDialog({ open, subscription, onClose, showMes
     );
   };
 
+  const hasNativeLoonTemplate = useMemo(() => {
+    try {
+      const config = typeof subscription?.Config === 'string' ? JSON.parse(subscription.Config) : subscription?.Config;
+      return Boolean(config?.loon?.trim());
+    } catch {
+      return false;
+    }
+  }, [subscription?.Config]);
+
+  const loonAvailable = hasNativeLoonTemplate || subStoreTargets.includes('loon');
   const visibleClientLinks = useMemo(() => {
     const allowedTargets = new Set(subStoreTargets);
-    return [...NATIVE_CLIENT_LINKS, ...EXPANDED_CLIENT_LINKS.filter((item) => allowedTargets.has(item.client))];
-  }, [subStoreTargets]);
+    return [
+      ...NATIVE_CLIENT_LINKS,
+      ...(loonAvailable ? [LOON_CLIENT_LINK] : []),
+      ...EXPANDED_CLIENT_LINKS.filter((item) => allowedTargets.has(item.client))
+    ];
+  }, [loonAvailable, subStoreTargets]);
 
   const detailClientUrls = detailShare
     ? visibleClientLinks.reduce(
@@ -1295,6 +1310,7 @@ export default function ShareManageDialog({ open, subscription, onClose, showMes
         selectedShares={shares.filter((s) => selectedShares.includes(s.id))}
         serverUrl={getServerUrl()}
         subStoreTargets={subStoreTargets}
+        loonAvailable={loonAvailable}
       />
     </>
   );

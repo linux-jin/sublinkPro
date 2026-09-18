@@ -52,6 +52,8 @@ func TestInferTemplateCategory(t *testing.T) {
 		"clash.yaml": "clash",
 		"surge.conf": "surge",
 		"SURGE.CONF": "surge",
+		"loon.lcf":   "loon",
+		"LOON.LCF":   "loon",
 		"rules.txt":  "clash",
 	}
 
@@ -72,6 +74,9 @@ func TestMigrateTemplatesFromFilesCreatesExpectedCategories(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(templateDir, "surge.conf"), []byte("[General]\n"), 0600); err != nil {
 		t.Fatalf("write surge template: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(templateDir, "loon.lcf"), []byte("[General]\n[Proxy]\n[Proxy Group]\n"), 0600); err != nil {
+		t.Fatalf("write Loon template: %v", err)
+	}
 
 	if err := MigrateTemplatesFromFiles(templateDir); err != nil {
 		t.Fatalf("migrate templates: %v", err)
@@ -81,8 +86,8 @@ func TestMigrateTemplatesFromFilesCreatesExpectedCategories(t *testing.T) {
 	if err := database.DB.Order("name asc").Find(&templates).Error; err != nil {
 		t.Fatalf("query templates: %v", err)
 	}
-	if len(templates) != 2 {
-		t.Fatalf("expected 2 templates, got %d", len(templates))
+	if len(templates) != 3 {
+		t.Fatalf("expected 3 templates, got %d", len(templates))
 	}
 
 	got := map[string]string{}
@@ -94,6 +99,9 @@ func TestMigrateTemplatesFromFilesCreatesExpectedCategories(t *testing.T) {
 	}
 	if got["surge.conf"] != "surge" {
 		t.Fatalf("expected surge.conf category surge, got %q", got["surge.conf"])
+	}
+	if got["loon.lcf"] != "loon" {
+		t.Fatalf("expected loon.lcf category loon, got %q", got["loon.lcf"])
 	}
 }
 

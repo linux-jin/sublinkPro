@@ -38,6 +38,27 @@ const testSurgeTemplate = `[General]
 test = select
 `
 
+const testLoonTemplate = `[General]
+loglevel = notify
+
+[Proxy]
+
+[Remote Proxy]
+legacy = https://example.invalid/sub
+
+[Remote Filter]
+all = NameRegex,legacy,FilterKey=".*"
+
+[Proxy Group]
+test = select,all
+
+[Remote Rule]
+https://example.invalid/rules, policy=test, tag=test, enabled=true
+
+[Plugin]
+https://example.invalid/plugin.plugin, enabled=true
+`
+
 func setupClientsAPITestDB(t *testing.T) {
 	t.Helper()
 
@@ -99,10 +120,15 @@ func setupClientsAPITestDB(t *testing.T) {
 
 func createClientSubscriptionFixture(t *testing.T, clashTemplatePath, surgeTemplatePath, subName, token, linkName string) {
 	t.Helper()
+	createClientSubscriptionFixtureWithConfig(t, `{"clash":"`+clashTemplatePath+`","surge":"`+surgeTemplatePath+`"}`, subName, token, linkName)
+}
+
+func createClientSubscriptionFixtureWithConfig(t *testing.T, config, subName, token, linkName string) {
+	t.Helper()
 
 	sub := models.Subcription{
 		Name:                  subName,
-		Config:                `{"clash":"` + clashTemplatePath + `","surge":"` + surgeTemplatePath + `"}`,
+		Config:                config,
 		RefreshUsageOnRequest: false,
 	}
 	if err := sub.Add(); err != nil {
@@ -203,6 +229,23 @@ func writeTestSurgeTemplate(t *testing.T) string {
 		t.Fatalf("close surge template: %v", err)
 	}
 
+	return filepath.ToSlash(file.Name())
+}
+
+func writeTestLoonTemplate(t *testing.T) string {
+	t.Helper()
+
+	file, err := os.CreateTemp(t.TempDir(), "loon-template-*.lcf")
+	if err != nil {
+		t.Fatalf("create Loon template: %v", err)
+	}
+	if _, err := file.WriteString(testLoonTemplate); err != nil {
+		_ = file.Close()
+		t.Fatalf("write Loon template: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("close Loon template: %v", err)
+	}
 	return filepath.ToSlash(file.Name())
 }
 
@@ -356,6 +399,12 @@ func renderPreparedClientProxyNames(t *testing.T, clientType string, nodeNameRul
 		templatePath = writeTestSurgeTemplate(t)
 		prepared.Subscription.Config = `{"surge":"` + templatePath + `"}`
 		renderPreparedSurge(ginContext, prepared)
+		return surgeProxyNamesFromBody(recorder.Body.String())
+	}
+	if clientType == "loon" {
+		templatePath = writeTestLoonTemplate(t)
+		prepared.Subscription.Config = `{"loon":"` + templatePath + `"}`
+		renderPreparedLoon(ginContext, prepared)
 		return surgeProxyNamesFromBody(recorder.Body.String())
 	}
 
@@ -906,6 +955,8 @@ func TestRenderPreparedClientKeepsDuplicateProxyNamesWithoutDuplicateIndexVariab
 		{name: "clash split", clientType: "clash", splitFirst: true, wantNames: []string{"source-a", "source-a", "source-a"}},
 		{name: "surge duplicate", clientType: "surge", wantNames: []string{"source-a", "source-a"}},
 		{name: "surge split", clientType: "surge", splitFirst: true, wantNames: []string{"source-a", "source-a", "source-a"}},
+		{name: "loon duplicate", clientType: "loon", wantNames: []string{"source-a", "source-a"}},
+		{name: "loon split", clientType: "loon", splitFirst: true, wantNames: []string{"source-a", "source-a", "source-a"}},
 	}
 
 	for _, tt := range tests {
@@ -929,6 +980,8 @@ func TestRenderPreparedClientUsesDuplicateIndexVariableForDuplicateProxyNames(t 
 		{name: "clash split", clientType: "clash", splitFirst: true, wantNames: []string{"source-a", "source-a1", "source-a2"}},
 		{name: "surge duplicate", clientType: "surge", wantNames: []string{"source-a", "source-a1"}},
 		{name: "surge split", clientType: "surge", splitFirst: true, wantNames: []string{"source-a", "source-a1", "source-a2"}},
+		{name: "loon duplicate", clientType: "loon", wantNames: []string{"source-a", "source-a1"}},
+		{name: "loon split", clientType: "loon", splitFirst: true, wantNames: []string{"source-a", "source-a1", "source-a2"}},
 	}
 
 	for _, tt := range tests {
@@ -1050,6 +1103,61 @@ func TestGetClientInvalidShareReturnsSyntheticV2rayNode(t *testing.T) {
 	}
 	if got := recorder.Header().Get("subscription-userinfo"); got == "" {
 		t.Fatal("expected subscription-userinfo header for invalid v2ray share")
+	}
+}
+
+func TestGetClientLoonTemplateUsesNativeRenderer(t *testing.T) {
+	setupClientsAPITestDB(t)
+	clashTemplatePath := writeTestClashTemplate(t)
+	surgeTemplatePath := writeTestSurgeTemplate(t)
+	loonTemplatePath := writeTestLoonTemplate(t)
+	config := `{"clash":"` + clashTemplatePath + `","surge":"` + surgeTemplatePath + `","loon":"` + loonTemplatePath + `"}`
+	createClientSubscriptionFixtureWithConfig(t, config, "native-loon-sub", "native-loon-token", "Native Loon Node")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("native Loon renderer unexpectedly called Sub-Store: %s", r.URL.Path)
+	}))
+	t.Cleanup(server.Close)
+	saveSubStoreSettings(t, server.URL, []string{"loon"})
+
+	recorder := performClientRequest(t, http.MethodGet, "/c/?token=native-loon-token&client=loon")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected native Loon status 200, got %d body=%q", recorder.Code, recorder.Body.String())
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{"[Proxy]", "Native Loon Node=shadowsocks", "test = select,Native Loon Node", "[Plugin]", "[Remote Rule]"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("native Loon output missing %q: %s", want, body)
+		}
+	}
+	for _, unwanted := range []string{"[Remote Proxy]", "[Remote Filter]", "#!MANAGED-CONFIG"} {
+		if strings.Contains(body, unwanted) {
+			t.Fatalf("native Loon output retained %q: %s", unwanted, body)
+		}
+	}
+	if got := recorder.Header().Get("Content-Disposition"); !strings.Contains(got, "native-loon-sub.lcf") {
+		t.Fatalf("unexpected Loon content disposition: %q", got)
+	}
+	if got := recorder.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
+		t.Fatalf("unexpected Loon content type: %q", got)
+	}
+}
+
+func TestGetClientLoonTemplateHeadHasHeadersWithoutBody(t *testing.T) {
+	setupClientsAPITestDB(t)
+	loonTemplatePath := writeTestLoonTemplate(t)
+	config := `{"loon":"` + loonTemplatePath + `"}`
+	createClientSubscriptionFixtureWithConfig(t, config, "native-loon-head", "native-loon-head-token", "Native Loon Head")
+
+	recorder := performClientRequest(t, http.MethodHead, "/c/?token=native-loon-head-token&client=loon")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected HEAD status 200, got %d", recorder.Code)
+	}
+	if recorder.Body.Len() != 0 {
+		t.Fatalf("expected empty HEAD body, got %q", recorder.Body.String())
+	}
+	if got := recorder.Header().Get("Content-Disposition"); !strings.Contains(got, "native-loon-head.lcf") {
+		t.Fatalf("unexpected Loon HEAD content disposition: %q", got)
 	}
 }
 

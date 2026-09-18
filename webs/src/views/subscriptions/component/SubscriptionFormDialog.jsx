@@ -171,6 +171,10 @@ export default function SubscriptionFormDialog({
     return templates.filter((t) => t.category === 'surge');
   }, [templates]);
 
+  const loonTemplates = useMemo(() => {
+    return templates.filter((t) => t.category === 'loon');
+  }, [templates]);
+
   const unlockProviderOptions = getUnlockProviderOptions();
   const unlockRenameVariables = getUnlockRenameVariables();
   const unlockRules = useMemo(() => (Array.isArray(formData.unlockRules) ? formData.unlockRules : []), [formData.unlockRules]);
@@ -433,7 +437,7 @@ export default function SubscriptionFormDialog({
                 />
 
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <FormControl fullWidth>
                       <InputLabel shrink>{t('subscriptions.form.basic.clashTemplate')}</InputLabel>
                       <Select
@@ -459,7 +463,7 @@ export default function SubscriptionFormDialog({
                       </Alert>
                     )}
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <FormControl fullWidth>
                       <InputLabel shrink>{t('subscriptions.form.basic.surgeTemplate')}</InputLabel>
                       <Select
@@ -469,7 +473,7 @@ export default function SubscriptionFormDialog({
                         displayEmpty
                       >
                         <MenuItem value="">
-                          <Typography color="text.secondary">{t('subscriptions.form.basic.clashTemplateNone')}</Typography>
+                          <Typography color="text.secondary">{t('subscriptions.form.basic.surgeTemplateNone')}</Typography>
                         </MenuItem>
                         {surgeTemplates.map((t) => (
                           <MenuItem key={t.file} value={`./template/${t.file}`}>
@@ -481,6 +485,31 @@ export default function SubscriptionFormDialog({
                     {surgeTemplates.length === 0 && (
                       <Alert severity="warning" sx={{ mt: 1 }}>
                         <Typography variant="caption">{t('subscriptions.form.basic.surgeTemplateHelper')}</Typography>
+                      </Alert>
+                    )}
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControl fullWidth>
+                      <InputLabel shrink>{t('subscriptions.form.basic.loonTemplate')}</InputLabel>
+                      <Select
+                        value={formData.loon || ''}
+                        label={t('subscriptions.form.basic.loonTemplate')}
+                        onChange={(e) => setFormData({ ...formData, loon: e.target.value })}
+                        displayEmpty
+                      >
+                        <MenuItem value="">
+                          <Typography color="text.secondary">{t('subscriptions.form.basic.loonTemplateNone')}</Typography>
+                        </MenuItem>
+                        {loonTemplates.map((template) => (
+                          <MenuItem key={template.file} value={`./template/${template.file}`}>
+                            {template.file}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    {loonTemplates.length === 0 && (
+                      <Alert severity="info" sx={{ mt: 1 }}>
+                        <Typography variant="caption">{t('subscriptions.form.basic.loonTemplateHelper')}</Typography>
                       </Alert>
                     )}
                   </Grid>

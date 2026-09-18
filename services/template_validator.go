@@ -42,7 +42,7 @@ func ValidateTemplateCandidate(input TemplateValidationInput) TemplateValidation
 	trimmedCategory := strings.TrimSpace(input.Category)
 	detectedType := detectTemplateType(input.CandidateText)
 	result.DetectedType = detectedType
-	if detectedType != "" && trimmedCategory != "" && detectedType != trimmedCategory {
+	if detectedType != "" && trimmedCategory != "" && !templateCategoryMatchesDetected(trimmedCategory, detectedType) {
 		result.Valid = false
 		result.Errors = append(result.Errors, "模板内容与选择的类别不匹配")
 	}
@@ -54,6 +54,12 @@ func ValidateTemplateCandidate(input TemplateValidationInput) TemplateValidation
 	}
 	if trimmedCategory == "surge" {
 		if err := validateSurge(input.CandidateText); err != nil {
+			result.Valid = false
+			result.Errors = append(result.Errors, err.Error())
+		}
+	}
+	if trimmedCategory == "loon" {
+		if err := validateLoon(input.CandidateText); err != nil {
 			result.Valid = false
 			result.Errors = append(result.Errors, err.Error())
 		}
@@ -82,6 +88,25 @@ func validateClash(content string) error {
 }
 
 func validateSurge(content string) error {
+	sections := collectTemplateSections(content)
+	if !sections["[Proxy]"] {
+		return errString("Surge 模板缺少 [Proxy] section")
+	}
+	return nil
+}
+
+func validateLoon(content string) error {
+	sections := collectTemplateSections(content)
+	if !sections["[Proxy]"] {
+		return errString("Loon 模板缺少 [Proxy] section")
+	}
+	if !sections["[Proxy Group]"] {
+		return errString("Loon 模板缺少 [Proxy Group] section")
+	}
+	return nil
+}
+
+func collectTemplateSections(content string) map[string]bool {
 	sections := map[string]bool{}
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	for scanner.Scan() {
@@ -90,10 +115,15 @@ func validateSurge(content string) error {
 			sections[line] = true
 		}
 	}
-	if !sections["[Proxy]"] {
-		return errString("Surge 模板缺少 [Proxy] section")
+	return sections
+}
+
+func templateCategoryMatchesDetected(category, detected string) bool {
+	if category == detected {
+		return true
 	}
-	return nil
+	// A minimal Loon profile and a Surge profile share the same core INI sections.
+	return category == "loon" && detected == "surge"
 }
 
 type errString string
@@ -103,6 +133,12 @@ func (e errString) Error() string { return string(e) }
 func detectTemplateType(template string) string {
 	if strings.TrimSpace(template) == "" {
 		return ""
+	}
+	loonPatterns := []string{"[Remote Proxy]", "[Remote Filter]", "[Remote Rule]", "[Plugin]"}
+	for _, pattern := range loonPatterns {
+		if strings.Contains(template, pattern) {
+			return "loon"
+		}
 	}
 	surgePatterns := []string{"[General]", "[Proxy]", "[Proxy Group]", "[Rule]"}
 	for _, pattern := range surgePatterns {

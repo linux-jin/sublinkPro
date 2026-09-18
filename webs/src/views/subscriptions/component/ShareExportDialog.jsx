@@ -26,8 +26,9 @@ const NATIVE_CLIENT_LINKS = [
   { key: 'v2ray', client: 'v2ray' }
 ];
 
+const LOON_CLIENT_LINK = { key: 'loon', client: 'loon' };
+
 const EXPANDED_CLIENT_LINKS = [
-  { key: 'loon', client: 'loon' },
   { key: 'egern', client: 'egern' },
   { key: 'stash', client: 'stash' },
   { key: 'surfboard', client: 'surfboard' },
@@ -41,7 +42,7 @@ const EXPANDED_CLIENT_LINKS = [
 /**
  * ShareExportDialog - Batch export share links to text file
  */
-export default function ShareExportDialog({ open, onClose, selectedShares, serverUrl, subStoreTargets }) {
+export default function ShareExportDialog({ open, onClose, selectedShares, serverUrl, subStoreTargets, loonAvailable }) {
   const theme = useTheme();
   const { t } = useTranslation();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -105,6 +106,7 @@ export default function ShareExportDialog({ open, onClose, selectedShares, serve
       value: client.client,
       label: t(`subscriptions.share.exportDialog.format${client.key.charAt(0).toUpperCase() + client.key.slice(1)}`)
     })),
+    ...(loonAvailable ? [{ value: LOON_CLIENT_LINK.client, label: t('subscriptions.share.exportDialog.formatLoon') }] : []),
     ...EXPANDED_CLIENT_LINKS.filter((client) => subStoreTargets?.includes(client.client)).map((client) => ({
       value: client.client,
       label: client.key.charAt(0).toUpperCase() + client.key.slice(1)

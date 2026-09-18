@@ -195,7 +195,13 @@ func templateEditCategoryRules(category string) []string {
 		return []string{
 			"surge templates use sections such as [Proxy], [Proxy Group], and [Rule]",
 			"preserve existing section structure and policy names unless explicitly asked to change them",
-			"do not convert surge syntax to clash syntax",
+			"do not convert surge syntax to clash or loon syntax",
+		}
+	case "loon":
+		return []string{
+			"loon templates use INI sections such as [Proxy], [Proxy Group], [Remote Filter], [Rule], [Remote Rule], [Plugin], and [MITM]",
+			"preserve Loon-specific scripts, plugins, remote rules, SSID groups, MITM settings, and policy names unless explicitly asked to change them",
+			"do not convert loon syntax to clash or surge syntax",
 		}
 	default:
 		return []string{

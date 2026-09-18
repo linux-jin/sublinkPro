@@ -34,3 +34,28 @@ func TestValidateTemplateCandidateAcceptsBasicSurgeTemplate(t *testing.T) {
 		t.Fatalf("expected surge template to validate, got errors: %#v", result.Errors)
 	}
 }
+
+func TestValidateTemplateCandidateAcceptsLoonTemplate(t *testing.T) {
+	result := ValidateTemplateCandidate(TemplateValidationInput{
+		Category:      "loon",
+		OriginalText:  "[General]\n[Proxy]\n[Proxy Group]\n[Remote Filter]\n",
+		CandidateText: "[General]\n[Proxy]\n[Proxy Group]\n[Remote Filter]\n[Plugin]\n",
+	})
+	if !result.Valid {
+		t.Fatalf("expected Loon template to validate, got errors: %#v", result.Errors)
+	}
+	if result.DetectedType != "loon" {
+		t.Fatalf("detected type = %q, want loon", result.DetectedType)
+	}
+}
+
+func TestValidateTemplateCandidateAcceptsMinimalLoonCore(t *testing.T) {
+	result := ValidateTemplateCandidate(TemplateValidationInput{
+		Category:      "loon",
+		OriginalText:  "[General]\n[Proxy]\n[Proxy Group]\n",
+		CandidateText: "[General]\n[Proxy]\n[Proxy Group]\n[Rule]\nFINAL,DIRECT\n",
+	})
+	if !result.Valid {
+		t.Fatalf("expected shared Surge-style core to validate for explicit Loon category, got errors: %#v", result.Errors)
+	}
+}

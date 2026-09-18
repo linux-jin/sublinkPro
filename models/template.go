@@ -17,7 +17,7 @@ import (
 type Template struct {
 	ID               int       `gorm:"primaryKey;autoIncrement" json:"id"`
 	Name             string    `gorm:"size:191;uniqueIndex" json:"name"`      // 文件名
-	Category         string    `gorm:"default:'clash'" json:"category"`       // clash / surge
+	Category         string    `gorm:"default:'clash'" json:"category"`       // clash / surge / loon
 	RuleSource       string    `gorm:"type:text" json:"ruleSource"`           // 远程规则配置地址
 	UseProxy         bool      `gorm:"default:false" json:"useProxy"`         // 是否使用代理下载远程规则
 	ProxyLink        string    `gorm:"type:text" json:"proxyLink"`            // 代理节点链接
@@ -34,11 +34,39 @@ func init() {
 }
 
 // InferTemplateCategory 根据文件名推断模板类别
-func InferTemplateCategory(fileName string) string {
-	if strings.EqualFold(filepath.Ext(fileName), ".conf") {
-		return "surge"
+const (
+	TemplateCategoryClash = "clash"
+	TemplateCategorySurge = "surge"
+	TemplateCategoryLoon  = "loon"
+)
+
+func IsSupportedTemplateCategory(category string) bool {
+	switch strings.ToLower(strings.TrimSpace(category)) {
+	case TemplateCategoryClash, TemplateCategorySurge, TemplateCategoryLoon:
+		return true
+	default:
+		return false
 	}
-	return "clash"
+}
+
+func NormalizeTemplateCategory(category string) string {
+	category = strings.ToLower(strings.TrimSpace(category))
+	if IsSupportedTemplateCategory(category) {
+		return category
+	}
+	return TemplateCategoryClash
+}
+
+// InferTemplateCategory 根据文件名推断模板类别
+func InferTemplateCategory(fileName string) string {
+	switch strings.ToLower(filepath.Ext(fileName)) {
+	case ".conf":
+		return TemplateCategorySurge
+	case ".lcf":
+		return TemplateCategoryLoon
+	default:
+		return TemplateCategoryClash
+	}
 }
 
 // InitTemplateCache 初始化模板缓存
@@ -169,7 +197,7 @@ func MigrateTemplatesFromFiles(templateDir string) error {
 		var existing Template
 		err := database.DB.Where("name = ?", fileName).First(&existing).Error
 		if err == nil {
-			if existing.Category == "" || (existing.Category != "clash" && existing.Category != "surge") {
+			if existing.Category == "" || (!IsSupportedTemplateCategory(existing.Category)) {
 				existing.Category = category
 				if err := database.DB.Model(&existing).Update("category", category).Error; err != nil {
 					utils.Error("修复模板类别失败 %s: %v", fileName, err)

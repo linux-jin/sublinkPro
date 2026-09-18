@@ -168,7 +168,7 @@ func GetTempS(c *gin.Context) {
 		proxyLink := ""
 		enableIncludeAll := false
 		if err := tmplMeta.FindByName(file.Name()); err == nil {
-			if tmplMeta.Category == "clash" || tmplMeta.Category == "surge" {
+			if models.IsSupportedTemplateCategory(tmplMeta.Category) {
 				category = tmplMeta.Category
 			}
 			ruleSource = tmplMeta.RuleSource
@@ -256,10 +256,15 @@ func UpdateTemp(c *gin.Context) {
 		return
 	}
 
-	// 默认类别为 clash
+	// 默认类别为 clash，并拒绝未知模板类型。
 	if category == "" {
-		category = "clash"
+		category = models.TemplateCategoryClash
 	}
+	if !models.IsSupportedTemplateCategory(category) {
+		utils.FailWithMsg(c, "不支持的模板类别")
+		return
+	}
+	category = models.NormalizeTemplateCategory(category)
 
 	// 验证旧文件名以防止目录遍历
 	oldFullPath, err := safeFilePath(oldname)
@@ -355,8 +360,12 @@ func UpdateTemp(c *gin.Context) {
 
 func writeTemplateFileAndMeta(filename, oldname, text, category, ruleSource string, useProxy bool, proxyLink string, enableIncludeAll bool) error {
 	if category == "" {
-		category = "clash"
+		category = models.TemplateCategoryClash
 	}
+	if !models.IsSupportedTemplateCategory(category) {
+		return fmt.Errorf("不支持的模板类别: %s", category)
+	}
+	category = models.NormalizeTemplateCategory(category)
 	if _, err := os.Stat(baseTemplateDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(baseTemplateDir, 0755); err != nil {
 			return fmt.Errorf("无法创建模板目录: %w", err)
@@ -437,7 +446,7 @@ func AddTemp(c *gin.Context) {
 
 	// 默认类别为 clash
 	if category == "" {
-		category = "clash"
+		category = models.TemplateCategoryClash
 	}
 
 	if err := writeTemplateFileAndMeta(filename, "", text, category, ruleSource, useProxy, proxyLink, enableIncludeAll); err != nil {
@@ -528,6 +537,7 @@ func getTemplateUsageSubscriptions(filename string) ([]string, error) {
 		var config struct {
 			Clash string `json:"clash"`
 			Surge string `json:"surge"`
+			Loon  string `json:"loon"`
 		}
 
 		if sub.Config != "" {
@@ -538,11 +548,16 @@ func getTemplateUsageSubscriptions(filename string) ([]string, error) {
 
 		clashValue := normalizeTemplateUsageValue(config.Clash)
 		surgeValue := normalizeTemplateUsageValue(config.Surge)
+		loonValue := normalizeTemplateUsageValue(config.Loon)
 		if _, ok := matchValues[clashValue]; ok {
 			usedBy = append(usedBy, sub.Name)
 			continue
 		}
 		if _, ok := matchValues[surgeValue]; ok {
+			usedBy = append(usedBy, sub.Name)
+			continue
+		}
+		if _, ok := matchValues[loonValue]; ok {
 			usedBy = append(usedBy, sub.Name)
 		}
 	}

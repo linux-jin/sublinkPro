@@ -364,6 +364,26 @@ func RunMigrations() error {
 		utils.Error("执行迁移 0037_normalize_host_hostnames 失败: %v", err)
 	}
 
+	if err := database.RunCustomMigration("0038_add_default_loon_base_template", func() error {
+		existing, err := GetSetting("base_template_loon")
+		if err == nil && strings.TrimSpace(existing) != "" {
+			return nil
+		}
+		loonTemplate := `[General]
+
+[Proxy]
+
+[Proxy Group]
+节点选择 = select,__ALL_PROXIES__
+
+[Rule]
+FINAL,节点选择
+`
+		return SetSetting("base_template_loon", loonTemplate)
+	}); err != nil {
+		utils.Error("执行迁移 0038_add_default_loon_base_template 失败: %v", err)
+	}
+
 	if err := database.RunCustomMigration("0024_migrate_legacy_webhook_settings", func() error {
 		legacyURL, _ := GetSetting("webhook_url")
 		legacyMethod, _ := GetSetting("webhook_method")

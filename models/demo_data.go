@@ -220,7 +220,7 @@ func initDemoTags() {
 // initDemoSubscriptions 创建演示订阅
 func initDemoSubscriptions() {
 	// 默认订阅配置 JSON（包含模板路径和选项）
-	defaultConfig := `{"clash":"./template/clash.yaml","surge":"./template/surge.conf","udp":false,"cert":false}`
+	defaultConfig := `{"clash":"./template/clash.yaml","surge":"./template/surge.conf","loon":"","udp":false,"cert":false}`
 
 	// 创建一个基础订阅
 	sub := &Subcription{
