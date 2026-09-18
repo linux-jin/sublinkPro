@@ -131,3 +131,41 @@ func TestSplitLoonCSVPreservesNestedValues(t *testing.T) {
 		t.Fatalf("splitLoonCSV() len = %d, values = %#v", len(got), got)
 	}
 }
+
+func TestPublicLoonTemplateIsSanitizedAndRenderable(t *testing.T) {
+	path := filepath.Join("..", "..", "template", "loon.lcf")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read public Loon template: %v", err)
+	}
+	lower := strings.ToLower(string(content))
+	for _, forbidden := range []string{
+		"ca-p12",
+		"ca-passphrase",
+		"client-key-data",
+		"private-key:",
+		"[remote proxy]\nhttp",
+	} {
+		if strings.Contains(lower, forbidden) {
+			t.Fatalf("public Loon template contains forbidden private marker %q", forbidden)
+		}
+	}
+
+	output, err := DecodeLoon(
+		[]string{`Public Test=shadowsocks,127.0.0.1,443,aes-128-gcm,"test"`},
+		[]string{"Public Test"},
+		path,
+	)
+	if err != nil {
+		t.Fatalf("render public Loon template: %v", err)
+	}
+	if !strings.Contains(output, "Public Test=shadowsocks") {
+		t.Fatal("public Loon template did not receive generated proxy")
+	}
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "[Remote Proxy]" || line == "[Remote Filter]" {
+			t.Fatal("public Loon output retained server-consumed remote sections")
+		}
+	}
+}
