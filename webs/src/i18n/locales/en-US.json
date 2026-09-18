@@ -583,7 +583,7 @@
     },
     "socks5": {
       "title": "SOCKS5 gateway",
-      "subheader": "Expose selected SublinkPro nodes through a local TCP SOCKS5 CONNECT listener.",
+      "subheader": "Expose selected SublinkPro nodes through one or more TCP SOCKS5 CONNECT listeners.",
       "alerts": {
         "security": "TCP CONNECT supports adapter reuse, retry, and failure cooldown. Non-loopback listeners require username/password authentication."
       },
@@ -674,7 +674,7 @@
         "enabled": "Enable this routing profile",
         "sticky": "Keep the outbound by Profile.Account",
         "stickyHelper": "Usernames with an account use account affinity; profile-only usernames use client-IP affinity.",
-        "usernameHint": "Use {{username}} for the default profile; use {{username}}@japan or {{username}}@japan.user01 to select a routing profile. The gateway password stays the same.",
+        "usernameHint": "Legacy syntax remains available: {{username}}, {{username}}@japan, or {{username}}@japan.user01 use the shared gateway password. Independent accounts can instead be bound directly to a profile in the account section.",
         "authenticationRequired": "Username/password authentication is disabled, so clients can only use the default profile. Enable authentication to select other routing profiles through the username.",
         "summary": "{{selection}} · {{candidates}} candidates · up to {{attempts}} attempts · {{filters}} filter values",
         "deleteConfirm": "Delete routing profile “{{name}}”? Existing connections stay open, but new connections cannot use it.",
@@ -750,7 +750,7 @@
         "stickySessionModeUsername": "SOCKS5 username",
         "stickySessionTtlSeconds": "Sticky TTL (seconds)",
         "stickySessionTtlSecondsHelper": "Range: 60-604800 seconds. Each successful connection refreshes the TTL.",
-        "stickySessionUsernameHelper": "The gateway currently has one shared SOCKS5 credential. In username mode, all clients using that username share the same outbound node.",
+        "stickySessionUsernameHelper": "Independent accounts use account affinity. Legacy profile-account usernames retain their existing affinity behavior.",
         "stickySessionUsernameAuthRequired": "Username sticky mode requires SOCKS5 username/password authentication."
       },
       "actions": {
@@ -800,7 +800,78 @@
         "connectionClosed": "SOCKS5 connection disconnected",
         "connectionsClosed": "All SOCKS5 connections disconnected",
         "invalidConnection": "Invalid connection ID",
-        "connectionNotFound": "Connection not found"
+        "connectionNotFound": "Connection not found",
+        "listenersLoaded": "SOCKS5 listeners loaded",
+        "listenerLoadFailed": "Failed to load SOCKS5 listeners: {{message}}",
+        "listenerSaveFailed": "Failed to save SOCKS5 listener: {{message}}",
+        "listenerApplyFailed": "Failed to apply SOCKS5 listener: {{message}}",
+        "listenerDeleteFailed": "Failed to delete SOCKS5 listener: {{message}}",
+        "listenerCreated": "SOCKS5 listener created",
+        "listenerUpdated": "SOCKS5 listener updated",
+        "listenerDeleted": "SOCKS5 listener deleted",
+        "invalidListener": "Invalid SOCKS5 listener ID",
+        "accountsLoaded": "SOCKS5 accounts loaded",
+        "accountLoadFailed": "Failed to load SOCKS5 accounts: {{message}}",
+        "accountSaveFailed": "Failed to save SOCKS5 account: {{message}}",
+        "accountApplyFailed": "Failed to apply SOCKS5 account: {{message}}",
+        "accountDeleteFailed": "Failed to delete SOCKS5 account: {{message}}",
+        "accountCreated": "SOCKS5 account created",
+        "accountUpdated": "SOCKS5 account updated",
+        "accountDeleted": "SOCKS5 account deleted",
+        "invalidAccount": "Invalid SOCKS5 account ID"
+      },
+      "accounts": {
+        "title": "SOCKS5 accounts",
+        "subheader": "Create independent credentials and bind each account to a routing profile. Legacy gateway credentials remain supported.",
+        "create": "New account",
+        "empty": "No independent accounts yet.",
+        "createTitle": "Create SOCKS5 account",
+        "editTitle": "Edit SOCKS5 account",
+        "id": "Account ID",
+        "idHelper": "1-32 lowercase letters, digits, underscores, or hyphens. The ID cannot be changed after creation.",
+        "username": "Username",
+        "usernameHelper": "1-255 bytes. The username cannot contain @ and cannot equal the legacy gateway username.",
+        "password": "Password",
+        "passwordCreateHelper": "A password is required for a new account.",
+        "passwordEditHelper": "Leave blank to keep the saved password.",
+        "passwordSaved": "Password is configured",
+        "passwordMissing": "Password is missing",
+        "profile": "Routing profile",
+        "enabled": "Enable this account",
+        "deleteConfirm": "Delete SOCKS5 account “{{username}}”? New connections using it will be rejected.",
+        "messages": {
+          "created": "SOCKS5 account created",
+          "updated": "SOCKS5 account updated",
+          "deleted": "SOCKS5 account deleted"
+        }
+      },
+      "listeners": {
+        "title": "SOCKS5 listeners",
+        "subheader": "Run multiple inbound addresses or ports and choose a default routing profile for each listener.",
+        "create": "New listener",
+        "empty": "No listeners configured.",
+        "createTitle": "Create SOCKS5 listener",
+        "editTitle": "Edit SOCKS5 listener",
+        "id": "Listener ID",
+        "idHelper": "1-32 lowercase letters, digits, underscores, or hyphens. The ID cannot be changed after creation.",
+        "address": "Listen address",
+        "port": "Listen port",
+        "profile": "Default routing profile",
+        "authPolicy": "Authentication policy",
+        "enabled": "Enable this listener",
+        "running": "Running",
+        "stopped": "Stopped",
+        "deleteConfirm": "Delete SOCKS5 listener “{{id}}”? Active connections on it will be closed.",
+        "auth": {
+          "inherit": "Inherit gateway authentication",
+          "required": "Require authentication",
+          "disabled": "No authentication (loopback only)"
+        },
+        "messages": {
+          "created": "SOCKS5 listener created",
+          "updated": "SOCKS5 listener updated",
+          "deleted": "SOCKS5 listener deleted"
+        }
       }
     },
     "telegramPanel": {

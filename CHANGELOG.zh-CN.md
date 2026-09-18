@@ -8,6 +8,8 @@
 
 ### 新增
 
+- 新增 SOCKS5 独立账号，每个账号使用单独加密密码并直接绑定路由 Profile。
+- 新增多 SOCKS5 监听器，支持稳定 ID、监听器默认 Profile、认证覆盖、聚合监控和带监听器作用域的连接 ID。
 - 新增 Loon `.lcf` 模板管理和原生完整配置生成，支持本地节点注入、Remote Filter 展开，并保留 Loon 规则、插件、脚本和 MITM 等 section。
 - 新增脱敏公开版 `template/loon.lcf`，不包含私人证书、凭据、订阅、Host 映射或 Wi-Fi SSID。
 

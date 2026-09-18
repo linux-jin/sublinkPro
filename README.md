@@ -45,7 +45,7 @@ English | [简体中文](README.zh-CN.md)
 The additions maintained by this fork are treated as first-class product features, not secondary patches:
 
 1. **Native Loon profile generation** — select a `.lcf` template to generate a complete Loon profile locally, preserving policy groups, rules, plugins, scripts, and MITM sections. If no Loon template is selected, the existing Sub-Store conversion remains available as a compatibility fallback.
-2. **SOCKS5 gateway and routing profiles** — expose managed nodes through a health-aware TCP CONNECT gateway with P2C/round-robin selection, retries, cooldown, sticky sessions, profile routing, and live load visibility.
+2. **SOCKS5 gateway and routing profiles** — expose managed nodes through a health-aware TCP CONNECT gateway with independent profile-bound accounts, multiple listeners, P2C/round-robin selection, retries, cooldown, sticky sessions, and live load visibility.
 3. **WebDAV backup automation** — upload backup ZIP files manually or on a five-field cron schedule, browse remote backups, and restore them from the web UI.
 4. **OpenVPN YAML round-trip** — import, edit, and export Mihomo/Clash `type: openvpn` entries while retaining supported certificates, keys, and transport fields.
 5. **Large-node and container operations** — server-side pagination/search/filtering, reduced rendering overhead, improved grouped selection, and multi-architecture GHCR images.
@@ -83,7 +83,7 @@ The fork follows this maintenance model:
 | Feature | Description | Details |
 |:---|:---|:---:|
 | 🌙 **Native Loon full-profile output** | Store and select `.lcf` templates, inject locally generated nodes, expand Loon Remote Filters, preserve rules/plugins/scripts/MITM, and fall back to Sub-Store only when no native template is configured | [📖](#-multi-protocol-support) |
-| 🧦 **SOCKS5 gateway and routing profiles** | Health-aware TCP CONNECT gateway with P2C and round-robin routing, sticky sessions, username-selected profiles, node filters, retries, cooldown, connection governance, and live load monitoring | [📖](docs/features/socks5.md) |
+| 🧦 **SOCKS5 gateway and routing profiles** | Health-aware TCP CONNECT gateway with independent accounts, multiple listeners, P2C and round-robin routing, sticky sessions, routing profiles, node filters, retries, cooldown, connection governance, and live load monitoring | [📖](docs/features/socks5.md) |
 | 💾 **WebDAV backup and scheduling** | Encrypt WebDAV credentials, upload backups manually or by cron, browse remote ZIP files, restore from the page, and handle collection redirects used by services such as TeraCLOUD | [📖](docs/features/backup.md) |
 | 🔐 **OpenVPN YAML round-trip** | Import and export Mihomo/Clash `type: openvpn` proxy entries while preserving certificates, keys, transport options, and other supported fields | [📖](#-multi-protocol-support) |
 | 🚀 **Large node-list optimization** | Compact server projections, reduced rendering overhead, server-side pagination, search and filtering, plus improved grouped node selection for large installations | — |
@@ -209,7 +209,7 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 | Document | Description |
 |:---|:---|
 | [🌙 Native Loon output](#-multi-protocol-support) | Complete `.lcf` profile generation with local node injection and Sub-Store compatibility fallback |
-| [🧦 SOCKS5 gateway](docs/features/socks5.md) | Local TCP CONNECT gateway with profiles, P2C/round-robin routing, retries, cooldown, sticky sessions, limits, and monitoring |
+| [🧦 SOCKS5 gateway](docs/features/socks5.md) | Local TCP CONNECT gateway with independent accounts, multiple listeners, profiles, P2C/round-robin routing, retries, cooldown, sticky sessions, limits, and monitoring |
 | [💾 System backup and WebDAV](docs/features/backup.md) | Manual/scheduled backups, remote listing, and restore |
 | [🔐 OpenVPN round-trip](#-multi-protocol-support) | Mihomo/Clash OpenVPN YAML import, editing, and export |
 | [🏷️ Smart tag system](docs/features/tags.md) | Automatic rule based tagging, no code filtering, IP quality rules |

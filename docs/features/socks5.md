@@ -9,6 +9,8 @@ SublinkPro can expose selected stored proxy nodes through a local SOCKS5 gateway
 - TCP `CONNECT` only
 - IPv4, IPv6, and domain targets
 - Optional username/password authentication (enabled by default)
+- Independent SOCKS5 accounts with separate encrypted passwords and direct routing-profile binding
+- Multiple listener addresses/ports with stable IDs, per-listener default profiles, and optional authentication-policy overrides
 - Best-node, random-node, round-robin, smart P2C, or specific-node selection
 - Candidate node pools filtered by one or more groups, sources, protocols, and countries/regions; fields combine with AND and values inside one field combine with OR
 - Optional in-memory sticky sessions keyed by client IP or authenticated SOCKS5 username, with a 60-604800 second sliding TTL
@@ -29,11 +31,11 @@ SublinkPro can expose selected stored proxy nodes through a local SOCKS5 gateway
 - Health-aware routing: active-probe failures are removed from normal candidate sets, and `best` prioritizes fresh active-probe latency before applying the retry limit
 - Runtime start/stop when settings are saved; no process restart is required
 
-The existing gateway settings are exposed as the non-deletable `default` routing profile, so upgrades require no data migration. Additional profiles are selected through the authenticated username: the original username continues to use `default`; `username@japan` selects the `japan` profile and uses client-IP affinity; `username@japan.user01` selects the same profile and uses `user01` as the affinity account. All forms use the existing gateway password. Disabled or missing profiles fail authentication, and profile routing requires username/password authentication. Round-robin counters and sticky leases are isolated by profile, while active connection load and health state remain global per node so shared nodes are not overloaded.
+The existing gateway settings are exposed as the non-deletable `default` routing profile, and the legacy listen address/port become the compatible `default` listener until a listener list is saved, so upgrades require no data migration. Additional profiles are selected through the authenticated username: the original username continues to use `default`; `username@japan` selects the `japan` profile and uses client-IP affinity; `username@japan.user01` selects the same profile and uses `user01` as the affinity account. All legacy username forms use the existing gateway password. Independent accounts use their own password and are bound directly to one enabled routing profile; exact independent-account usernames are checked before the legacy syntax. Disabled or missing profiles fail authentication, and profile routing requires username/password authentication. Round-robin counters and sticky leases are isolated by profile inside each listener runtime. Connection IDs include the listener ID and gateway counters are aggregated across listeners.
 
 Smart routing uses power-of-two choices for the first attempt, combining active-probe latency (or stored delay), active connection load, and consecutive failure penalties; remaining retry candidates are score-ordered. Sticky hits remain first and smart scoring applies to their fallbacks. Retries happen before the SOCKS5 success reply is sent. Active-probe failures are skipped while another routable candidate exists; if every candidate is unhealthy, routing fails open and keeps candidates available for recovery. A successful real connection clears the routing exclusion without erasing the most recent active-probe latency. A failed adapter is discarded, and adapters are closed when the gateway is stopped or reapplied. If every candidate is cooling down, the node whose cooldown expires first is probed so the pool cannot remain permanently unavailable.
 
-UDP `ASSOCIATE`, `BIND`, multi-user credential routing, and multi-port listeners are not included yet. Sticky leases and per-node routing statistics are in-memory and reset whenever the gateway is stopped or settings are reapplied. The administrator monitor includes live connection controls plus a paginated candidate-node load table; resetting node statistics does not interrupt active connections.
+UDP `ASSOCIATE` and `BIND` are not included yet. Sticky leases and per-node routing statistics are in-memory and reset whenever the gateway is stopped or settings are reapplied. The administrator monitor includes live connection controls plus a paginated candidate-node load table; resetting node statistics does not interrupt active connections.
 
 ## Configure
 
@@ -51,6 +53,8 @@ UDP `ASSOCIATE`, `BIND`, multi-user credential routing, and multi-port listeners
 12. Optionally enable active node health checks, then choose a 10-3600 second interval and 1-30 second per-node timeout.
 13. Save the settings. Monitoring, health probing, and connection termination controls are administrator-only.
 14. Optionally create routing profiles below the gateway settings. Use lowercase profile IDs such as `japan`, then connect with `username@japan` or `username@japan.account`.
+15. Add independent accounts when clients need separate passwords; bind each account directly to an enabled routing profile.
+16. Add or edit listeners to expose additional addresses/ports. Each listener can choose a default profile and inherit, require, or disable authentication. Disabling authentication is allowed only on loopback addresses.
 
 The gateway is disabled by default. Passwords are encrypted with the instance API encryption key. Settings responses expose `hasPassword` and, when present, `maskedPassword`; plaintext `password` is never returned. Omitting `password` preserves the saved password, while `clearPassword: true` clears it.
 
@@ -71,7 +75,11 @@ All endpoints below require an authenticated administrator. The destructive `POS
 - `GET /api/v1/settings/socks5` — read public gateway settings; the plaintext password is never returned.
 - `POST /api/v1/settings/socks5` — save and apply settings. JSON fields include `enabled`, `listenAddress`, `port`, `username`, optional `password`, `clearPassword`, `nodeId`, `selection` (`best`, `random`, `round_robin`, `smart`, or `specific`), `requireAuth`, `maxAttempts` (1-5), `dialTimeoutSeconds` (1-120), `failureCooldownSeconds` (0-3600), `specificFallback`, `maxConnections` (1-10000), `maxConnectionsPerClient` (1..maxConnections), `idleTimeoutSeconds` (0-86400), `maxConnectionDurationSeconds` (0-604800), `healthCheckEnabled`, `healthCheckIntervalSeconds` (10-3600), `healthCheckTimeoutSeconds` (1-30), `candidateGroups`, `candidateSources`, `candidateProtocols`, `candidateCountries`, `stickySessionEnabled`, `stickySessionMode` (`client_ip` or `username`), and `stickySessionTtlSeconds` (60-604800). Candidate pool fields are string arrays; fields are combined with AND and values within each field use OR. Optional fields may be omitted to preserve saved values for legacy clients.
 - `POST /api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
-- `GET /api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health` with sweep state and aggregate health details.
+- `GET /api/v1/settings/socks5/status` — return `data.config`, `data.listeners`, `data.stats`, and `data.health` with listener state, aggregate connection totals, sweep state, and health details.
+- `GET|POST /api/v1/settings/socks5/listeners` — list or create listeners. Listener fields are `id`, `enabled`, `listenAddress`, `port`, `defaultProfileId`, and nullable `requireAuth` (null inherits the gateway setting).
+- `PUT|DELETE /api/v1/settings/socks5/listeners/:id` — replace or delete a listener. Listener IDs and enabled endpoints must be unique. A failed bind rolls the saved listener list back.
+- `GET|POST /api/v1/settings/socks5/accounts` — list or create independent accounts. Account fields are `id`, `username`, `password`, `profileId`, and `enabled`; responses expose only password-presence metadata.
+- `PUT|DELETE /api/v1/settings/socks5/accounts/:id` — replace or delete an account. An empty update password retains the encrypted saved password.
 - `GET /api/v1/settings/socks5/profiles` — list the virtual `default` profile plus saved custom routing profiles.
 - `POST /api/v1/settings/socks5/profiles` — create a custom profile. Fields include `id`, `name`, `enabled`, `selection`, `nodeId`, retry/cooldown values, candidate-pool arrays, and sticky-session settings.
 - `PUT /api/v1/settings/socks5/profiles/:id` — replace an existing custom profile. The reserved `default` profile is managed through the gateway settings endpoint.
@@ -79,7 +87,7 @@ All endpoints below require an authenticated administrator. The destructive `POS
 - `GET /api/v1/settings/socks5/routing` — return a server-paginated candidate-node load page. Query parameters are `profileId`, `keyword`, `status` (`healthy`, `unhealthy`, `checking`, `cooling`, or `unknown`), `sortBy`, `sortOrder`, `page`, and `pageSize` (maximum `100`). Items include node metadata, health state, latency source, active/success/failure counters, consecutive failures, smart score, cooldown, and last selection time.
 - `POST /api/v1/settings/socks5/routing/reset` — clear per-node success/failure/last-selection counters without disconnecting active sessions.
 - `POST /api/v1/settings/socks5/health/probe` — start an immediate health sweep. An already-running sweep is reused instead of starting a duplicate.
-- `GET /api/v1/settings/socks5/connections` — return the current active connection array. Each item includes `id`, `clientAddress`, `target`, `nodeName`, `profileId`, `profileName`, optional `account`, `phase`, `startedAt`, `lastActivity`, `uploadBytes`, and `downloadBytes`.
+- `GET /api/v1/settings/socks5/connections` — return the current active connection array. Each item includes `id`, `clientAddress`, `target`, `nodeName`, `profileId`, `profileName`, optional `account`, optional `listenerId`, `phase`, `startedAt`, `lastActivity`, `uploadBytes`, and `downloadBytes`.
 - `DELETE /api/v1/settings/socks5/connections/:id` — disconnect one active connection by ID.
 - `DELETE /api/v1/settings/socks5/connections` — disconnect all active connections.
 

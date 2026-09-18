@@ -583,7 +583,7 @@
     },
     "socks5": {
       "title": "SOCKS5 网关",
-      "subheader": "通过本地 TCP SOCKS5 CONNECT 监听端口转发已选择的 SublinkPro 节点。",
+      "subheader": "通过一个或多个 TCP SOCKS5 CONNECT 监听入口转发到选定的 SublinkPro 节点。",
       "alerts": {
         "security": "TCP CONNECT 已支持适配器复用、失败重试和节点冷却。非回环地址必须启用用户名/密码认证。"
       },
@@ -674,7 +674,7 @@
         "enabled": "启用此路由配置",
         "sticky": "按 Profile.Account 保持出口",
         "stickyHelper": "用户名包含账号时按账号粘性；只有 Profile 时按客户端 IP 粘性。",
-        "usernameHint": "使用 {{username}} 进入默认配置；使用 {{username}}@japan 或 {{username}}@japan.user01 选择独立路由配置。密码仍使用网关密码。",
+        "usernameHint": "旧版语法仍然可用：{{username}}、{{username}}@japan 或 {{username}}@japan.user01 共用网关密码；也可以在账号区域创建直接绑定路由配置的独立账号。",
         "authenticationRequired": "当前网关未启用用户名/密码认证，因此客户端只能使用 default 配置。启用认证后才能通过用户名选择其他路由配置。",
         "summary": "{{selection}} · {{candidates}} 个候选节点 · 最多 {{attempts}} 次尝试 · {{filters}} 个筛选值",
         "deleteConfirm": "确定删除路由配置“{{name}}”吗？已建立的连接不会被中断，新连接将无法继续使用它。",
@@ -750,7 +750,7 @@
         "stickySessionModeUsername": "SOCKS5 用户名",
         "stickySessionTtlSeconds": "粘性有效期（秒）",
         "stickySessionTtlSecondsHelper": "范围 60-604800 秒；每次连接成功会刷新有效期。",
-        "stickySessionUsernameHelper": "当前网关只有一组共享 SOCKS5 凭据，使用用户名模式时所有使用该用户名的客户端会共享同一出口节点。",
+        "stickySessionUsernameHelper": "独立账号按账号保持粘性；旧版 Profile.Account 用户名继续沿用原有粘性规则。",
         "stickySessionUsernameAuthRequired": "用户名粘性模式必须启用 SOCKS5 用户名/密码认证。"
       },
       "actions": {
@@ -800,7 +800,78 @@
         "connectionClosed": "SOCKS5 连接已断开",
         "connectionsClosed": "SOCKS5 连接已全部断开",
         "invalidConnection": "连接 ID 无效",
-        "connectionNotFound": "连接不存在"
+        "connectionNotFound": "连接不存在",
+        "listenersLoaded": "SOCKS5 监听器已加载",
+        "listenerLoadFailed": "读取 SOCKS5 监听器失败：{{message}}",
+        "listenerSaveFailed": "保存 SOCKS5 监听器失败：{{message}}",
+        "listenerApplyFailed": "应用 SOCKS5 监听器失败：{{message}}",
+        "listenerDeleteFailed": "删除 SOCKS5 监听器失败：{{message}}",
+        "listenerCreated": "SOCKS5 监听器已创建",
+        "listenerUpdated": "SOCKS5 监听器已更新",
+        "listenerDeleted": "SOCKS5 监听器已删除",
+        "invalidListener": "SOCKS5 监听器 ID 无效",
+        "accountsLoaded": "SOCKS5 账号已加载",
+        "accountLoadFailed": "读取 SOCKS5 账号失败：{{message}}",
+        "accountSaveFailed": "保存 SOCKS5 账号失败：{{message}}",
+        "accountApplyFailed": "应用 SOCKS5 账号失败：{{message}}",
+        "accountDeleteFailed": "删除 SOCKS5 账号失败：{{message}}",
+        "accountCreated": "SOCKS5 账号已创建",
+        "accountUpdated": "SOCKS5 账号已更新",
+        "accountDeleted": "SOCKS5 账号已删除",
+        "invalidAccount": "SOCKS5 账号 ID 无效"
+      },
+      "accounts": {
+        "title": "SOCKS5 独立账号",
+        "subheader": "为不同客户端创建独立用户名和密码，并绑定到指定路由配置；旧版网关凭据仍然兼容。",
+        "create": "新建账号",
+        "empty": "暂无独立账号。",
+        "createTitle": "新建 SOCKS5 账号",
+        "editTitle": "编辑 SOCKS5 账号",
+        "id": "账号 ID",
+        "idHelper": "1-32 位小写字母、数字、下划线或连字符，创建后不可修改。",
+        "username": "用户名",
+        "usernameHelper": "1-255 字节，不能包含 @，也不能与旧版网关用户名相同。",
+        "password": "密码",
+        "passwordCreateHelper": "新建账号必须填写密码。",
+        "passwordEditHelper": "留空表示保留已保存的密码。",
+        "passwordSaved": "已配置密码",
+        "passwordMissing": "尚未配置密码",
+        "profile": "路由配置",
+        "enabled": "启用此账号",
+        "deleteConfirm": "确认删除 SOCKS5 账号“{{username}}”？使用该账号的新连接将被拒绝。",
+        "messages": {
+          "created": "SOCKS5 账号已创建",
+          "updated": "SOCKS5 账号已更新",
+          "deleted": "SOCKS5 账号已删除"
+        }
+      },
+      "listeners": {
+        "title": "SOCKS5 监听入口",
+        "subheader": "可同时运行多个监听地址或端口，并为每个入口指定默认路由配置。",
+        "create": "新建监听器",
+        "empty": "暂无监听器配置。",
+        "createTitle": "新建 SOCKS5 监听器",
+        "editTitle": "编辑 SOCKS5 监听器",
+        "id": "监听器 ID",
+        "idHelper": "1-32 位小写字母、数字、下划线或连字符，创建后不可修改。",
+        "address": "监听地址",
+        "port": "监听端口",
+        "profile": "默认路由配置",
+        "authPolicy": "认证策略",
+        "enabled": "启用此监听器",
+        "running": "运行中",
+        "stopped": "已停止",
+        "deleteConfirm": "确认删除 SOCKS5 监听器“{{id}}”？该入口上的活动连接会被关闭。",
+        "auth": {
+          "inherit": "继承网关认证设置",
+          "required": "强制认证",
+          "disabled": "不认证（仅允许回环地址）"
+        },
+        "messages": {
+          "created": "SOCKS5 监听器已创建",
+          "updated": "SOCKS5 监听器已更新",
+          "deleted": "SOCKS5 监听器已删除"
+        }
       }
     },
     "telegramPanel": {

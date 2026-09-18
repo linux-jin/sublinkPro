@@ -304,6 +304,19 @@ func UpdateRoutingProfile(base Config, id string, input RoutingProfile) (Routing
 	if err != nil {
 		return input, err
 	}
+	if !normalized.Enabled {
+		accountReferenced, referenceErr := RoutingProfileReferencedByAccount(base, id)
+		if referenceErr != nil {
+			return input, referenceErr
+		}
+		listenerReferenced, referenceErr := RoutingProfileReferencedByListener(base, id)
+		if referenceErr != nil {
+			return input, referenceErr
+		}
+		if accountReferenced || listenerReferenced {
+			return input, errors.New("SOCKS5 routing profile is still referenced and cannot be disabled")
+		}
+	}
 	found := false
 	for index := range profiles {
 		if profiles[index].ID == id {
@@ -343,6 +356,20 @@ func DeleteRoutingProfile(base Config, id string) error {
 	}
 	if !found {
 		return errors.New("SOCKS5 routing profile was not found")
+	}
+	referenced, err := RoutingProfileReferencedByAccount(base, id)
+	if err != nil {
+		return err
+	}
+	if referenced {
+		return errors.New("SOCKS5 routing profile is still referenced by an account")
+	}
+	referenced, err = RoutingProfileReferencedByListener(base, id)
+	if err != nil {
+		return err
+	}
+	if referenced {
+		return errors.New("SOCKS5 routing profile is still referenced by a listener")
 	}
 	return saveCustomRoutingProfiles(result)
 }

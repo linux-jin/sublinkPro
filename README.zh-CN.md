@@ -45,7 +45,7 @@
 本分支新增的能力会作为一等功能优先维护，而不是放在上游共有功能之后：
 
 1. **Loon 原生完整配置输出**：为订阅选择 `.lcf` 模板后，由 SublinkPro 本地生成完整 Loon 配置，保留策略组、规则、插件、脚本和 MITM 等 section；未选择模板时仍保留 Sub-Store 兼容转换。
-2. **SOCKS5 网关与路由 Profile**：将已管理节点作为健康感知的 TCP CONNECT 出口，支持 P2C/轮询、重试、冷却、粘性会话、用户名选 Profile 和实时负载观察。
+2. **SOCKS5 网关与路由 Profile**：将已管理节点作为健康感知的 TCP CONNECT 出口，支持独立账号绑定 Profile、多监听入口、P2C/轮询、重试、冷却、粘性会话和实时负载观察。
 3. **WebDAV 自动备份**：支持手动上传或使用五段 Cron 定时上传备份 ZIP，可浏览远程备份并直接从页面恢复。
 4. **OpenVPN YAML 往返转换**：导入、编辑、导出 Mihomo/Clash `type: openvpn` 节点，并保留支持的证书、密钥与传输字段。
 5. **大规模节点与容器运维**：服务端分页、搜索和筛选，减少前端渲染开销，改进分组选择，并提供 GHCR 多架构镜像。
@@ -83,7 +83,7 @@
 | 功能 | 说明 | 详情 |
 |:---|:---|:---:|
 | 🌙 **Loon 原生完整配置输出** | 管理并选择 `.lcf` 模板，注入本地生成节点、展开 Loon Remote Filter，保留规则/插件/脚本/MITM；仅在未配置原生模板时使用 Sub-Store 兼容转换 | [📖](#-多协议支持) |
-| 🧦 **SOCKS5 网关与路由配置** | 健康感知 TCP CONNECT 网关，支持 P2C/轮询选路、粘性会话、用户名选择路由 Profile、节点过滤、重试、冷却、连接治理和实时负载监控 | [📖](docs/features/socks5.zh-CN.md) |
+| 🧦 **SOCKS5 网关与路由配置** | 健康感知 TCP CONNECT 网关，支持独立账号、多监听入口、P2C/轮询选路、粘性会话、路由 Profile、节点过滤、重试、冷却、连接治理和实时负载监控 | [📖](docs/features/socks5.zh-CN.md) |
 | 💾 **WebDAV 备份与定时任务** | 加密保存 WebDAV 凭据，支持手动或 Cron 定时上传、浏览远程 ZIP、页面恢复，并兼容 TeraCLOUD 等服务的集合重定向 | [📖](docs/features/backup.zh-CN.md) |
 | 🔐 **OpenVPN YAML 往返转换** | 支持导入和导出 Mihomo/Clash `type: openvpn` 节点，并保留证书、密钥、传输选项及其他已支持字段 | [📖](#-多协议支持) |
 | 🚀 **大规模节点管理优化** | 精简服务端列表数据、降低前端渲染开销，支持服务端分页、搜索与筛选，并改进大量节点下的分组选择体验 | — |
@@ -209,7 +209,7 @@ docker-compose up -d
 | 文档 | 说明 |
 |:---|:---|
 | [🌙 Loon 原生输出](#-多协议支持) | 完整 `.lcf` 配置生成、本地节点注入与 Sub-Store 兼容回退 |
-| [🧦 SOCKS5 网关](docs/features/socks5.zh-CN.md) | 支持 Profile、P2C/轮询、重试、冷却、粘性会话、连接限制和实时监控的 TCP CONNECT 网关 |
+| [🧦 SOCKS5 网关](docs/features/socks5.zh-CN.md) | 支持独立账号、多监听入口、Profile、P2C/轮询、重试、冷却、粘性会话、连接限制和实时监控的 TCP CONNECT 网关 |
 | [💾 系统备份与 WebDAV](docs/features/backup.zh-CN.md) | 手动/定时备份、远程列表和恢复 |
 | [🔐 OpenVPN 往返转换](#-多协议支持) | Mihomo/Clash OpenVPN YAML 导入、编辑与导出 |
 | [🏷️ 智能标签系统](docs/features/tags.zh-CN.md) | 自动规则打标签、零代码筛选、IP 质量规则 |

@@ -726,7 +726,11 @@ All SOCKS5 endpoints require an authenticated administrator. Destructive `POST`/
   Candidate-pool fields combine with AND; values inside one field combine with OR. Empty arrays do not restrict the pool.
   Optional fields may be omitted to preserve saved values for legacy clients. `0` disables either connection timeout.
 - **POST** `/api/v1/settings/socks5/stop` — stop the listener without changing saved settings.
-- **GET** `/api/v1/settings/socks5/status` — return `data.config`, `data.stats`, and `data.health`.
+- **GET** `/api/v1/settings/socks5/status` — return `data.config`, `data.listeners`, aggregate `data.stats`, and `data.health`.
+- **GET/POST** `/api/v1/settings/socks5/listeners` — list or create listener endpoints (`id`, `enabled`, `listenAddress`, `port`, `defaultProfileId`, nullable `requireAuth`).
+- **PUT/DELETE** `/api/v1/settings/socks5/listeners/:id` — replace or delete a listener endpoint.
+- **GET/POST** `/api/v1/settings/socks5/accounts` — list or create independent credentials bound to routing profiles. Plaintext passwords are never returned.
+- **PUT/DELETE** `/api/v1/settings/socks5/accounts/:id` — replace or delete an independent account; an omitted/empty update password keeps the saved password.
 - **GET** `/api/v1/settings/socks5/profiles` — list the virtual `default` routing profile and saved custom profiles.
 - **POST** `/api/v1/settings/socks5/profiles` — create a custom routing profile with an independent candidate pool and routing settings.
 - **PUT** `/api/v1/settings/socks5/profiles/:id` — replace a custom profile.
@@ -737,11 +741,11 @@ All SOCKS5 endpoints require an authenticated administrator. Destructive `POST`/
   Health includes sweep timing/counts and per-node status, latency, consecutive failures, cooldown, and a bounded error message.
 - **POST** `/api/v1/settings/socks5/health/probe` — trigger an immediate administrator-only health sweep. Duplicate concurrent sweeps are not started.
 - **GET** `/api/v1/settings/socks5/connections` — return the current active connection array. Each item includes
-  `id`, `clientAddress`, `target`, `nodeName`, `profileId`, `profileName`, optional `account`, `phase`, `startedAt`, `lastActivity`, `uploadBytes`, and `downloadBytes`.
+  `id`, `clientAddress`, `target`, `nodeName`, `profileId`, `profileName`, optional `account`, optional `listenerId`, `phase`, `startedAt`, `lastActivity`, `uploadBytes`, and `downloadBytes`.
 - **DELETE** `/api/v1/settings/socks5/connections/:id` — disconnect one active connection by ID.
 - **DELETE** `/api/v1/settings/socks5/connections` — disconnect all active connections.
 
-`data.config` uses the same public settings shape as the settings endpoint, including `hasPassword`, optional `maskedPassword`, `running`, and `boundAddress`; it never includes plaintext `password`. Omitting `password` preserves the saved password, while `clearPassword: true` clears it. Status counters, active connections, and in-memory sticky leases belong to the current gateway server lifetime and reset after stop/reapply. TCP CONNECT supports adapter reuse, pre-reply candidate retry, exponential failure cooldown, smart P2C load balancing, sticky sessions, connection limits, idle/duration timeouts, active health probing, and live monitoring. UDP ASSOCIATE and BIND are not implemented.
+`data.config` uses the same public settings shape as the settings endpoint, including `hasPassword`, optional `maskedPassword`, `running`, and `boundAddress`; it never includes plaintext `password`. Omitting `password` preserves the saved password, while `clearPassword: true` clears it. Status counters, active connections, and in-memory sticky leases belong to the current gateway server lifetime and reset after stop/reapply. TCP CONNECT supports multiple listeners, independent profile-bound accounts, adapter reuse, pre-reply candidate retry, exponential failure cooldown, smart P2C load balancing, sticky sessions, connection limits, idle/duration timeouts, active health probing, and live monitoring. UDP ASSOCIATE and BIND are not implemented.
 
 **Database migration:** **POST** `/settings/database-migration/import` — **multipart/form-data** (upload a backup.zip / .db)
 

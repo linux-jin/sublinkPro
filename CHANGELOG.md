@@ -8,6 +8,8 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ### Added
 
+- Added independent SOCKS5 accounts with encrypted per-account passwords and direct routing-profile binding.
+- Added multiple SOCKS5 listeners with stable IDs, per-listener default profiles, authentication overrides, aggregate monitoring, and listener-scoped connection IDs.
 - Added first-class Loon `.lcf` template management and native full-profile generation, including local node injection, Remote Filter expansion, and preservation of Loon rules, plugins, scripts, and MITM sections.
 - Added a sanitized public `template/loon.lcf` without private certificates, credentials, subscriptions, host mappings, or SSIDs.
 

@@ -16,6 +16,7 @@ import (
 
 type connectionInfo struct {
 	ID            string
+	ListenerID    string
 	ClientAddress string
 	Target        string
 	NodeName      string
@@ -78,7 +79,7 @@ func (c *connectionInfo) snapshot() ConnectionSnapshot {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return ConnectionSnapshot{
-		ID: c.ID, ClientAddress: c.ClientAddress, Target: c.Target, NodeName: c.NodeName,
+		ID: c.ID, ListenerID: c.ListenerID, ClientAddress: c.ClientAddress, Target: c.Target, NodeName: c.NodeName,
 		ProfileID: c.ProfileID, ProfileName: c.ProfileName, Account: c.Account,
 		Phase: c.Phase, StartedAt: c.StartedAt, LastActivity: c.LastActivity,
 		UploadBytes: c.UploadBytes.Load(), DownloadBytes: c.DownloadBytes.Load(),
@@ -87,6 +88,7 @@ func (c *connectionInfo) snapshot() ConnectionSnapshot {
 
 type ConnectionSnapshot struct {
 	ID            string    `json:"id"`
+	ListenerID    string    `json:"listenerId,omitempty"`
 	ClientAddress string    `json:"clientAddress"`
 	Target        string    `json:"target"`
 	NodeName      string    `json:"nodeName"`
@@ -110,20 +112,27 @@ type GatewaySnapshot struct {
 }
 
 type sessionRegistry struct {
-	mu       sync.Mutex
-	sequence uint64
-	sessions map[string]*connectionInfo
-	max      int
-	perIP    int
-	total    atomic.Int64
-	success  atomic.Int64
-	failed   atomic.Int64
-	up       atomic.Int64
-	down     atomic.Int64
+	mu         sync.Mutex
+	sequence   uint64
+	listenerID string
+	sessions   map[string]*connectionInfo
+	max        int
+	perIP      int
+	total      atomic.Int64
+	success    atomic.Int64
+	failed     atomic.Int64
+	up         atomic.Int64
+	down       atomic.Int64
 }
 
 func newSessionRegistry(max, perIP int) *sessionRegistry {
 	return &sessionRegistry{sessions: make(map[string]*connectionInfo), max: max, perIP: perIP}
+}
+
+func (r *sessionRegistry) setListenerID(listenerID string) {
+	r.mu.Lock()
+	r.listenerID = strings.TrimSpace(listenerID)
+	r.mu.Unlock()
 }
 
 func clientIP(address string) string {
@@ -160,9 +169,12 @@ func (r *sessionRegistry) register(parent context.Context, client net.Conn) (*co
 	}
 	r.sequence++
 	id := fmt.Sprintf("socks5-%d", r.sequence)
+	if r.listenerID != "" {
+		id = fmt.Sprintf("socks5-%s-%d", r.listenerID, r.sequence)
+	}
 	ctx, cancel := context.WithCancel(parent)
 	now := time.Now()
-	session := &connectionInfo{ID: id, ClientAddress: ip, Phase: "handshake", StartedAt: now, LastActivity: now, cancel: cancel, client: client}
+	session := &connectionInfo{ID: id, ListenerID: r.listenerID, ClientAddress: ip, Phase: "handshake", StartedAt: now, LastActivity: now, cancel: cancel, client: client}
 	r.sessions[id] = session
 	r.total.Add(1)
 	return session, ctx, true

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -386,6 +388,15 @@ func SaveConfig(input Config) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	accounts, err := loadAccounts(cfg)
+	if err != nil {
+		return cfg, err
+	}
+	for _, account := range accounts {
+		if strings.EqualFold(account.Username, strings.TrimSpace(cfg.Username)) {
+			return cfg, errors.New("SOCKS5 gateway username conflicts with an independent account")
+		}
+	}
 	values := map[string]string{
 		settingEnabled:                      strconv.FormatBool(cfg.Enabled),
 		settingListenAddress:                cfg.ListenAddress,
@@ -459,23 +470,30 @@ type DialFunc func(ctx context.Context, node models.Node, host string, port uint
 
 // Server serves SOCKS5 CONNECT requests over a supplied listener.
 type Server struct {
-	cfg         Config
-	dial        DialFunc
-	pool        *adapterPool
-	router      *nodeRouter
-	profiles    *routingProfileStore
-	registry    *sessionRegistry
-	healthProbe HealthProbeFunc
-	healthSweep healthSweepState
-	connMu      sync.Mutex
-	activeConns int
-	connZero    chan struct{}
-	closing     bool
-	closeOnce   sync.Once
-	closed      chan struct{}
+	cfg              Config
+	listenerID       string
+	defaultProfileID string
+	dial             DialFunc
+	pool             *adapterPool
+	router           *nodeRouter
+	profiles         *routingProfileStore
+	accounts         *accountStore
+	registry         *sessionRegistry
+	healthProbe      HealthProbeFunc
+	healthSweep      healthSweepState
+	connMu           sync.Mutex
+	activeConns      int
+	connZero         chan struct{}
+	closing          bool
+	closeOnce        sync.Once
+	closed           chan struct{}
 }
 
 func NewServer(cfg Config, dial DialFunc) (*Server, error) {
+	return newServerForListener(cfg, dial, "", defaultProfileID)
+}
+
+func newServerForListener(cfg Config, dial DialFunc, listenerID, defaultProfile string) (*Server, error) {
 	normalized, err := NormalizeConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -484,7 +502,19 @@ func NewServer(cfg Config, dial DialFunc) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	server := &Server{cfg: normalized, dial: dial, router: newNodeRouter(), profiles: profiles, registry: newSessionRegistry(normalized.MaxConnections, normalized.MaxConnectionsPerClient), closed: make(chan struct{})}
+	if strings.TrimSpace(defaultProfile) == "" {
+		defaultProfile = defaultProfileID
+	}
+	if _, _, ok := profiles.resolve(defaultProfile); !ok {
+		return nil, errors.New("SOCKS5 listener default routing profile was not found or is disabled")
+	}
+	accounts, err := newAccountStore(normalized)
+	if err != nil {
+		return nil, err
+	}
+	registry := newSessionRegistry(normalized.MaxConnections, normalized.MaxConnectionsPerClient)
+	registry.setListenerID(listenerID)
+	server := &Server{cfg: normalized, listenerID: listenerID, defaultProfileID: defaultProfile, dial: dial, router: newNodeRouter(), profiles: profiles, accounts: accounts, registry: registry, closed: make(chan struct{})}
 	if server.dial == nil {
 		server.pool = newAdapterPool(nil)
 		server.dial = server.dialWithPool
@@ -561,6 +591,7 @@ func (s *Server) serveConn(ctx context.Context, client net.Conn) {
 	}()
 	_ = client.SetDeadline(time.Now().Add(handshakeTimeout))
 	identity := defaultRoutingIdentity()
+	identity.ProfileID = s.defaultProfileID
 	if s.cfg.RequireAuth {
 		var authErr error
 		identity, authErr = s.authenticate(client)
@@ -661,12 +692,30 @@ func (s *Server) authenticate(conn net.Conn) (routingIdentity, error) {
 		return invalidIdentity, err
 	}
 
+	rawUsername := string(username)
+	if account, found, authenticated := s.accounts.authenticate(rawUsername, password); found {
+		profile, _, profileFound := s.profiles.resolve(account.ProfileID)
+		if !authenticated || !profileFound {
+			_, _ = conn.Write([]byte{0x01, 0x01})
+			return invalidIdentity, errors.New("invalid SOCKS5 credentials")
+		}
+		if _, err := conn.Write([]byte{0x01, 0x00}); err != nil {
+			return invalidIdentity, err
+		}
+		return routingIdentity{
+			RawUsername: rawUsername, ProfileID: profile.ID, ProfileName: profile.Name,
+			Account: account.Username, Extended: true,
+		}, nil
+	}
+
 	baseUsername := []byte(s.cfg.Username)
 	baseMatch := subtle.ConstantTimeCompare(username, baseUsername) == 1
 	extendedBaseMatch := len(username) > len(baseUsername)+1 && username[len(baseUsername)] == '@' &&
 		subtle.ConstantTimeCompare(username[:len(baseUsername)], baseUsername) == 1
-	rawUsername := string(username)
 	profileID, account, extended, parsed := parseRoutingUsername(s.cfg.Username, rawUsername)
+	if parsed && !extended && profileID == defaultProfileID {
+		profileID = s.defaultProfileID
+	}
 	profile, _, profileFound := s.profiles.resolve(profileID)
 	usernameOK := (baseMatch || extendedBaseMatch) && parsed && profileFound
 	passwordOK := subtle.ConstantTimeCompare(password, []byte(s.cfg.Password)) == 1
@@ -807,14 +856,22 @@ func isLoopbackListenAddress(address string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// Manager owns the optional long-lived listener.
-type Manager struct {
-	mu       sync.Mutex
-	listener net.Listener
-	cancel   context.CancelFunc
+// Manager owns the optional long-lived listeners.
+type listenerRuntime struct {
+	spec     ListenerSpec
 	cfg      Config
-	dial     DialFunc
+	listener net.Listener
+	ctx      context.Context
+	cancel   context.CancelFunc
 	server   *Server
+}
+
+type Manager struct {
+	mu        sync.Mutex
+	cfg       Config
+	specs     []ListenerSpec
+	dial      DialFunc
+	listeners map[string]*listenerRuntime
 }
 
 var defaultManager = &Manager{}
@@ -826,45 +883,163 @@ func (m *Manager) Apply(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	m.Stop()
-	m.mu.Lock()
-	m.cfg = normalized
-	dial := m.dial
-	m.mu.Unlock()
-	if !normalized.Enabled {
-		return nil
-	}
-	var listenConfig net.ListenConfig
-	listener, err := listenConfig.Listen(context.Background(), "tcp", net.JoinHostPort(normalized.ListenAddress, strconv.Itoa(normalized.Port)))
+	listeners, err := LoadListeners(normalized)
 	if err != nil {
-		return fmt.Errorf("listen SOCKS5: %w", err)
+		return err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	server, err := NewServer(normalized, dial)
+	return m.ApplyListeners(normalized, listeners)
+}
+
+func (m *Manager) ApplyListeners(cfg Config, listeners []ListenerSpec) error {
+	normalized, err := NormalizeConfig(cfg)
 	if err != nil {
-		_ = listener.Close()
-		cancel()
+		return err
+	}
+	normalizedListeners, err := normalizeListeners(normalized, listeners)
+	if err != nil {
 		return err
 	}
 	m.mu.Lock()
-	m.listener = listener
-	m.cancel = cancel
-	m.server = server
+	old := m.listeners
+	dial := m.dial
 	m.mu.Unlock()
-	go func() {
-		if serveErr := server.Serve(ctx, listener); serveErr != nil {
-			utils.Warn("SOCKS5 listener stopped: %v", serveErr)
+
+	prepared := make(map[string]*listenerRuntime)
+	if normalized.Enabled {
+		for _, spec := range normalizedListeners {
+			if !spec.Enabled {
+				continue
+			}
+			listenerCfg, cfgErr := listenerConfig(normalized, spec)
+			if cfgErr != nil {
+				closeListenerRuntimes(prepared)
+				return cfgErr
+			}
+			endpoint := net.JoinHostPort(spec.ListenAddress, strconv.Itoa(spec.Port))
+			if existing := old[spec.ID]; existing != nil && existing.listener != nil && existing.listener.Addr().String() == endpoint && configsEqual(existing.cfg, listenerCfg) && listenerSpecsEqual(existing.spec, spec) {
+				prepared[spec.ID] = existing
+				continue
+			}
+			server, serverErr := newServerForListener(listenerCfg, dial, spec.ID, spec.DefaultProfileID)
+			if serverErr != nil {
+				closeNewListenerRuntimes(prepared, old)
+				return serverErr
+			}
+			var listenConfig net.ListenConfig
+			listener, listenErr := listenConfig.Listen(context.Background(), "tcp", endpoint)
+			if listenErr != nil {
+				existing := old[spec.ID]
+				if existing != nil && existing.listener != nil && existing.listener.Addr().String() == endpoint {
+					closeListenerRuntime(existing)
+					listener, listenErr = listenConfig.Listen(context.Background(), "tcp", endpoint)
+					if listenErr != nil {
+						m.restoreRuntime(spec.ID, existing, dial)
+					}
+				}
+			}
+			if listenErr != nil {
+				server.Close()
+				closeNewListenerRuntimes(prepared, old)
+				return fmt.Errorf("listen SOCKS5 %s: %w", spec.ID, listenErr)
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			prepared[spec.ID] = &listenerRuntime{spec: spec, cfg: listenerCfg, listener: listener, ctx: ctx, cancel: cancel, server: server}
 		}
-		server.Close()
-		m.mu.Lock()
-		if m.listener == listener {
-			m.listener = nil
-			m.cancel = nil
-			m.server = nil
+	}
+
+	m.mu.Lock()
+	m.cfg = normalized
+	m.specs = append([]ListenerSpec{}, normalizedListeners...)
+	m.listeners = prepared
+	m.mu.Unlock()
+
+	for id, runtime := range old {
+		if prepared[id] == runtime {
+			continue
 		}
-		m.mu.Unlock()
-	}()
+		closeListenerRuntime(runtime)
+	}
+	for id, runtime := range prepared {
+		if old[id] == runtime {
+			continue
+		}
+		go m.serveRuntime(id, runtime)
+	}
 	return nil
+}
+
+func configsEqual(a, b Config) bool {
+	return reflect.DeepEqual(a, b)
+}
+
+func listenerSpecsEqual(a, b ListenerSpec) bool {
+	return reflect.DeepEqual(a, b)
+}
+
+func (m *Manager) restoreRuntime(id string, previous *listenerRuntime, dial DialFunc) {
+	if previous == nil {
+		return
+	}
+	server, err := newServerForListener(previous.cfg, dial, previous.spec.ID, previous.spec.DefaultProfileID)
+	if err != nil {
+		return
+	}
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(context.Background(), "tcp", net.JoinHostPort(previous.spec.ListenAddress, strconv.Itoa(previous.spec.Port)))
+	if err != nil {
+		server.Close()
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	restored := &listenerRuntime{spec: previous.spec, cfg: previous.cfg, listener: listener, ctx: ctx, cancel: cancel, server: server}
+	m.mu.Lock()
+	if m.listeners == nil {
+		m.listeners = make(map[string]*listenerRuntime)
+	}
+	m.listeners[id] = restored
+	m.mu.Unlock()
+	go m.serveRuntime(id, restored)
+}
+
+func closeListenerRuntime(runtime *listenerRuntime) {
+	if runtime == nil {
+		return
+	}
+	if runtime.cancel != nil {
+		runtime.cancel()
+	}
+	if runtime.listener != nil {
+		_ = runtime.listener.Close()
+	}
+	if runtime.server != nil {
+		runtime.server.Close()
+	}
+}
+
+func closeListenerRuntimes(runtimes map[string]*listenerRuntime) {
+	for _, runtime := range runtimes {
+		closeListenerRuntime(runtime)
+	}
+}
+
+func closeNewListenerRuntimes(runtimes, old map[string]*listenerRuntime) {
+	for id, runtime := range runtimes {
+		if old[id] != runtime {
+			closeListenerRuntime(runtime)
+		}
+	}
+}
+
+func (m *Manager) serveRuntime(id string, runtime *listenerRuntime) {
+	if serveErr := runtime.server.Serve(runtime.ctx, runtime.listener); serveErr != nil {
+		utils.Warn("SOCKS5 listener %s stopped: %v", id, serveErr)
+	}
+	runtime.server.Close()
+	m.mu.Lock()
+	if m.listeners[id] == runtime {
+		delete(m.listeners, id)
+	}
+	m.mu.Unlock()
 }
 
 func (m *Manager) StartFromSettings() error {
@@ -877,52 +1052,67 @@ func (m *Manager) StartFromSettings() error {
 
 func (m *Manager) Stop() {
 	m.mu.Lock()
-	listener := m.listener
-	cancel := m.cancel
-	server := m.server
-	m.listener = nil
-	m.cancel = nil
-	m.server = nil
+	runtimes := m.listeners
+	m.listeners = nil
 	m.mu.Unlock()
-	if cancel != nil {
-		cancel()
+	closeListenerRuntimes(runtimes)
+}
+
+func (m *Manager) runtimeSnapshot() []*listenerRuntime {
+	m.mu.Lock()
+	result := make([]*listenerRuntime, 0, len(m.listeners))
+	for _, runtime := range m.listeners {
+		result = append(result, runtime)
 	}
-	if listener != nil {
-		_ = listener.Close()
-	}
-	if server != nil {
-		server.Close()
-	}
+	m.mu.Unlock()
+	sort.Slice(result, func(i, j int) bool { return result[i].spec.ID < result[j].spec.ID })
+	return result
 }
 
 func (m *Manager) GatewaySnapshot() GatewaySnapshot {
-	m.mu.Lock()
-	server := m.server
-	m.mu.Unlock()
-	if server == nil {
-		return GatewaySnapshot{}
+	var result GatewaySnapshot
+	for _, runtime := range m.runtimeSnapshot() {
+		stats := runtime.server.Stats()
+		result.ActiveConnections += stats.ActiveConnections
+		result.TotalConnections += stats.TotalConnections
+		result.SuccessfulConnections += stats.SuccessfulConnections
+		result.FailedConnections += stats.FailedConnections
+		result.UploadBytes += stats.UploadBytes
+		result.DownloadBytes += stats.DownloadBytes
 	}
-	return server.Stats()
+	return result
 }
 
 func (m *Manager) Connections() []ConnectionSnapshot {
-	m.mu.Lock()
-	server := m.server
-	m.mu.Unlock()
-	if server == nil {
-		return []ConnectionSnapshot{}
+	result := make([]ConnectionSnapshot, 0)
+	for _, runtime := range m.runtimeSnapshot() {
+		result = append(result, runtime.server.Connections()...)
 	}
-	return server.Connections()
+	sort.Slice(result, func(i, j int) bool { return result[i].StartedAt.Before(result[j].StartedAt) })
+	return result
 }
 
 func (m *Manager) HealthSnapshot() HealthSnapshot {
-	m.mu.Lock()
-	server := m.server
-	m.mu.Unlock()
-	if server == nil {
+	runtimes := m.runtimeSnapshot()
+	if len(runtimes) == 0 {
 		return HealthSnapshot{Nodes: []NodeHealthSnapshot{}}
 	}
-	return server.HealthSnapshot()
+	return runtimes[0].server.HealthSnapshot()
+}
+
+func (m *Manager) ReloadAccounts() error {
+	base, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+	accounts, err := loadAccounts(base)
+	if err != nil {
+		return err
+	}
+	for _, runtime := range m.runtimeSnapshot() {
+		runtime.server.accounts.replace(accounts)
+	}
+	return nil
 }
 
 func (m *Manager) ReloadRoutingProfiles() error {
@@ -934,67 +1124,97 @@ func (m *Manager) ReloadRoutingProfiles() error {
 	if err != nil {
 		return err
 	}
-	m.mu.Lock()
-	server := m.server
-	m.mu.Unlock()
-	if server != nil {
-		server.profiles.replace(base, profiles)
+	for _, runtime := range m.runtimeSnapshot() {
+		runtime.server.profiles.replace(base, profiles)
 	}
 	return nil
 }
 
 func (m *Manager) RoutingSnapshot(query RoutingSnapshotQuery) (RoutingSnapshotPage, error) {
-	m.mu.Lock()
-	server := m.server
-	m.mu.Unlock()
-	if server == nil {
+	runtimes := m.runtimeSnapshot()
+	if len(runtimes) == 0 {
 		return emptyRoutingSnapshot(query), nil
 	}
-	return server.RoutingSnapshot(query)
+	return runtimes[0].server.RoutingSnapshot(query)
 }
 
 func (m *Manager) ResetNodeRuntimeStats() {
-	m.mu.Lock()
-	server := m.server
-	m.mu.Unlock()
-	if server != nil {
-		server.router.runtime.reset()
+	for _, runtime := range m.runtimeSnapshot() {
+		runtime.server.router.runtime.reset()
 	}
 }
 
 func (m *Manager) TriggerHealthProbe() (started bool, available bool) {
-	m.mu.Lock()
-	server := m.server
-	m.mu.Unlock()
-	if server == nil {
+	runtimes := m.runtimeSnapshot()
+	if len(runtimes) == 0 {
 		return false, false
 	}
-	return server.triggerHealthProbe()
+	return runtimes[0].server.triggerHealthProbe()
 }
 
 func (m *Manager) CloseConnection(id string) bool {
-	m.mu.Lock()
-	server := m.server
-	m.mu.Unlock()
-	return server != nil && server.registry.close(id)
+	for _, runtime := range m.runtimeSnapshot() {
+		if runtime.server.registry.close(id) {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Manager) CloseAllConnections() {
-	m.mu.Lock()
-	server := m.server
-	m.mu.Unlock()
-	if server != nil {
-		server.registry.closeAll()
+	for _, runtime := range m.runtimeSnapshot() {
+		runtime.server.registry.closeAll()
 	}
 }
 
 func (m *Manager) Status() (bool, string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.listener == nil {
+	statuses := m.ListenerStatuses()
+	if len(statuses) == 0 {
 		return false, ""
 	}
-	return true, m.listener.Addr().String()
+	for _, status := range statuses {
+		if status.ID == defaultProfileID && status.Running {
+			return true, status.BoundAddress
+		}
+	}
+	for _, status := range statuses {
+		if status.Running {
+			return true, status.BoundAddress
+		}
+	}
+	return false, ""
+}
+
+func (m *Manager) ListenerStatuses() []ListenerStatus {
+	m.mu.Lock()
+	base := m.cfg
+	listeners := append([]ListenerSpec{}, m.specs...)
+	runtimes := make(map[string]*listenerRuntime, len(m.listeners))
+	for id, runtime := range m.listeners {
+		runtimes[id] = runtime
+	}
+	m.mu.Unlock()
+	if strings.TrimSpace(base.ListenAddress) == "" {
+		if loaded, loadErr := LoadConfig(); loadErr == nil {
+			base = loaded
+		}
+	}
+	if len(listeners) == 0 {
+		loaded, err := LoadListeners(base)
+		if err == nil {
+			listeners = loaded
+		}
+	}
+	result := make([]ListenerStatus, 0, len(listeners))
+	for _, spec := range listeners {
+		status := ListenerStatus{ListenerSpec: spec}
+		if runtime := runtimes[spec.ID]; runtime != nil && runtime.listener != nil {
+			status.Running = true
+			status.BoundAddress = runtime.listener.Addr().String()
+		}
+		result = append(result, status)
+	}
+	return result
 }
 
 func (m *Manager) SetDialFuncForTest(dial DialFunc) func() {

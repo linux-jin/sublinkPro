@@ -330,3 +330,109 @@ func TestSocks5RoutingProfileCRUD(t *testing.T) {
 		t.Fatalf("deleted profile still listed: %s", list.Body.String())
 	}
 }
+
+func TestSocks5AccountCRUDDoesNotExposePassword(t *testing.T) {
+	setupBackupAPITestDB(t)
+	socks5service.DefaultManager().Stop()
+	t.Setenv("SUBLINK_API_ENCRYPTION_KEY", "socks5-test-key-0123456789abcdef0123456789")
+
+	create := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
+		"id": "alice", "username": "alice", "password": "alice-secret", "profileId": "default", "enabled": true,
+	}, CreateSocks5Account)
+	if create.Code != http.StatusOK || !strings.Contains(create.Body.String(), `"id":"alice"`) {
+		t.Fatalf("create account status=%d body=%s", create.Code, create.Body.String())
+	}
+	if strings.Contains(create.Body.String(), "alice-secret") || strings.Contains(create.Body.String(), `"password"`) {
+		t.Fatalf("account create leaked password: %s", create.Body.String())
+	}
+
+	list := performSocks5JSONRequest(t, "admin", http.MethodGet, nil, ListSocks5Accounts)
+	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), `"hasPassword":true`) || strings.Contains(list.Body.String(), "alice-secret") {
+		t.Fatalf("list accounts status=%d body=%s", list.Code, list.Body.String())
+	}
+
+	update := performSocks5JSONRequestWithParams(t, "admin", http.MethodPut, map[string]any{
+		"username": "alice-renamed", "profileId": "default", "enabled": true,
+	}, gin.Params{{Key: "id", Value: "alice"}}, UpdateSocks5Account)
+	if update.Code != http.StatusOK || !strings.Contains(update.Body.String(), `"username":"alice-renamed"`) {
+		t.Fatalf("update account status=%d body=%s", update.Code, update.Body.String())
+	}
+
+	member := performSocks5JSONRequest(t, "member", http.MethodGet, nil, ListSocks5Accounts)
+	if member.Code != http.StatusForbidden {
+		t.Fatalf("member list accounts status=%d", member.Code)
+	}
+
+	remove := performSocks5JSONRequestWithParams(t, "admin", http.MethodDelete, nil, gin.Params{{Key: "id", Value: "alice"}}, DeleteSocks5Account)
+	if remove.Code != http.StatusOK {
+		t.Fatalf("delete account status=%d body=%s", remove.Code, remove.Body.String())
+	}
+}
+
+func TestSocks5ListenerCRUD(t *testing.T) {
+	setupBackupAPITestDB(t)
+	socks5service.DefaultManager().Stop()
+
+	create := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
+		"id": "lan", "enabled": true, "listenAddress": "127.0.0.1", "port": 1180,
+		"defaultProfileId": "default", "requireAuth": true,
+	}, CreateSocks5Listener)
+	if create.Code != http.StatusOK || !strings.Contains(create.Body.String(), `"id":"lan"`) {
+		t.Fatalf("create listener status=%d body=%s", create.Code, create.Body.String())
+	}
+
+	list := performSocks5JSONRequest(t, "admin", http.MethodGet, nil, ListSocks5Listeners)
+	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), `"id":"default"`) || !strings.Contains(list.Body.String(), `"id":"lan"`) {
+		t.Fatalf("list listeners status=%d body=%s", list.Code, list.Body.String())
+	}
+
+	update := performSocks5JSONRequestWithParams(t, "admin", http.MethodPut, map[string]any{
+		"enabled": false, "listenAddress": "127.0.0.1", "port": 1181,
+		"defaultProfileId": "default", "requireAuth": false,
+	}, gin.Params{{Key: "id", Value: "lan"}}, UpdateSocks5Listener)
+	if update.Code != http.StatusOK || !strings.Contains(update.Body.String(), `"port":1181`) || !strings.Contains(update.Body.String(), `"enabled":false`) {
+		t.Fatalf("update listener status=%d body=%s", update.Code, update.Body.String())
+	}
+
+	remove := performSocks5JSONRequestWithParams(t, "admin", http.MethodDelete, nil, gin.Params{{Key: "id", Value: "lan"}}, DeleteSocks5Listener)
+	if remove.Code != http.StatusOK {
+		t.Fatalf("delete listener status=%d body=%s", remove.Code, remove.Body.String())
+	}
+}
+
+func TestSocks5ProfileDeletionRejectsReferencedAccountOrListener(t *testing.T) {
+	setupBackupAPITestDB(t)
+	socks5service.DefaultManager().Stop()
+	t.Setenv("SUBLINK_API_ENCRYPTION_KEY", "socks5-test-key-0123456789abcdef0123456789")
+	create := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
+		"id": "japan", "name": "Japan", "enabled": true, "selection": "best",
+	}, CreateSocks5RoutingProfile)
+	if create.Code != http.StatusOK {
+		t.Fatalf("create profile status=%d body=%s", create.Code, create.Body.String())
+	}
+	account := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
+		"id": "alice", "username": "alice", "password": "secret", "profileId": "japan", "enabled": true,
+	}, CreateSocks5Account)
+	if account.Code != http.StatusOK {
+		t.Fatalf("create account status=%d body=%s", account.Code, account.Body.String())
+	}
+	remove := performSocks5JSONRequestWithParams(t, "admin", http.MethodDelete, nil, gin.Params{{Key: "id", Value: "japan"}}, DeleteSocks5RoutingProfile)
+	if remove.Code != http.StatusOK || !strings.Contains(remove.Body.String(), "referenced") {
+		t.Fatalf("referenced profile was deleted: status=%d body=%s", remove.Code, remove.Body.String())
+	}
+	removeAccount := performSocks5JSONRequestWithParams(t, "admin", http.MethodDelete, nil, gin.Params{{Key: "id", Value: "alice"}}, DeleteSocks5Account)
+	if removeAccount.Code != http.StatusOK {
+		t.Fatalf("delete account status=%d body=%s", removeAccount.Code, removeAccount.Body.String())
+	}
+	listener := performSocks5JSONRequest(t, "admin", http.MethodPost, map[string]any{
+		"id": "japan-listener", "enabled": false, "listenAddress": "127.0.0.1", "port": 1182,
+		"defaultProfileId": "japan", "requireAuth": true,
+	}, CreateSocks5Listener)
+	if listener.Code != http.StatusOK {
+		t.Fatalf("create listener status=%d body=%s", listener.Code, listener.Body.String())
+	}
+	remove = performSocks5JSONRequestWithParams(t, "admin", http.MethodDelete, nil, gin.Params{{Key: "id", Value: "japan"}}, DeleteSocks5RoutingProfile)
+	if remove.Code != http.StatusOK || !strings.Contains(remove.Body.String(), "referenced") {
+		t.Fatalf("listener-referenced profile was deleted: status=%d body=%s", remove.Code, remove.Body.String())
+	}
+}

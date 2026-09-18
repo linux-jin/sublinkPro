@@ -283,6 +283,38 @@ export function getSocks5Status() {
   return request({ url: '/v1/settings/socks5/status', method: 'get' });
 }
 
+export function getSocks5Listeners() {
+  return request({ url: '/v1/settings/socks5/listeners', method: 'get' });
+}
+
+export function createSocks5Listener(data) {
+  return request({ url: '/v1/settings/socks5/listeners', method: 'post', data });
+}
+
+export function updateSocks5Listener(id, data) {
+  return request({ url: `/v1/settings/socks5/listeners/${encodeURIComponent(id)}`, method: 'put', data });
+}
+
+export function deleteSocks5Listener(id) {
+  return request({ url: `/v1/settings/socks5/listeners/${encodeURIComponent(id)}`, method: 'delete' });
+}
+
+export function getSocks5Accounts() {
+  return request({ url: '/v1/settings/socks5/accounts', method: 'get' });
+}
+
+export function createSocks5Account(data) {
+  return request({ url: '/v1/settings/socks5/accounts', method: 'post', data });
+}
+
+export function updateSocks5Account(id, data) {
+  return request({ url: `/v1/settings/socks5/accounts/${encodeURIComponent(id)}`, method: 'put', data });
+}
+
+export function deleteSocks5Account(id) {
+  return request({ url: `/v1/settings/socks5/accounts/${encodeURIComponent(id)}`, method: 'delete' });
+}
+
 export function getSocks5RoutingProfiles() {
   return request({ url: '/v1/settings/socks5/profiles', method: 'get' });
 }

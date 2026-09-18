@@ -29,6 +29,8 @@ import { useAuth } from 'contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { formatBytes } from 'views/airports/utils';
 import RoutingProfiles from './components/RoutingProfiles';
+import Socks5Accounts from './components/Socks5Accounts';
+import Socks5Listeners from './components/Socks5Listeners';
 import Socks5Settings from './components/Socks5Settings';
 import {
   closeAllSocks5Connections,
@@ -261,6 +263,7 @@ function Socks5Monitor({ showMessage }) {
                 <Typography variant="caption" color="text.secondary">
                   {connection.profileName || connection.profileId || 'Default'}
                   {connection.account ? ` · ${connection.account}` : ''}
+                  {connection.listenerId ? ` · ${connection.listenerId}` : ''}
                 </Typography>
                 <Typography variant="caption">
                   {connection.clientAddress} · {connection.phase} · ↑ {formatBytes(connection.uploadBytes ?? 0)} · ↓{' '}
@@ -471,7 +474,21 @@ export default function Socks5GatewayPage() {
   return (
     <>
       <Socks5Settings showMessage={showMessage} onChanged={() => setProfileRevision((value) => value + 1)} />
-      <RoutingProfiles key={profileRevision} showMessage={showMessage} onChanged={() => setProfileRevision((value) => value + 1)} />
+      <RoutingProfiles
+        key={`profiles-${profileRevision}`}
+        showMessage={showMessage}
+        onChanged={() => setProfileRevision((value) => value + 1)}
+      />
+      <Socks5Accounts
+        key={`accounts-${profileRevision}`}
+        showMessage={showMessage}
+        onChanged={() => setProfileRevision((value) => value + 1)}
+      />
+      <Socks5Listeners
+        key={`listeners-${profileRevision}`}
+        showMessage={showMessage}
+        onChanged={() => setProfileRevision((value) => value + 1)}
+      />
       <Socks5Monitor key={`monitor-${profileRevision}`} showMessage={showMessage} />
       <Snackbar
         open={snackbar.open}
