@@ -197,7 +197,13 @@ func MigrateTemplatesFromFiles(templateDir string) error {
 		var existing Template
 		err := database.DB.Where("name = ?", fileName).First(&existing).Error
 		if err == nil {
-			if existing.Category == "" || (!IsSupportedTemplateCategory(existing.Category)) {
+			shouldRepairCategory := existing.Category == "" || !IsSupportedTemplateCategory(existing.Category)
+			// Before native Loon support, .lcf files were inferred as Clash. Treat the
+			// extension as authoritative so old metadata is repaired automatically.
+			if category == TemplateCategoryLoon && existing.Category != TemplateCategoryLoon {
+				shouldRepairCategory = true
+			}
+			if shouldRepairCategory {
 				existing.Category = category
 				if err := database.DB.Model(&existing).Update("category", category).Error; err != nil {
 					utils.Error("修复模板类别失败 %s: %v", fileName, err)

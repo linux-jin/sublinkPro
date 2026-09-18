@@ -1143,6 +1143,32 @@ func TestGetClientLoonTemplateUsesNativeRenderer(t *testing.T) {
 	}
 }
 
+func TestGetClientLegacyLoonInClashSlotUsesNativeRenderer(t *testing.T) {
+	setupClientsAPITestDB(t)
+	loonTemplatePath := writeTestLoonTemplate(t)
+	createClientSubscriptionFixtureWithConfig(
+		t,
+		`{"clash":"`+loonTemplatePath+`"}`,
+		"legacy-loon-sub",
+		"legacy-loon-token",
+		"Legacy Loon Node",
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("legacy native Loon renderer unexpectedly called Sub-Store: %s", r.URL.Path)
+	}))
+	t.Cleanup(server.Close)
+	saveSubStoreSettings(t, server.URL, []string{"loon"})
+
+	recorder := performClientRequest(t, http.MethodGet, "/c/?token=legacy-loon-token&client=loon")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected native Loon status 200, got %d body=%q", recorder.Code, recorder.Body.String())
+	}
+	if body := recorder.Body.String(); !strings.Contains(body, "Legacy Loon Node=shadowsocks") {
+		t.Fatalf("legacy Loon output did not use native template: %s", body)
+	}
+}
+
 func TestGetClientLoonTemplateHeadHasHeadersWithoutBody(t *testing.T) {
 	setupClientsAPITestDB(t)
 	loonTemplatePath := writeTestLoonTemplate(t)

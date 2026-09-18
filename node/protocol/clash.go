@@ -406,6 +406,17 @@ func EncodeClash(urls []Urls, config OutputConfig) ([]byte, error) {
 	return DecodeClash(proxys, config.Clash, config.CustomProxyGroups)
 }
 
+func looksLikeINIProfile(data []byte) bool {
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
+			continue
+		}
+		return strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]")
+	}
+	return false
+}
+
 // DecodeClash 用于解析 Clash 配置文件并合并新节点
 // proxys: 新增的节点列表
 // yamlfile: 模板文件路径或 URL
@@ -446,7 +457,11 @@ func DecodeClash(proxys []Proxy, yamlfile string, customGroups ...[]CustomProxyG
 			cache.SetTemplateContent(filename, string(data))
 		}
 	}
-	// 解析 YAML 文件
+	// 解析 YAML 文件。Loon/Surge 的 INI profile 如果误选为 Clash 模板，
+	// yaml.v3 会产生难以理解的 !!seq 错误；提前返回可操作的提示。
+	if looksLikeINIProfile(data) {
+		return nil, fmt.Errorf("clash template must be YAML; detected an INI/Loon/Surge profile")
+	}
 	config := make(map[string]any)
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {

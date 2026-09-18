@@ -3,6 +3,7 @@ package models
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -33,6 +34,51 @@ func legacyUserAISettingsShouldMigrate() bool {
 		strings.TrimSpace(baseURL) == "" &&
 		strings.TrimSpace(model) == "" &&
 		strings.TrimSpace(apiKey) == ""
+}
+
+func repairLegacyLoonTemplateAssignments(db *gorm.DB) error {
+	if db == nil {
+		return nil
+	}
+	if db.Migrator().HasTable(&Template{}) {
+		if err := db.Model(&Template{}).
+			Where("LOWER(name) LIKE ?", "%.lcf").
+			Update("category", TemplateCategoryLoon).Error; err != nil {
+			return err
+		}
+	}
+	if !db.Migrator().HasTable(&Subcription{}) {
+		return nil
+	}
+
+	var subscriptions []Subcription
+	if err := db.Select("id", "config").Find(&subscriptions).Error; err != nil {
+		return err
+	}
+	for _, subscription := range subscriptions {
+		if strings.TrimSpace(subscription.Config) == "" {
+			continue
+		}
+		config := map[string]any{}
+		if err := json.Unmarshal([]byte(subscription.Config), &config); err != nil {
+			continue
+		}
+		clashPath, _ := config["clash"].(string)
+		loonPath, _ := config["loon"].(string)
+		if strings.TrimSpace(loonPath) != "" || !strings.HasSuffix(strings.ToLower(strings.TrimSpace(clashPath)), ".lcf") {
+			continue
+		}
+		config["loon"] = clashPath
+		config["clash"] = "./template/clash.yaml"
+		encoded, err := json.Marshal(config)
+		if err != nil {
+			return err
+		}
+		if err := db.Model(&Subcription{}).Where("id = ?", subscription.ID).Update("config", string(encoded)).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func normalizeHostnamesAndDeduplicate(db *gorm.DB) error {
@@ -382,6 +428,12 @@ FINAL,节点选择
 		return SetSetting("base_template_loon", loonTemplate)
 	}); err != nil {
 		utils.Error("执行迁移 0038_add_default_loon_base_template 失败: %v", err)
+	}
+
+	if err := database.RunCustomMigration("0039_repair_legacy_loon_template_assignments", func() error {
+		return repairLegacyLoonTemplateAssignments(db)
+	}); err != nil {
+		utils.Error("执行迁移 0039_repair_legacy_loon_template_assignments 失败: %v", err)
 	}
 
 	if err := database.RunCustomMigration("0024_migrate_legacy_webhook_settings", func() error {

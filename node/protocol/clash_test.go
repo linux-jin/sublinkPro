@@ -817,3 +817,18 @@ proxy-groups:
 		t.Fatalf("include-all-providers 丢失: %#v", thirdGroup["include-all-providers"])
 	}
 }
+
+func TestDecodeClashRejectsINIProfileWithActionableError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "wrong-template.lcf")
+	content := "# Loon profile\n\n[General]\nloglevel=notify\n[Proxy]\n"
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := DecodeClash(nil, path)
+	if err == nil {
+		t.Fatal("expected INI profile rejection")
+	}
+	if !strings.Contains(err.Error(), "clash template must be YAML") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

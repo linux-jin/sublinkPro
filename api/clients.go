@@ -354,7 +354,26 @@ func hasNativeLoonTemplate(rawConfig string) bool {
 	if err := json.Unmarshal([]byte(rawConfig), &config); err != nil {
 		return false
 	}
+	applyLegacyLoonTemplatePath(&config)
 	return strings.TrimSpace(config.Loon) != ""
+}
+
+func applyLegacyLoonTemplatePath(config *protocol.OutputConfig) {
+	if config == nil || strings.TrimSpace(config.Loon) != "" || !isLoonTemplatePath(config.Clash) {
+		return
+	}
+	config.Loon = config.Clash
+}
+
+func isLoonTemplatePath(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false
+	}
+	if parsed, err := url.Parse(value); err == nil && parsed.Path != "" {
+		value = parsed.Path
+	}
+	return strings.HasSuffix(strings.ToLower(value), ".lcf")
 }
 
 func buildPreparedExpiredShareResponse(sub models.Subcription, clientType, message string, shareID int) (preparedClientResponse, bool) {
@@ -1033,6 +1052,7 @@ func renderPreparedLoon(c *gin.Context, prepared preparedClientResponse) {
 		_, _ = c.Writer.WriteString("配置读取错误")
 		return
 	}
+	applyLegacyLoonTemplatePath(&config)
 	if config.ReplaceServerWithHost {
 		config.HostMap = models.GetHostMap()
 	}
