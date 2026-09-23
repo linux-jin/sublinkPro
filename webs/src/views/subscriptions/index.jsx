@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
@@ -75,6 +76,9 @@ import {
 export default function SubscriptionList() {
   const theme = useTheme();
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const consumedSmartGroupRef = useRef(null);
   const matchDownMd = useMediaQuery(theme.breakpoints.down('md'));
 
   const [subscriptions, setSubscriptions] = useState([]);
@@ -397,8 +401,7 @@ export default function SubscriptionList() {
         tagsRes,
         protocolMetaRes,
         nodeCheckMetaRes,
-        groupStatsRes,
-        smartGroupsRes
+        groupStatsRes
       ] = await Promise.all([
         getTemplates(),
         getScripts(),
@@ -409,14 +412,12 @@ export default function SubscriptionList() {
         getTags(),
         getProtocolUIMeta(),
         getNodeCheckMeta(),
-        getNodeGroupStats(),
-        getSmartGroups()
+        getNodeGroupStats()
       ]);
       setTemplates(templatesRes.data || []);
       setScripts(scriptsRes.data || []);
       setCountryOptions(countriesRes.data || []);
       setGroupOptions((groupsRes.data || []).sort());
-      setSmartGroupOptions(smartGroupsRes.data || []);
       setAirportOptions(normalizeAirportList(airportsRes.data));
       setSourceOptions((sourcesRes.data || []).sort());
       setTagOptions(tagsRes.data || []);
@@ -429,6 +430,24 @@ export default function SubscriptionList() {
       console.error(error);
     }
   }, [normalizeAirportList]);
+
+  // Load smart-group choices independently: an unrelated options request must not hide them.
+  useEffect(() => {
+    let active = true;
+    getSmartGroups()
+      .then((response) => {
+        if (active) setSmartGroupOptions(response.data || []);
+      })
+      .catch((error) => {
+        if (active) {
+          console.error('Failed to load smart groups:', error);
+          setSnackbar({ open: true, message: error.message || t('smartGroups.loadFailed'), severity: 'error' });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // 初始加载
   useEffect(() => {
@@ -538,7 +557,9 @@ export default function SubscriptionList() {
   };
 
   // === 订阅操作 ===
-  const handleAdd = () => {
+  const handleAdd = (smartGroupId = null) => {
+    const selectedSmartGroupId = Number(smartGroupId);
+    const hasSmartGroup = Number.isSafeInteger(selectedSmartGroupId) && selectedSmartGroupId > 0;
     setIsEdit(false);
     setCurrentSub(null);
     setFormData({
@@ -549,11 +570,11 @@ export default function SubscriptionList() {
       udp: false,
       cert: false,
       replaceServerWithHost: false,
-      selectionMode: 'nodes',
+      selectionMode: hasSmartGroup ? 'groups' : 'nodes',
       selectedNodes: [],
       selectedGroups: [],
       selectedAirports: [],
-      selectedSmartGroups: [],
+      selectedSmartGroups: hasSmartGroup ? [selectedSmartGroupId] : [],
       selectedScripts: [],
       IPWhitelist: '',
       IPBlacklist: '',
@@ -596,6 +617,15 @@ export default function SubscriptionList() {
     refreshNodeSelector();
   };
 
+  // Optional deep link from Smart Groups opens a new subscription with that source preselected.
+  useEffect(() => {
+    const id = Number(new URLSearchParams(location.search).get('smartGroupId'));
+    if (!Number.isSafeInteger(id) || id <= 0 || consumedSmartGroupRef.current === id) return;
+    consumedSmartGroupRef.current = id;
+    handleAdd(id);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.search, location.pathname, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleEdit = (sub) => {
     setIsEdit(true);
     setCurrentSub(sub);
@@ -612,7 +642,10 @@ export default function SubscriptionList() {
     const nodes = sub.Nodes?.map((n) => n.ID) || [];
     const groups = (sub.Groups || []).map((g) => (typeof g === 'string' ? g : g.Name));
     const airports = (sub.Airports || []).map((airport) => getAirportId(airport)).filter((id) => Number.isInteger(id) && id > 0);
-    const smartGroups = (sub.SmartGroupIDs || '').split(',').map(Number).filter((id) => id > 0);
+    const smartGroups = (sub.SmartGroupIDs || '')
+      .split(',')
+      .map(Number)
+      .filter((id) => id > 0);
     const scriptIds = (sub.Scripts || []).map((s) => s.id);
 
     let mode = 'nodes';
@@ -1163,7 +1196,7 @@ export default function SubscriptionList() {
                 <CategoryIcon />
               </IconButton>
             </Tooltip>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleAdd()}>
               {t('common.add')}
             </Button>
           </Stack>
@@ -1172,7 +1205,7 @@ export default function SubscriptionList() {
             <Button variant="outlined" startIcon={<CategoryIcon />} onClick={() => setGroupSortOpen(true)}>
               {t('subscriptions.page.actions.groupSort')}
             </Button>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleAdd()}>
               {t('subscriptions.page.actions.addSubscription')}
             </Button>
             <IconButton onClick={() => fetchSubscriptions(page, rowsPerPage)} disabled={loading}>

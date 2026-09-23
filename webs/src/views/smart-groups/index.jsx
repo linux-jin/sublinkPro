@@ -3,6 +3,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTaskProgress } from 'contexts/TaskProgressContext';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Autocomplete,
@@ -47,6 +48,7 @@ const exclusionKeys = ['delayUnusable', 'delayOverLimit', 'delayStale', 'speedUn
 
 export default function SmartGroupsPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { registerOnComplete, unregisterOnComplete } = useTaskProgress();
@@ -224,6 +226,9 @@ export default function SmartGroupsPage() {
                   }}
                 >
                   {t('smartGroups.members')}
+                </Button>
+                <Button disabled={busy} onClick={() => navigate(`/subscription/subs?smartGroupId=${group.id}`)}>
+                  {t('smartGroups.createSubscription')}
                 </Button>
                 <Button
                   disabled={busy}
