@@ -249,6 +249,7 @@ func RunMigrations() error {
 		{name: "GroupAirportSort", model: &GroupAirportSort{}},
 		{name: "NodeCheckProfile", model: &NodeCheckProfile{}},
 		{name: "CountryRule", model: &CountryRule{}},
+		{name: "SmartGroup", model: &SmartGroup{}},
 	}
 
 	for _, table := range baseTables {

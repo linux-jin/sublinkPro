@@ -155,6 +155,11 @@ func SubAdd(c *gin.Context) {
 	nodeIds := c.PostForm("nodeIds") // 改为接收节点ID列表
 	groups := c.PostForm("groups")   // 新增：分组列表
 	airports := c.PostForm("airports")
+	smartGroupIDs, smartGroupErr := models.NormalizeSmartGroupIDs(c.PostForm("smartGroupIds"))
+	if smartGroupErr != nil {
+		utils.FailWithMsg(c, smartGroupErr.Error())
+		return
+	}
 	scripts := c.PostForm("scripts") // 新增：脚本列表
 	ipWhitelist := c.PostForm("IPWhitelist")
 	ipBlacklist := c.PostForm("IPBlacklist")
@@ -195,7 +200,7 @@ func SubAdd(c *gin.Context) {
 		ipType = "native"
 	}
 
-	if name == "" || (nodeIds == "" && groups == "" && airports == "") {
+	if name == "" || (nodeIds == "" && groups == "" && airports == "" && smartGroupIDs == "") {
 		utils.FailWithMsg(c, "订阅名称不能为空，且节点、分组或机场至少选择一项")
 		return
 	}
@@ -248,6 +253,7 @@ func SubAdd(c *gin.Context) {
 		}
 	}
 
+	sub.SmartGroupIDs = smartGroupIDs
 	sub.Config = config
 	sub.Name = name
 	sub.IPWhitelist = ipWhitelist
@@ -356,6 +362,11 @@ func SubUpdate(c *gin.Context) {
 	nodeIds := c.PostForm("nodeIds") // 改为接收节点ID列表
 	groups := c.PostForm("groups")   // 新增：分组列表
 	airports := c.PostForm("airports")
+	smartGroupIDs, smartGroupErr := models.NormalizeSmartGroupIDs(c.PostForm("smartGroupIds"))
+	if smartGroupErr != nil {
+		utils.FailWithMsg(c, smartGroupErr.Error())
+		return
+	}
 	scripts := c.PostForm("scripts") // 新增：脚本列表
 	ipWhitelist := c.PostForm("IPWhitelist")
 	ipBlacklist := c.PostForm("IPBlacklist")
@@ -396,7 +407,7 @@ func SubUpdate(c *gin.Context) {
 		ipType = "native"
 	}
 
-	if name == "" || (nodeIds == "" && groups == "" && airports == "") {
+	if name == "" || (nodeIds == "" && groups == "" && airports == "" && smartGroupIDs == "") {
 		utils.FailWithMsg(c, "订阅名称不能为空，且节点、分组或机场至少选择一项")
 		return
 	}
@@ -433,6 +444,7 @@ func SubUpdate(c *gin.Context) {
 		return
 	}
 	// 更新节点
+	sub.SmartGroupIDs = smartGroupIDs
 	sub.Config = config
 	sub.Name = name
 	sub.CreateDate = time.Now().Format("2006-01-02 15:04:05")

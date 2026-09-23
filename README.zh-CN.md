@@ -93,6 +93,7 @@
 
 | 功能 | 说明 | 详情 |
 |:---|:---|:---:|
+| 🌍 **智能分组** | 跨原始分组按国家和测速结果动态筛选可用节点，可对候选节点检测并用于订阅 | [📖](docs/features/smart-groups.zh-CN.md) |
 | 🏷️ **智能标签系统** | 自动规则打标签、零代码筛选、支持 IP 质量条件 | [📖](docs/features/tags.zh-CN.md) |
 | ⚡ **专业测速系统** | 双阶段测试、智能延迟测量、支持 IP 质量检测与解锁检测 | [📖](docs/features/speedtest.zh-CN.md) |
 | 🔗 **链式代理** | Dialer-Proxy 原生支持、可视化配置、支持按 IP 质量选节点 | [📖](docs/features/chain-proxy.zh-CN.md) |

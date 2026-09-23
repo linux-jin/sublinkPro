@@ -99,6 +99,7 @@ export default function SubscriptionFormDialog({
   groupNodeCounts,
   allNodeTotal,
   groupOptions,
+  smartGroupOptions,
   airportOptions,
   sourceOptions,
   countryOptions,
@@ -579,7 +580,7 @@ export default function SubscriptionFormDialog({
                 {t('subscriptions.form.sections.nodeSelection')}
               </Typography>
               {!expandedPanels.nodes &&
-                (formData.selectedNodes.length > 0 || formData.selectedGroups.length > 0 || formData.selectedAirports.length > 0) && (
+                (formData.selectedNodes.length > 0 || formData.selectedGroups.length > 0 || formData.selectedAirports.length > 0 || formData.selectedSmartGroups.length > 0) && (
                   <Chip
                     size="small"
                     label={t('subscriptions.form.nodeSelection.summary', {
@@ -637,6 +638,16 @@ export default function SubscriptionFormDialog({
                           {t('subscriptions.form.nodeSelection.groupOption', { name: option, count: groupNodeCounts[option] || 0 })}
                         </li>
                       )}
+                    />
+                    <Autocomplete
+                      multiple
+                      options={smartGroupOptions || []}
+                      value={(smartGroupOptions || []).filter((group) => formData.selectedSmartGroups.includes(group.id))}
+                      onChange={(_event, values) => setFormData({ ...formData, selectedSmartGroups: values.map((group) => group.id) })}
+                      getOptionLabel={(option) => option.name || ''}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      sx={autocompleteChipSx}
+                      renderInput={(params) => <TextField {...params} label={t('smartGroups.title')} helperText={t('smartGroups.subscriptionHint')} />}
                     />
                     <Autocomplete
                       multiple
@@ -1369,7 +1380,7 @@ export default function SubscriptionFormDialog({
             onClick={onPreview}
             disabled={
               previewLoading ||
-              (formData.selectedNodes.length === 0 && formData.selectedGroups.length === 0 && formData.selectedAirports.length === 0)
+              (formData.selectedNodes.length === 0 && formData.selectedGroups.length === 0 && formData.selectedAirports.length === 0 && formData.selectedSmartGroups.length === 0)
             }
           >
             {previewLoading ? t('subscriptions.form.actions.previewLoading') : t('subscriptions.form.actions.previewNode')}

@@ -93,6 +93,7 @@ The fork follows this maintenance model:
 
 | Feature | Description | Details |
 |:---|:---|:---:|
+| 🌍 **Smart groups** | Dynamic country-based healthy-node views across original groups, with candidate testing and optional subscription selection | [📖](docs/features/smart-groups.md) |
 | 🏷️ **Smart tag system** | Automatic rule based tagging, no code filtering, IP quality conditions | [📖](docs/features/tags.md) |
 | ⚡ **Professional speed test system** | Two stage tests, smart latency measurement, IP quality and unlock checks | [📖](docs/features/speedtest.md) |
 | 🔗 **Chain proxy** | Native Dialer-Proxy support, visual configuration, IP quality based node selection | [📖](docs/features/chain-proxy.md) |

@@ -4,6 +4,15 @@ English | [简体中文](CHANGELOG.zh-CN.md)
 
 All notable SublinkPro releases are documented here. The README only keeps a short summary of the latest release; feature-level details live under `docs/features/`.
 
+## [Unreleased]
+
+### Added
+
+- Added independent smart groups that select nodes by landing country across all original groups without moving or duplicating nodes. A node can belong to multiple smart groups.
+- Added configurable latency, download-speed, and test-result freshness requirements; only nodes with successful, current checks are included dynamically.
+- Added a candidate-check action using existing node-check profiles to test all nodes in the selected countries, including previously failed or untested candidates.
+- Added smart-group management, member preview, and Dynamic/Mixed subscription selection with matching subscription previews.
+
 ## [1.12.0] - 2026-09-18
 
 ### Added

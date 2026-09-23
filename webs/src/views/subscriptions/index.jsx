@@ -35,6 +35,7 @@ import {
   previewSubscriptionNodes
 } from 'api/subscriptions';
 import { getNodeCheckMeta } from 'api/nodeCheck';
+import { getSmartGroups } from 'api/smartGroups';
 import {
   getNodeSelector,
   getNodeSelectorByIds,
@@ -123,6 +124,7 @@ export default function SubscriptionList() {
     selectedNodes: [],
     selectedGroups: [],
     selectedAirports: [],
+    selectedSmartGroups: [],
     selectedScripts: [],
     IPWhitelist: '',
     IPBlacklist: '',
@@ -218,6 +220,7 @@ export default function SubscriptionList() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const [groupOptions, setGroupOptions] = useState([]);
+  const [smartGroupOptions, setSmartGroupOptions] = useState([]);
   const [airportOptions, setAirportOptions] = useState([]);
   const [sourceOptions, setSourceOptions] = useState([]);
   const [tagOptions, setTagOptions] = useState([]);
@@ -394,7 +397,8 @@ export default function SubscriptionList() {
         tagsRes,
         protocolMetaRes,
         nodeCheckMetaRes,
-        groupStatsRes
+        groupStatsRes,
+        smartGroupsRes
       ] = await Promise.all([
         getTemplates(),
         getScripts(),
@@ -405,12 +409,14 @@ export default function SubscriptionList() {
         getTags(),
         getProtocolUIMeta(),
         getNodeCheckMeta(),
-        getNodeGroupStats()
+        getNodeGroupStats(),
+        getSmartGroups()
       ]);
       setTemplates(templatesRes.data || []);
       setScripts(scriptsRes.data || []);
       setCountryOptions(countriesRes.data || []);
       setGroupOptions((groupsRes.data || []).sort());
+      setSmartGroupOptions(smartGroupsRes.data || []);
       setAirportOptions(normalizeAirportList(airportsRes.data));
       setSourceOptions((sourcesRes.data || []).sort());
       setTagOptions(tagsRes.data || []);
@@ -547,6 +553,7 @@ export default function SubscriptionList() {
       selectedNodes: [],
       selectedGroups: [],
       selectedAirports: [],
+      selectedSmartGroups: [],
       selectedScripts: [],
       IPWhitelist: '',
       IPBlacklist: '',
@@ -605,12 +612,13 @@ export default function SubscriptionList() {
     const nodes = sub.Nodes?.map((n) => n.ID) || [];
     const groups = (sub.Groups || []).map((g) => (typeof g === 'string' ? g : g.Name));
     const airports = (sub.Airports || []).map((airport) => getAirportId(airport)).filter((id) => Number.isInteger(id) && id > 0);
+    const smartGroups = (sub.SmartGroupIDs || '').split(',').map(Number).filter((id) => id > 0);
     const scriptIds = (sub.Scripts || []).map((s) => s.id);
 
     let mode = 'nodes';
-    if (nodes.length > 0 && (groups.length > 0 || airports.length > 0)) {
+    if (nodes.length > 0 && (groups.length > 0 || airports.length > 0 || smartGroups.length > 0)) {
       mode = 'mixed';
-    } else if (groups.length > 0 || airports.length > 0) {
+    } else if (groups.length > 0 || airports.length > 0 || smartGroups.length > 0) {
       mode = 'groups';
     }
 
@@ -626,6 +634,7 @@ export default function SubscriptionList() {
       selectedNodes: nodes,
       selectedGroups: groups,
       selectedAirports: airports,
+      selectedSmartGroups: smartGroups,
       selectedScripts: scriptIds,
       IPWhitelist: sub.IPWhitelist || '',
       IPBlacklist: sub.IPBlacklist || '',
@@ -752,14 +761,17 @@ export default function SubscriptionList() {
         requestData.nodeIds = formData.selectedNodes.join(',');
         requestData.groups = '';
         requestData.airports = '';
+        requestData.smartGroupIds = '';
       } else if (formData.selectionMode === 'groups') {
         requestData.nodeIds = '';
         requestData.groups = formData.selectedGroups.join(',');
         requestData.airports = formData.selectedAirports.join(',');
+        requestData.smartGroupIds = formData.selectedSmartGroups.join(',');
       } else {
         requestData.nodeIds = formData.selectedNodes.join(',');
         requestData.groups = formData.selectedGroups.join(',');
         requestData.airports = formData.selectedAirports.join(',');
+        requestData.smartGroupIds = formData.selectedSmartGroups.join(',');
       }
 
       if (isEdit) {
@@ -881,6 +893,7 @@ export default function SubscriptionList() {
         NodeIDs: formData.selectionMode !== 'groups' ? formData.selectedNodes : [],
         Groups: formData.selectionMode !== 'nodes' ? formData.selectedGroups : [],
         AirportIDs: formData.selectionMode !== 'nodes' ? formData.selectedAirports : [],
+        SmartGroupIDs: formData.selectionMode !== 'nodes' ? formData.selectedSmartGroups : [],
         Scripts: formData.selectedScripts || [],
         DelayTime: formData.DelayTime || 0,
         MinSpeed: formData.MinSpeed || 0,
@@ -1323,6 +1336,7 @@ export default function SubscriptionList() {
         groupNodeCounts={groupNodeCounts}
         allNodeTotal={allNodeTotal}
         groupOptions={groupOptions}
+        smartGroupOptions={smartGroupOptions}
         airportOptions={airportOptions}
         sourceOptions={sourceOptions}
         countryOptions={countryOptions}

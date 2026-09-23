@@ -199,7 +199,7 @@ Base: `/api/v1/subcription` (note the spelling — missing the second "s").
 
 ### Add Subscription
 **POST** `/subcription/add` — **form**
-- **Required:** `name` AND at least one of `nodeIds` (comma-separated node IDs), `groups` (comma-separated group names), or `airports` (comma-separated airport IDs).
+- **Required:** `name` AND at least one of `nodeIds` (comma-separated node IDs), `groups` (comma-separated group names), `airports` (comma-separated airport IDs), or `smartGroupIds` (comma-separated smart group IDs).
 - Output template: `config` = a template **filename** (the `file` value from `GET /template/get`, e.g. `clash.yaml`); empty = raw node list.
 - Other optional form fields (UpperCamel unless noted): `airports` (comma-separated airport IDs), `scripts` (comma-separated script IDs), `IPWhitelist`, `IPBlacklist`, `DelayTime`, `MinSpeed`, `CountryWhitelist`, `CountryBlacklist`, `NodeNameRule`, `NodeNamePreprocess`, `NodeNameWhitelist`, `NodeNameBlacklist`, `TagWhitelist`, `TagBlacklist`, `ProtocolWhitelist`, `ProtocolBlacklist`, `DeduplicationRule`, `RefreshUsageOnRequest`, `UpdateInterval`, `MaxFraudScore`, `OnlyResidential`, `OnlyNative`, `ResidentialType`, `IPType`, `QualityStatus`, `UnlockProvider`, `UnlockStatus`, `UnlockKeyword`, `UnlockRules`, `UnlockRuleMode`.
 - Name must be unique (duplicate → `订阅名称不能重复`).
@@ -208,7 +208,7 @@ Base: `/api/v1/subcription` (note the spelling — missing the second "s").
 **POST** `/subcription/update` — **form**, located by `oldname` (current name). Same field set as add, plus `oldname`.
 
 ### Get Subscriptions
-**GET** `/subcription/get` (query: `?page=1&pageSize=20`). Paginated → `{items, total, ...}`; without paging → array. Each subscription includes ordered `Nodes`, `Groups`, `Airports`, and `Scripts` relation arrays when present.
+**GET** `/subcription/get` (query: `?page=1&pageSize=20`). Paginated → `{items, total, ...}`; without paging → array. Each subscription includes ordered `Nodes`, `Groups`, `Airports`, and `Scripts` relation arrays when present, plus the `SmartGroupIDs` CSV field.
 
 ### Delete Subscription
 **DELETE** `/subcription/delete` (query: `?id=123`)
@@ -632,6 +632,21 @@ Base: `/api/v1/tasks`
 - **GET** `/tasks/{id}/traffic` (query: filters/paging)
 - **POST** `/tasks/{id}/stop`
 - **DELETE** `/tasks` — **JSON** body for clearing history
+
+---
+
+## Smart Groups
+
+Base: `/api/v1/smart-groups`. Auth required. Mutating routes are demo-restricted. Independent views never change a node’s source group.
+
+- **GET** `/smart-groups` — list definitions.
+- **POST** `/smart-groups` — **JSON** create: `{"name":"Europe","countries":"GB,FR,DE","maxDelay":500,"minSpeed":1,"maxAgeHours":72}`. Countries are comma-separated ISO alpha-2 codes; omitted freshness defaults to 72 hours, explicit zero disables expiry.
+- **PUT** `/smart-groups/{id}` — **JSON** full definition update.
+- **DELETE** `/smart-groups/{id}` — rejects with HTTP 409 while referenced by a subscription.
+- **GET** `/smart-groups/{id}/members` — `{ids, count, nodes}`; `nodes` is limited to the first 100 display items, `ids` covers all healthy members.
+- **POST** `/smart-groups/{id}/check` — **JSON** `{"profileId":1}` starts asynchronous checks for all country candidates, including failed/untested ones. The profile’s own group/tag scope does not restrict this explicit node list. Returns candidate `count`.
+
+Membership requires successful positive latency **and** speed results, optional thresholds, and unexpired latency/speed timestamps. Subscriptions accept form field `smartGroupIds`; form preview accepts JSON field `SmartGroupIDs` (array of integer IDs). See `docs/features/smart-groups.md`.
 
 ---
 
