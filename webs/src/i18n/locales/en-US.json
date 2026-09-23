@@ -1,7 +1,7 @@
 {
   "smartGroups": {
     "title": "Smart Groups",
-    "description": "Filter by landing country, with optional node-name keyword and source groups. Empty source groups mean all groups. With zero minimum speed, a successful latency check suffices; source groups are unchanged.",
+    "description": "Candidates match a stored landing country, a country name/code in the node name, OR the optional node-name keyword. Source-group restrictions still apply; nodes must pass checks to become healthy. Original groups are unchanged.",
     "add": "Add group",
     "edit": "Edit",
     "delete": "Delete",
@@ -35,11 +35,11 @@
     "deleteFailed": "Failed to delete smart group",
     "checkFailed": "Failed to start check",
     "keyword": "Node-name keyword",
-    "keywordHint": "Optional, case-insensitive substring of the display or original node name.",
+    "keywordHint": "Optional: a matching node-name keyword includes a candidate even if its country differs (OR relation); case-insensitive.",
     "sourceGroups": "Source groups",
-    "sourceGroupsHint": "Optional; leave empty for all source groups, or select several.",
+    "sourceGroupsHint": "Optional; empty includes all source groups. Source groups remain an AND restriction.",
     "candidateSummary": "{{count}} matching candidates, {{healthy}} healthy nodes.",
-    "noCandidatesHint": "Check whether country rules recognize the original node names. A stored landing country takes precedence; also check the keyword and source-group filters.",
+    "noCandidatesHint": "Check stored country, country name/code in node names, or the name keyword. Any source-group restriction must also match.",
     "noHealthyHint": "Check latency status, maximum latency and freshness. If minimum speed is positive, use a mihomo download-speed profile.",
     "nameInferred": "Inferred from name (landing unverified)",
     "exclusions": {
@@ -66,6 +66,11 @@
       "speedUnusable": "Speed not successful",
       "speedBelowMin": "Speed below minimum",
       "speedStale": "Speed stale/missing time"
+    },
+    "keywordAlternative": "Or name keyword",
+    "matchSources": {
+      "countryName": "Matched country in name (not verified landing)",
+      "keyword": "Matched name keyword"
     }
   },
   "auth": {

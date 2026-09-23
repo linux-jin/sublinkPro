@@ -203,7 +203,7 @@ func TestSmartGroupMembersListsPagedCandidatesWithReasons(t *testing.T) {
 		var data struct {
 			Data struct {
 				Count, CandidateCount, Page int
-				CandidateNodes              []struct{ Name, Reason string } `json:"candidateNodes"`
+				CandidateNodes              []struct{ Name, Reason, MatchSource string } `json:"candidateNodes"`
 				StatusCounts                struct {
 					DelayUnusable int `json:"delayUnusable"`
 				} `json:"statusCounts"`
@@ -213,7 +213,7 @@ func TestSmartGroupMembersListsPagedCandidatesWithReasons(t *testing.T) {
 			t.Fatal(err)
 		}
 		if data.Data.Count != 1 || data.Data.CandidateCount != 2 || data.Data.StatusCounts.DelayUnusable != 1 ||
-			len(data.Data.CandidateNodes) != 1 || data.Data.CandidateNodes[0].Name != tt.name || data.Data.CandidateNodes[0].Reason != tt.reason {
+			len(data.Data.CandidateNodes) != 1 || data.Data.CandidateNodes[0].Name != tt.name || data.Data.CandidateNodes[0].Reason != tt.reason || data.Data.CandidateNodes[0].MatchSource != "landingCountry" {
 			t.Fatalf("unexpected candidate page %s: %+v", tt.query, data.Data)
 		}
 	}

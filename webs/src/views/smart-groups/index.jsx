@@ -212,7 +212,7 @@ export default function SmartGroupsPage() {
                 <Typography variant="body2">
                   {parseCountries(group.countries).map(formatCountry).join(' / ')} ·{' '}
                   {t('smartGroups.rule', { delay: group.maxDelay || '∞', speed: group.minSpeed || 0, age: group.maxAgeHours || '∞' })}
-                  {group.keyword && ` · ${t('smartGroups.keyword')}: ${group.keyword}`}
+                  {group.keyword && ` · ${t('smartGroups.keywordAlternative')}: ${group.keyword}`}
                   {group.sourceGroups?.length > 0 && ` · ${t('smartGroups.sourceGroups')}: ${group.sourceGroups.join(' / ')}`}
                 </Typography>
               </Box>
@@ -326,6 +326,11 @@ export default function SmartGroupsPage() {
                           {node.countrySource === 'name' && (
                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                               {t('smartGroups.nameInferred')}
+                            </Typography>
+                          )}
+                          {node.matchSource && node.matchSource !== 'landingCountry' && (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              {t(`smartGroups.matchSources.${node.matchSource}`)}
                             </Typography>
                           )}
                         </TableCell>

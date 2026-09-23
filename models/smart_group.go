@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -98,8 +99,8 @@ type SmartGroupMemberStats struct {
 	SpeedStale     int `json:"speedStale"`
 }
 
-// inferSmartGroupCountry uses the configured country rules only if no landing country is stored.
-// It never writes the inferred value back to the node or overrides a measured landing country.
+// inferSmartGroupCountry is used only to label nodes with no stored landing country.
+// It never writes the inferred value back to the node.
 func inferSmartGroupCountry(node Node, rules []CountryRule) string {
 	if code := strings.ToUpper(strings.TrimSpace(node.LinkCountry)); code != "" {
 		return code
@@ -117,8 +118,77 @@ func inferSmartGroupCountry(node Node, rules []CountryRule) string {
 	return ""
 }
 
+// smartGroupCountryPatterns recognizes country codes as standalone tokens.
+func smartGroupCountryPatterns(countries map[string]bool) []*regexp.Regexp {
+	patterns := make([]*regexp.Regexp, 0, len(countries))
+	for code := range countries {
+		if len(code) != 2 || code[0] < 'A' || code[0] > 'Z' || code[1] < 'A' || code[1] > 'Z' {
+			continue
+		}
+		patterns = append(patterns, regexp.MustCompile(`(?i)(?:^|[^A-Za-z])`+code+`(?:$|[^A-Za-z])`))
+	}
+	return patterns
+}
+
+func smartGroupSelectedCountryRules(countries map[string]bool) []CountryRule {
+	selected := make([]CountryRule, 0)
+	for _, rule := range GetEnabledCountryRules() {
+		if countries[strings.ToUpper(rule.CountryCode)] {
+			selected = append(selected, rule)
+		}
+	}
+	return selected
+}
+
+// smartGroupMatchSource defines the OR relation between stored country, country
+// clues in the node name, and the optional node-name keyword.
+func smartGroupMatchSource(node Node, countries map[string]bool, codePatterns []*regexp.Regexp, rules []CountryRule, keyword string) string {
+	if countries[strings.ToUpper(strings.TrimSpace(node.LinkCountry))] {
+		return "landingCountry"
+	}
+	names := []string{node.EffectiveName(), node.LinkName, node.Name}
+	for _, rule := range rules {
+		for _, name := range names {
+			if name != "" && rule.MatchesNodeName(name) {
+				return "countryName"
+			}
+		}
+	}
+	// A selected ISO code still works as a distinct name token without a configured rule.
+	for _, pattern := range codePatterns {
+		for _, name := range names {
+			if pattern.MatchString(name) {
+				return "countryName"
+			}
+		}
+	}
+	if keyword != "" {
+		for _, name := range names {
+			if strings.Contains(strings.ToLower(name), keyword) {
+				return "keyword"
+			}
+		}
+	}
+	return ""
+}
+
+// MatchSource labels why a candidate matched, even when its actual landing
+// country differs from the country suggested by its name.
+func (g SmartGroup) MatchSource(node Node) string {
+	countries := make(map[string]bool)
+	for _, part := range strings.Split(g.Countries, ",") {
+		if code := strings.ToUpper(strings.TrimSpace(part)); code != "" {
+			countries[code] = true
+		}
+	}
+	if len(countries) == 0 {
+		return ""
+	}
+	return smartGroupMatchSource(node, countries, smartGroupCountryPatterns(countries), smartGroupSelectedCountryRules(countries), strings.ToLower(strings.TrimSpace(g.Keyword)))
+}
+
 // Candidates intentionally ignores current health so failed nodes can be retested.
-// Names are a fallback for nodes without a stored country, not proof of their landing country.
+// Country, name-country clues and an optional keyword are alternatives; source groups remain an AND filter.
 func (g SmartGroup) Candidates() ([]Node, error) {
 	nodes, err := (&Node{}).ListWithFilters(NodeFilter{})
 	if err != nil {
@@ -137,23 +207,15 @@ func (g SmartGroup) Candidates() ([]Node, error) {
 	for _, source := range g.SourceGroups {
 		groups[strings.ToLower(source)] = true
 	}
-	keyword := strings.ToLower(g.Keyword)
-	var countryRules []CountryRule
-	rulesLoaded := false
+	keyword := strings.ToLower(strings.TrimSpace(g.Keyword))
+	countryRules := smartGroupSelectedCountryRules(countries)
+	codePatterns := smartGroupCountryPatterns(countries)
 	candidates := make([]Node, 0)
 	for _, node := range nodes {
 		if len(groups) > 0 && !groups[strings.ToLower(node.Group)] {
 			continue
 		}
-		if keyword != "" && !strings.Contains(strings.ToLower(node.EffectiveName()), keyword) &&
-			!strings.Contains(strings.ToLower(node.Name), keyword) && !strings.Contains(strings.ToLower(node.LinkName), keyword) {
-			continue
-		}
-		if strings.TrimSpace(node.LinkCountry) == "" && !rulesLoaded {
-			countryRules = GetEnabledCountryRules()
-			rulesLoaded = true
-		}
-		if countries[inferSmartGroupCountry(node, countryRules)] {
+		if smartGroupMatchSource(node, countries, codePatterns, countryRules, keyword) != "" {
 			candidates = append(candidates, node)
 		}
 	}
@@ -246,7 +308,10 @@ func SmartGroupCountryForDisplay(node Node) (code, source string) {
 	if strings.TrimSpace(node.LinkCountry) != "" {
 		return strings.ToUpper(strings.TrimSpace(node.LinkCountry)), "stored"
 	}
-	return inferSmartGroupCountry(node, GetEnabledCountryRules()), "name"
+	if code := inferSmartGroupCountry(node, GetEnabledCountryRules()); code != "" {
+		return code, "name"
+	}
+	return "", "unknown"
 }
 
 // ParseSmartGroupIDs parses the subscription's compact, ordered ID list.

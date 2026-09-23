@@ -1,7 +1,7 @@
 {
   "smartGroups": {
     "title": "智能分组",
-    "description": "按落地国家筛选节点，可选关键词和原分组；原分组留空时跨全部分组。最低速度为 0 时只需成功的延迟检测，不移动节点。",
+    "description": "按国家代码或节点名称匹配候选：保存的落地国家、名称中的国家代码/规则、可选名称关键词任一命中即可。原分组限制仍同时生效；测速成功后才算可用，不移动节点。",
     "add": "新增分组",
     "edit": "编辑",
     "delete": "删除",
@@ -35,11 +35,11 @@
     "deleteFailed": "删除智能分组失败",
     "checkFailed": "启动检测失败",
     "keyword": "节点名称关键词",
-    "keywordHint": "可选，不区分大小写匹配节点显示名或原名。",
+    "keywordHint": "可选；节点名称命中此关键词也可入候选（与所选国家为“或”关系），不区分大小写。",
     "sourceGroups": "原分组",
-    "sourceGroupsHint": "可选；留空表示所有原分组，可多选。",
+    "sourceGroupsHint": "可选；留空表示所有原分组，可多选。原分组条件与国家/名称条件为“且”关系。",
     "candidateSummary": "匹配候选 {{count}} 个，可用 {{healthy}} 个。",
-    "noCandidatesHint": "请检查国家规则是否能从节点原名推断国家；已保存的落地国家会优先使用。还要核对关键词与原分组条件。",
+    "noCandidatesHint": "请检查节点保存的国家、节点名中的国家代码/国家规则或名称关键词；原分组限制也必须符合。",
     "noHealthyHint": "请检查延迟状态、最大延迟与结果有效期；若设置了最低速度，还须使用 mihomo 下载测速策略。",
     "nameInferred": "按名称推断（未验证落地）",
     "exclusions": {
@@ -66,6 +66,11 @@
       "speedUnusable": "速度未成功",
       "speedBelowMin": "速度低于下限",
       "speedStale": "速度结果过期/无时间"
+    },
+    "keywordAlternative": "或名称关键词",
+    "matchSources": {
+      "countryName": "按名称中的国家匹配（非落地确认）",
+      "keyword": "按名称关键词匹配"
     }
   },
   "auth": {

@@ -170,7 +170,7 @@ func SmartGroupMembers(c *gin.Context) {
 			country, countrySource := models.SmartGroupCountryForDisplay(node)
 			candidateNodes = append(candidateNodes, gin.H{
 				"id": node.ID, "name": node.EffectiveName(), "group": node.Group,
-				"country": country, "countrySource": countrySource,
+				"country": country, "countrySource": countrySource, "matchSource": group.MatchSource(node),
 				"delay": node.DelayTime, "speed": node.Speed,
 				"delayStatus": node.DelayStatus, "speedStatus": node.SpeedStatus,
 				"reason": group.CandidateExclusionReason(node, cutoff),
@@ -183,7 +183,7 @@ func SmartGroupMembers(c *gin.Context) {
 		ids = append(ids, node.ID)
 		if len(details) < 100 {
 			country, countrySource := models.SmartGroupCountryForDisplay(node)
-			details = append(details, gin.H{"id": node.ID, "name": node.EffectiveName(), "group": node.Group, "country": country, "countrySource": countrySource, "delay": node.DelayTime, "speed": node.Speed})
+			details = append(details, gin.H{"id": node.ID, "name": node.EffectiveName(), "group": node.Group, "country": country, "countrySource": countrySource, "matchSource": group.MatchSource(node), "delay": node.DelayTime, "speed": node.Speed})
 		}
 	}
 	c.JSON(200, gin.H{"code": 200, "data": gin.H{"ids": ids, "count": len(ids), "candidateCount": stats.CandidateCount, "statusCounts": stats, "nodes": details, "candidateNodes": candidateNodes, "page": page, "pageSize": pageSize}})
@@ -212,7 +212,7 @@ func CheckSmartGroupCandidates(c *gin.Context) {
 		return
 	}
 	if len(ids) == 0 {
-		c.JSON(400, gin.H{"code": 400, "msg": "当前国家、关键词和原分组条件下没有候选节点"})
+		c.JSON(400, gin.H{"code": 400, "msg": "当前国家或名称条件没有匹配节点，或原分组限制排除了所有节点"})
 		return
 	}
 	if req.NodeID != 0 {

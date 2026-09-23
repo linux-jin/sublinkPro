@@ -85,9 +85,9 @@ func TestSmartGroupKeywordSourceGroupsAndLatencyOnly(t *testing.T) {
 	matched := createSubcriptionTestNode(t, Node{Name: "PH-Manila-A", LinkName: "PH-Manila-A", Group: "airport-a", LinkCountry: "PH",
 		DelayStatus: "success", SpeedStatus: "untested", DelayTime: 240, Speed: 0, LatencyCheckAt: now})
 	createSubcriptionTestNode(t, Node{Name: "PH-Manila-B", Group: "airport-b", LinkCountry: "PH", DelayStatus: "success", DelayTime: 120, LatencyCheckAt: now})
-	createSubcriptionTestNode(t, Node{Name: "PH-Cebu", Group: "airport-a", LinkCountry: "PH", DelayStatus: "success", DelayTime: 90, LatencyCheckAt: now})
+	cebu := createSubcriptionTestNode(t, Node{Name: "PH-Cebu", Group: "airport-a", LinkCountry: "PH", DelayStatus: "success", DelayTime: 90, LatencyCheckAt: now})
 	createSubcriptionTestNode(t, Node{Name: "PH-Manila-failed", Group: "airport-a", LinkCountry: "PH", DelayStatus: "timeout"})
-	createSubcriptionTestNode(t, Node{Name: "GB-Manila", Group: "airport-a", LinkCountry: "GB", DelayStatus: "success", DelayTime: 110, LatencyCheckAt: now})
+	gb := createSubcriptionTestNode(t, Node{Name: "GB-Manila", Group: "airport-a", LinkCountry: "GB", DelayStatus: "success", DelayTime: 110, LatencyCheckAt: now})
 
 	group := SmartGroup{Name: "Philippines", Countries: "ph", Keyword: "  manila  ", SourceGroups: []string{" airport-a ", "AIRPORT-A"}, MaxAgeHours: 72}
 	if err := group.Validate(); err != nil {
@@ -97,11 +97,14 @@ func TestSmartGroupKeywordSourceGroupsAndLatencyOnly(t *testing.T) {
 		t.Fatalf("normalized conditions: %+v", group)
 	}
 	ids, err := group.CandidateIDs()
-	if err != nil || len(ids) != 2 {
-		t.Fatalf("matching candidates = %v, %v", ids, err)
+	if err != nil || len(ids) != 4 {
+		t.Fatalf("country OR keyword candidates = %v, %v", ids, err)
+	}
+	if group.MatchSource(gb) != "keyword" || group.MatchSource(cebu) != "landingCountry" {
+		t.Fatalf("match sources: GB=%q Cebu=%q", group.MatchSource(gb), group.MatchSource(cebu))
 	}
 	members, err := group.Members()
-	if err != nil || len(members) != 1 || members[0].ID != matched.ID {
+	if err != nil || len(members) != 3 || members[0].ID != matched.ID || members[1].ID != cebu.ID || members[2].ID != gb.ID {
 		t.Fatalf("latency-only members = %v, %v", nodeNames(members), err)
 	}
 	if err := database.DB.Create(&group).Error; err != nil {
@@ -111,7 +114,7 @@ func TestSmartGroupKeywordSourceGroupsAndLatencyOnly(t *testing.T) {
 	if err := sub.Add(); err != nil {
 		t.Fatal(err)
 	}
-	if err := sub.GetSub("clash"); err != nil || len(sub.Nodes) != 1 || sub.Nodes[0].ID != matched.ID {
+	if err := sub.GetSub("clash"); err != nil || len(sub.Nodes) != 3 || sub.Nodes[0].ID != matched.ID || sub.Nodes[1].ID != cebu.ID || sub.Nodes[2].ID != gb.ID {
 		t.Fatalf("filtered subscription nodes = %v, %v", nodeNames(sub.Nodes), err)
 	}
 	group.MinSpeed = 1
@@ -122,7 +125,7 @@ func TestSmartGroupKeywordSourceGroupsAndLatencyOnly(t *testing.T) {
 	group.MinSpeed = 0
 	group.MaxDelay = 200
 	members, err = group.Members()
-	if err != nil || len(members) != 0 {
+	if err != nil || len(members) != 2 || members[0].ID != cebu.ID || members[1].ID != gb.ID {
 		t.Fatalf("latency-limit members = %v, %v", nodeNames(members), err)
 	}
 }
@@ -160,14 +163,17 @@ func TestSmartGroupNameCountryFallbackAndExclusionCounts(t *testing.T) {
 	now := time.Now().Format("2006-01-02 15:04:05")
 	good := createSubcriptionTestNode(t, Node{Name: "Manila 1", LinkName: "🇵🇭 Manila", Group: "source-a", DelayStatus: "success", DelayTime: 100, LatencyCheckAt: now})
 	createSubcriptionTestNode(t, Node{Name: "Manila 2", LinkName: "Philippines slow", Group: "source-b", DelayStatus: "timeout"})
-	createSubcriptionTestNode(t, Node{Name: "Manila 3", LinkName: "🇵🇭 mislabeled", LinkCountry: "GB", DelayStatus: "success", DelayTime: 100, LatencyCheckAt: now})
+	mislabeled := createSubcriptionTestNode(t, Node{Name: "Manila 3", LinkName: "🇵🇭 mislabeled", LinkCountry: "GB", DelayStatus: "success", DelayTime: 100, LatencyCheckAt: now})
 	group := SmartGroup{Name: "Philippines", Countries: "PH", MaxAgeHours: 72}
 	ids, err := group.CandidateIDs()
-	if err != nil || len(ids) != 2 {
-		t.Fatalf("name-inferred candidate IDs = %v, %v", ids, err)
+	if err != nil || len(ids) != 3 {
+		t.Fatalf("country-or-name candidate IDs = %v, %v", ids, err)
+	}
+	if group.MatchSource(mislabeled) != "countryName" {
+		t.Fatalf("stored GB / name PH should match by name, got %q", group.MatchSource(mislabeled))
 	}
 	members, stats, err := group.MembersWithStats()
-	if err != nil || len(members) != 1 || members[0].ID != good.ID || stats.CandidateCount != 2 || stats.DelayUnusable != 1 {
+	if err != nil || len(members) != 2 || members[0].ID != good.ID || members[1].ID != mislabeled.ID || stats.CandidateCount != 3 || stats.DelayUnusable != 1 {
 		t.Fatalf("members = %v, stats = %+v, err = %v", nodeNames(members), stats, err)
 	}
 	if members[0].LinkCountry != "" {
@@ -180,5 +186,19 @@ func TestSmartGroupNameCountryFallbackAndExclusionCounts(t *testing.T) {
 	ids, err = group.CandidateIDs()
 	if err != nil || len(ids) != 1 || ids[0] == good.ID {
 		t.Fatalf("filtered inferred candidates = %v, %v", ids, err)
+	}
+}
+
+func TestSmartGroupCountryCodeTokenMatchesNameWithoutRule(t *testing.T) {
+	setupSubcriptionCopyTestDB(t)
+	matched := createSubcriptionTestNode(t, Node{Name: "PH / Manila", LinkName: "PH / Manila", LinkCountry: "US"})
+	createSubcriptionTestNode(t, Node{Name: "ALPHABET node", LinkName: "ALPHABET node", LinkCountry: "US"})
+	group := SmartGroup{Name: "PH", Countries: "PH"}
+	ids, err := group.CandidateIDs()
+	if err != nil || len(ids) != 1 || ids[0] != matched.ID {
+		t.Fatalf("country code token candidates = %v, %v", ids, err)
+	}
+	if got := group.MatchSource(matched); got != "countryName" {
+		t.Fatalf("match source = %q, want countryName", got)
 	}
 }

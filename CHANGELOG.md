@@ -23,7 +23,7 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 ### Fixed
 
 - Fixed a smart-group page render crash while candidate data is still loading by guarding pagination against an empty response.
-- Smart groups now use configured country-name rules when a node has no stored landing country, so country candidates can be tested rather than remaining permanently empty. Stored landing country still takes precedence; no node metadata is overwritten.
+- Smart groups match selected countries by stored landing country or country names/codes in node names, even when the two disagree; an optional name keyword is a further OR alternative. Source-group and health requirements remain AND restrictions. Name clues never overwrite landing-country metadata.
 - Added exclusion-reason counts and explicit name-inferred labels to distinguish no matching candidates from failed checks, thresholds, and stale results.
 
 ## [1.12.0] - 2026-09-18
