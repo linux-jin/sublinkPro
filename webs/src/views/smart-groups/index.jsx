@@ -338,7 +338,7 @@ export default function SmartGroupsPage() {
                 </Table>
               </TableContainer>
             )}
-            {members?.candidateCount > (members.pageSize || 30) && (
+            {members && members.candidateCount > (members.pageSize || 30) && (
               <Stack direction="row" alignItems="center" justifyContent="center" spacing={2}>
                 <Button disabled={loadingMembers || memberPage <= 1} onClick={() => void showMembers(view, memberPage - 1)}>
                   {t('smartGroups.previous')}
