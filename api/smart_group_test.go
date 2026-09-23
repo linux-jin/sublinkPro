@@ -140,8 +140,11 @@ func TestBatchFillCountryUpdatesSmartGroupCandidates(t *testing.T) {
 	}
 	group := models.SmartGroup{Name: "PH", Countries: "PH"}
 	before, err := group.CandidateIDs()
-	if err != nil || len(before) != 0 {
-		t.Fatalf("candidates before fill = %v, %v", before, err)
+	if err != nil || len(before) != 1 || before[0] != node.ID {
+		t.Fatalf("name-inferred candidates before fill = %v, %v", before, err)
+	}
+	if country, source := models.SmartGroupCountryForDisplay(node); country != "PH" || source != "name" {
+		t.Fatalf("name fallback = %q from %q", country, source)
 	}
 	router := gin.New()
 	router.POST("/fill", NodeBatchFillCountry)
@@ -153,5 +156,103 @@ func TestBatchFillCountryUpdatesSmartGroupCandidates(t *testing.T) {
 	after, err := group.CandidateIDs()
 	if err != nil || len(after) != 1 || after[0] != node.ID {
 		t.Fatalf("candidates after fill = %v, %v", after, err)
+	}
+	var stored models.Node
+	if err := database.DB.First(&stored, node.ID).Error; err != nil || stored.LinkCountry != "PH" {
+		t.Fatalf("persisted country after fill = %q, %v", stored.LinkCountry, err)
+	}
+	if country, source := models.SmartGroupCountryForDisplay(stored); country != "PH" || source != "stored" {
+		t.Fatalf("stored country = %q from %q", country, source)
+	}
+}
+
+func TestSmartGroupMembersListsPagedCandidatesWithReasons(t *testing.T) {
+	setupPreviewAPITestDB(t)
+	group := models.SmartGroup{Name: "Europe", Countries: "GB", MaxAgeHours: 72}
+	if err := database.DB.Create(&group).Error; err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Format("2006-01-02 15:04:05")
+	for _, item := range []struct {
+		name, status, country string
+		delay                 int
+	}{
+		{"first-untested", "untested", "GB", 0},
+		{"second-healthy", "success", "GB", 90},
+		{"third-other-country", "success", "DE", 70},
+	} {
+		node := models.Node{Name: item.name, LinkName: item.name, Link: "ss://" + item.name, Protocol: "ss", LinkCountry: item.country,
+			DelayStatus: item.status, DelayTime: item.delay, LatencyCheckAt: now}
+		if err := node.Add(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	router := gin.New()
+	router.GET("/:id/members", SmartGroupMembers)
+	for _, tt := range []struct {
+		query, name, reason string
+	}{
+		{"?page=1&pageSize=1", "first-untested", "delayUnusable"},
+		{"?page=2&pageSize=1", "second-healthy", ""},
+	} {
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/"+strconv.Itoa(group.ID)+"/members"+tt.query, nil))
+		if response.Code != http.StatusOK {
+			t.Fatalf("candidate page %s status %d: %s", tt.query, response.Code, response.Body.String())
+		}
+		var data struct {
+			Data struct {
+				Count, CandidateCount, Page int
+				CandidateNodes              []struct{ Name, Reason string } `json:"candidateNodes"`
+				StatusCounts                struct {
+					DelayUnusable int `json:"delayUnusable"`
+				} `json:"statusCounts"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(response.Body.Bytes(), &data); err != nil {
+			t.Fatal(err)
+		}
+		if data.Data.Count != 1 || data.Data.CandidateCount != 2 || data.Data.StatusCounts.DelayUnusable != 1 ||
+			len(data.Data.CandidateNodes) != 1 || data.Data.CandidateNodes[0].Name != tt.name || data.Data.CandidateNodes[0].Reason != tt.reason {
+			t.Fatalf("unexpected candidate page %s: %+v", tt.query, data.Data)
+		}
+	}
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/"+strconv.Itoa(group.ID)+"/members?pageSize=101", nil))
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("invalid page size status = %d", response.Code)
+	}
+}
+
+func TestSmartGroupCheckRejectsNodeOutsideCandidates(t *testing.T) {
+	setupPreviewAPITestDB(t)
+	group := models.SmartGroup{Name: "GB", Countries: "GB"}
+	if err := database.DB.Create(&group).Error; err != nil {
+		t.Fatal(err)
+	}
+	var outsideNodeID int
+	for _, country := range []string{"GB", "US"} {
+		node := models.Node{Name: country, LinkName: country, Link: "ss://" + country, Protocol: "ss", LinkCountry: country}
+		if err := node.Add(); err != nil {
+			t.Fatal(err)
+		}
+		if country == "US" {
+			outsideNodeID = node.ID
+		}
+	}
+	if err := database.DB.AutoMigrate(&models.NodeCheckProfile{}); err != nil {
+		t.Fatal(err)
+	}
+	profile := models.NodeCheckProfile{Name: "test-profile", Mode: "tcp"}
+	if err := profile.Add(); err != nil {
+		t.Fatal(err)
+	}
+	// A valid profile must not allow retesting a node outside this group's candidates.
+	router := gin.New()
+	router.POST("/:id/check", CheckSmartGroupCandidates)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/"+strconv.Itoa(group.ID)+"/check", bytes.NewBufferString(`{"profileId":`+strconv.Itoa(profile.ID)+`,"nodeId":`+strconv.Itoa(outsideNodeID)+`}`)))
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("non-candidate node status = %d: %s", response.Code, response.Body.String())
 	}
 }

@@ -2,10 +2,12 @@ package api
 
 import (
 	"net/http"
+	"sort"
 	"strconv"
 	"sublink/database"
 	"sublink/models"
 	"sublink/services/scheduler"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -130,25 +132,61 @@ func SmartGroupMembers(c *gin.Context) {
 	if !ok {
 		return
 	}
+	members, stats, err := group.MembersWithStats()
+	if err != nil {
+		c.JSON(500, gin.H{"code": 500, "msg": "查询节点失败"})
+		return
+	}
+	page := 1
+	if value := c.Query("page"); value != "" {
+		parsed, parseErr := strconv.Atoi(value)
+		if parseErr != nil || parsed < 1 {
+			c.JSON(400, gin.H{"code": 400, "msg": "页码无效"})
+			return
+		}
+		page = parsed
+	}
+	pageSize := 30
+	if value := c.Query("pageSize"); value != "" {
+		parsed, parseErr := strconv.Atoi(value)
+		if parseErr != nil || parsed < 1 || parsed > 100 {
+			c.JSON(400, gin.H{"code": 400, "msg": "每页数量必须为1至100"})
+			return
+		}
+		pageSize = parsed
+	}
 	candidates, err := group.Candidates()
 	if err != nil {
 		c.JSON(500, gin.H{"code": 500, "msg": "查询候选节点失败"})
 		return
 	}
-	members, err := group.Members()
-	if err != nil {
-		c.JSON(500, gin.H{"code": 500, "msg": "查询节点失败"})
-		return
+	sort.Slice(candidates, func(i, j int) bool { return candidates[i].ID < candidates[j].ID })
+	candidateNodes := make([]gin.H, 0, pageSize)
+	if page <= (len(candidates)+pageSize-1)/pageSize {
+		start := (page - 1) * pageSize
+		end := min(start+pageSize, len(candidates))
+		cutoff := time.Now().Add(-time.Duration(group.MaxAgeHours) * time.Hour)
+		for _, node := range candidates[start:end] {
+			country, countrySource := models.SmartGroupCountryForDisplay(node)
+			candidateNodes = append(candidateNodes, gin.H{
+				"id": node.ID, "name": node.EffectiveName(), "group": node.Group,
+				"country": country, "countrySource": countrySource,
+				"delay": node.DelayTime, "speed": node.Speed,
+				"delayStatus": node.DelayStatus, "speedStatus": node.SpeedStatus,
+				"reason": group.CandidateExclusionReason(node, cutoff),
+			})
+		}
 	}
 	ids := make([]int, 0, len(members))
 	details := make([]gin.H, 0, min(len(members), 100))
 	for _, node := range members {
 		ids = append(ids, node.ID)
 		if len(details) < 100 {
-			details = append(details, gin.H{"id": node.ID, "name": node.EffectiveName(), "group": node.Group, "country": node.LinkCountry, "delay": node.DelayTime, "speed": node.Speed})
+			country, countrySource := models.SmartGroupCountryForDisplay(node)
+			details = append(details, gin.H{"id": node.ID, "name": node.EffectiveName(), "group": node.Group, "country": country, "countrySource": countrySource, "delay": node.DelayTime, "speed": node.Speed})
 		}
 	}
-	c.JSON(200, gin.H{"code": 200, "data": gin.H{"ids": ids, "count": len(ids), "candidateCount": len(candidates), "nodes": details}})
+	c.JSON(200, gin.H{"code": 200, "data": gin.H{"ids": ids, "count": len(ids), "candidateCount": stats.CandidateCount, "statusCounts": stats, "nodes": details, "candidateNodes": candidateNodes, "page": page, "pageSize": pageSize}})
 }
 
 func CheckSmartGroupCandidates(c *gin.Context) {
@@ -158,6 +196,7 @@ func CheckSmartGroupCandidates(c *gin.Context) {
 	}
 	var req struct {
 		ProfileID int `json:"profileId" binding:"required"`
+		NodeID    int `json:"nodeId"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.ProfileID <= 0 {
 		c.JSON(400, gin.H{"code": 400, "msg": "请选择节点检测策略"})
@@ -175,6 +214,20 @@ func CheckSmartGroupCandidates(c *gin.Context) {
 	if len(ids) == 0 {
 		c.JSON(400, gin.H{"code": 400, "msg": "当前国家、关键词和原分组条件下没有候选节点"})
 		return
+	}
+	if req.NodeID != 0 {
+		found := false
+		for _, id := range ids {
+			if id == req.NodeID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			c.JSON(400, gin.H{"code": 400, "msg": "节点不属于当前智能分组候选"})
+			return
+		}
+		ids = []int{req.NodeID}
 	}
 	go scheduler.ExecuteNodeCheckWithProfile(req.ProfileID, ids, models.TaskTriggerManual)
 	c.JSON(200, gin.H{"code": 200, "data": gin.H{"count": len(ids)}})

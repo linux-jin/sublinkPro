@@ -25,7 +25,7 @@
     "delay": "Latency",
     "speed": "Speed",
     "rule": "Latency ≤ {{delay}} ms · Minimum speed {{speed}} MB/s (0=latency only) · Freshness {{age}} hours",
-    "started": "Started checks for {{count}} matching candidates. Refresh healthy nodes after the task finishes.",
+    "started": "Started checks for {{count}} matching candidates. The list will attempt to refresh when the task finishes; you can also refresh manually.",
     "firstHundred": "Showing only the first 100; subscriptions use every member.",
     "confirmDelete": "Delete smart group “{{name}}”?",
     "subscriptionHint": "Dynamically selects by country, keyword and optional source groups without moving nodes.",
@@ -38,8 +38,34 @@
     "sourceGroups": "Source groups",
     "sourceGroupsHint": "Optional; leave empty for all source groups, or select several.",
     "candidateSummary": "{{count}} matching candidates, {{healthy}} healthy nodes.",
-    "noCandidatesHint": "Check landing countries, keyword and source-group filters. A node must have a stored landing-country code.",
-    "noHealthyHint": "Check latency status, maximum latency and freshness. If minimum speed is positive, use a mihomo download-speed profile."
+    "noCandidatesHint": "Check whether country rules recognize the original node names. A stored landing country takes precedence; also check the keyword and source-group filters.",
+    "noHealthyHint": "Check latency status, maximum latency and freshness. If minimum speed is positive, use a mihomo download-speed profile.",
+    "nameInferred": "Inferred from name (landing unverified)",
+    "exclusions": {
+      "delayUnusable": "Latency not successful {{count}}",
+      "delayOverLimit": "Latency over limit {{count}}",
+      "delayStale": "Latency stale/missing time {{count}}",
+      "speedUnusable": "Speed not successful {{count}}",
+      "speedBelowMin": "Speed below minimum {{count}}",
+      "speedStale": "Speed stale/missing time {{count}}"
+    },
+    "dialogHint": "All matching candidates appear here, including untested and unavailable nodes. Choose a check profile to test all candidates or one node. The list attempts to refresh when a task completes; you can also refresh manually.",
+    "status": "Status",
+    "available": "Available",
+    "checkOne": "Check node",
+    "close": "Close",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {{page}} / {{total}}",
+    "tcpWarning": "This smart group requires download speed, but the selected TCP profile only measures latency. Choose a mihomo download-speed profile.",
+    "reasons": {
+      "delayUnusable": "Latency not successful",
+      "delayOverLimit": "Latency over limit",
+      "delayStale": "Latency stale/missing time",
+      "speedUnusable": "Speed not successful",
+      "speedBelowMin": "Speed below minimum",
+      "speedStale": "Speed stale/missing time"
+    }
   },
   "auth": {
     "page": {

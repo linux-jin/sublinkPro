@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTaskProgress } from 'contexts/TaskProgressContext';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Autocomplete,
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -39,9 +43,13 @@ const parseCountries = (value) => (value || '').split(',').filter(Boolean);
 // Intl's region names provide a full locale-aware country/territory catalog rather than only countries already found on nodes.
 const regionCodes = Array.from({ length: 26 * 26 }, (_, index) => String.fromCharCode(65 + Math.floor(index / 26), 65 + (index % 26)));
 const nonCountryRegions = new Set(['EU', 'UN', 'EZ', 'QO', 'ZZ']);
+const exclusionKeys = ['delayUnusable', 'delayOverLimit', 'delayStale', 'speedUnusable', 'speedBelowMin', 'speedStale'];
 
 export default function SmartGroupsPage() {
   const { t, i18n } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { registerOnComplete, unregisterOnComplete } = useTaskProgress();
   const [groups, setGroups] = useState([]);
   const [countries, setCountries] = useState([]);
   const [sourceGroups, setSourceGroups] = useState([]);
@@ -51,6 +59,9 @@ export default function SmartGroupsPage() {
   const [form, setForm] = useState(emptyForm);
   const [view, setView] = useState(null);
   const [members, setMembers] = useState(null);
+  const [memberPage, setMemberPage] = useState(1);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [checkMessage, setCheckMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const displayNames = useMemo(
@@ -86,7 +97,11 @@ export default function SmartGroupsPage() {
       .then((response) => setCountries(response.data || []))
       .catch(() => {});
     void getNodeCheckProfiles()
-      .then((response) => setProfiles(response.data || []))
+      .then((response) => {
+        const items = response.data || [];
+        setProfiles(items);
+        setProfileId((current) => current || String(items[0]?.id ?? items[0]?.ID ?? ''));
+      })
       .catch(() => {});
     void getNodeGroups()
       .then((response) => setSourceGroups(response.data || []))
@@ -107,28 +122,44 @@ export default function SmartGroupsPage() {
     }
   };
 
-  const showMembers = async (group) => {
-    setView(group);
-    setMembers(null);
-    try {
-      const response = await getSmartGroupMembers(group.id);
-      setMembers(response.data);
-    } catch (error) {
-      setMessage(error.message || t('smartGroups.loadFailed'));
-    }
-  };
+  const showMembers = useCallback(
+    async (group, page = 1) => {
+      setView(group);
+      setMemberPage(page);
+      setLoadingMembers(true);
+      try {
+        const response = await getSmartGroupMembers(group.id, page);
+        setMembers(response.data);
+      } catch (error) {
+        setCheckMessage(error.message || t('smartGroups.loadFailed'));
+      } finally {
+        setLoadingMembers(false);
+      }
+    },
+    [t]
+  );
 
-  const runCheck = async (group) => {
+  useEffect(() => {
+    if (!view) return undefined;
+    const onComplete = ({ taskType }) => {
+      if (taskType === 'speed_test') void showMembers(view, memberPage);
+    };
+    registerOnComplete(onComplete);
+    return () => unregisterOnComplete(onComplete);
+  }, [view, memberPage, showMembers, registerOnComplete, unregisterOnComplete]);
+
+  const runCheck = async (group, nodeId = 0) => {
     if (!profileId) {
-      setMessage(t('smartGroups.chooseProfile'));
+      setCheckMessage(t('smartGroups.chooseProfile'));
       return;
     }
     setBusy(true);
+    setCheckMessage('');
     try {
-      const response = await checkSmartGroup(group.id, Number(profileId));
-      setMessage(t('smartGroups.started', { count: response.data?.count || 0 }));
+      const response = await checkSmartGroup(group.id, Number(profileId), nodeId);
+      setCheckMessage(t('smartGroups.started', { count: response.data?.count || 0 }));
     } catch (error) {
-      setMessage(error.message || t('smartGroups.checkFailed'));
+      setCheckMessage(error.message || t('smartGroups.checkFailed'));
     } finally {
       setBusy(false);
     }
@@ -167,20 +198,6 @@ export default function SmartGroupsPage() {
           >
             {t('smartGroups.add')}
           </Button>
-          <TextField
-            select
-            size="small"
-            label={t('smartGroups.profile')}
-            value={profileId}
-            onChange={(event) => setProfileId(event.target.value)}
-            sx={{ minWidth: 220 }}
-          >
-            {profiles.map((profile) => (
-              <MenuItem key={profile.id ?? profile.ID} value={profile.id ?? profile.ID}>
-                {profile.name ?? profile.Name}
-              </MenuItem>
-            ))}
-          </TextField>
           <Button variant="outlined" onClick={() => void refresh()}>
             {t('smartGroups.refresh')}
           </Button>
@@ -198,11 +215,15 @@ export default function SmartGroupsPage() {
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button disabled={busy} onClick={() => void showMembers(group)}>
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    setMembers(null);
+                    setCheckMessage('');
+                    void showMembers(group);
+                  }}
+                >
                   {t('smartGroups.members')}
-                </Button>
-                <Button disabled={busy} onClick={() => void runCheck(group)}>
-                  {t('smartGroups.check')}
                 </Button>
                 <Button
                   disabled={busy}
@@ -220,21 +241,63 @@ export default function SmartGroupsPage() {
             </Stack>
           </Paper>
         ))}
-        {view && (
-          <Box>
-            <Typography variant="h4">
-              {view.name} — {t('smartGroups.members')} ({members?.count ?? '…'})
-            </Typography>
-            <Button onClick={() => void showMembers(view)}>{t('smartGroups.refresh')}</Button>
+      </Stack>
+      <Dialog open={view !== null} onClose={() => setView(null)} fullWidth maxWidth="lg" fullScreen={isMobile}>
+        <DialogTitle>
+          {view?.name} — {t('smartGroups.members')}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2">{t('smartGroups.dialogHint')}</Typography>
+            {checkMessage && (
+              <Alert severity="info" onClose={() => setCheckMessage('')}>
+                {checkMessage}
+              </Alert>
+            )}
             {members && (
-              <Typography variant="body2" sx={{ mb: 1 }}>
+              <Typography variant="body2">
                 {t('smartGroups.candidateSummary', { count: members.candidateCount ?? 0, healthy: members.count ?? 0 })}
                 {members.count === 0 && ` ${t(members.candidateCount ? 'smartGroups.noHealthyHint' : 'smartGroups.noCandidatesHint')}`}
               </Typography>
             )}
-            {members && (
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
+            {members?.statusCounts && members.candidateCount > members.count && (
+              <Typography variant="caption" color="text.secondary">
+                {exclusionKeys
+                  .filter((key) => members.statusCounts[key] > 0)
+                  .map((key) => t(`smartGroups.exclusions.${key}`, { count: members.statusCounts[key] }))
+                  .join(' · ')}
+              </Typography>
+            )}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+              <TextField
+                select
+                size="small"
+                label={t('smartGroups.profile')}
+                value={profileId}
+                onChange={(event) => setProfileId(event.target.value)}
+                sx={{ minWidth: 220 }}
+              >
+                {profiles.map((profile) => (
+                  <MenuItem key={profile.id ?? profile.ID} value={profile.id ?? profile.ID}>
+                    {profile.name ?? profile.Name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Button variant="contained" disabled={busy || !members?.candidateCount} onClick={() => void runCheck(view)}>
+                {t('smartGroups.check')}
+              </Button>
+              <Button disabled={loadingMembers} onClick={() => void showMembers(view, memberPage)}>
+                {t('smartGroups.refresh')}
+              </Button>
+            </Stack>
+            {view?.minSpeed > 0 && profiles.find((profile) => String(profile.id ?? profile.ID) === String(profileId))?.mode === 'tcp' && (
+              <Alert severity="warning">{t('smartGroups.tcpWarning')}</Alert>
+            )}
+            {loadingMembers && <CircularProgress size={24} />}
+            {members?.candidateCount === 0 && <Alert severity="info">{t('smartGroups.noCandidatesHint')}</Alert>}
+            {members?.candidateCount > 0 && (
+              <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: isMobile ? 'none' : 520 }}>
+                <Table size="small" stickyHeader>
                   <TableHead>
                     <TableRow>
                       <TableCell>ID</TableCell>
@@ -243,27 +306,60 @@ export default function SmartGroupsPage() {
                       <TableCell>{t('smartGroups.country')}</TableCell>
                       <TableCell>{t('smartGroups.delay')}</TableCell>
                       <TableCell>{t('smartGroups.speed')}</TableCell>
+                      <TableCell>{t('smartGroups.status')}</TableCell>
+                      <TableCell>{t('smartGroups.check')}</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {(members.nodes || []).slice(0, 100).map((node) => (
+                    {(members.candidateNodes || []).map((node) => (
                       <TableRow key={node.id}>
                         <TableCell>{node.id}</TableCell>
                         <TableCell>{node.name}</TableCell>
-                        <TableCell>{node.group}</TableCell>
-                        <TableCell>{formatCountry(node.country)}</TableCell>
-                        <TableCell>{node.delay} ms</TableCell>
+                        <TableCell>{node.group || '—'}</TableCell>
+                        <TableCell>
+                          {formatCountry(node.country)}
+                          {node.countrySource === 'name' && (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              {t('smartGroups.nameInferred')}
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>{node.delay > 0 ? `${node.delay} ms` : '—'}</TableCell>
                         <TableCell>{node.speed > 0 ? `${node.speed} MB/s` : '—'}</TableCell>
+                        <TableCell>{node.reason ? t(`smartGroups.reasons.${node.reason}`) : t('smartGroups.available')}</TableCell>
+                        <TableCell>
+                          <Button size="small" disabled={busy || !profileId} onClick={() => void runCheck(view, node.id)}>
+                            {t('smartGroups.checkOne')}
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
             )}
-            {members?.count > 100 && <Typography variant="caption">{t('smartGroups.firstHundred')}</Typography>}
-          </Box>
-        )}
-      </Stack>
+            {members?.candidateCount > (members.pageSize || 30) && (
+              <Stack direction="row" alignItems="center" justifyContent="center" spacing={2}>
+                <Button disabled={loadingMembers || memberPage <= 1} onClick={() => void showMembers(view, memberPage - 1)}>
+                  {t('smartGroups.previous')}
+                </Button>
+                <Typography variant="body2">
+                  {t('smartGroups.page', { page: memberPage, total: Math.ceil(members.candidateCount / (members.pageSize || 30)) })}
+                </Typography>
+                <Button
+                  disabled={loadingMembers || memberPage * (members.pageSize || 30) >= members.candidateCount}
+                  onClick={() => void showMembers(view, memberPage + 1)}
+                >
+                  {t('smartGroups.next')}
+                </Button>
+              </Stack>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setView(null)}>{t('smartGroups.close')}</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
         <DialogTitle>{editing?.id ? t('smartGroups.edit') : t('smartGroups.add')}</DialogTitle>
         <DialogContent>

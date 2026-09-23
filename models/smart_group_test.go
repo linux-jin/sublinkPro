@@ -142,3 +142,43 @@ func TestSmartGroupLatencyFreshnessWithoutSpeed(t *testing.T) {
 		t.Fatalf("unlimited freshness members = %v, %v", nodeNames(members), err)
 	}
 }
+
+func TestSmartGroupNameCountryFallbackAndExclusionCounts(t *testing.T) {
+	setupSubcriptionCopyTestDB(t)
+	oldRules := countryRuleCache
+	t.Cleanup(func() { countryRuleCache = oldRules })
+	if err := database.DB.AutoMigrate(&CountryRule{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.DB.Create(&CountryRule{ID: 910001, CountryCode: "PH", CountryName: "菲律宾", Pattern: "(?i)菲律宾|Philippines|🇵🇭", Enabled: true}).Error; err != nil {
+		t.Fatal(err)
+	}
+	resetCountryRuleCacheForTest()
+	if err := InitCountryRuleCache(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Format("2006-01-02 15:04:05")
+	good := createSubcriptionTestNode(t, Node{Name: "Manila 1", LinkName: "🇵🇭 Manila", Group: "source-a", DelayStatus: "success", DelayTime: 100, LatencyCheckAt: now})
+	createSubcriptionTestNode(t, Node{Name: "Manila 2", LinkName: "Philippines slow", Group: "source-b", DelayStatus: "timeout"})
+	createSubcriptionTestNode(t, Node{Name: "Manila 3", LinkName: "🇵🇭 mislabeled", LinkCountry: "GB", DelayStatus: "success", DelayTime: 100, LatencyCheckAt: now})
+	group := SmartGroup{Name: "Philippines", Countries: "PH", MaxAgeHours: 72}
+	ids, err := group.CandidateIDs()
+	if err != nil || len(ids) != 2 {
+		t.Fatalf("name-inferred candidate IDs = %v, %v", ids, err)
+	}
+	members, stats, err := group.MembersWithStats()
+	if err != nil || len(members) != 1 || members[0].ID != good.ID || stats.CandidateCount != 2 || stats.DelayUnusable != 1 {
+		t.Fatalf("members = %v, stats = %+v, err = %v", nodeNames(members), stats, err)
+	}
+	if members[0].LinkCountry != "" {
+		t.Fatalf("name inference must not overwrite landing country: %+v", members[0])
+	}
+	if country, source := SmartGroupCountryForDisplay(members[0]); country != "PH" || source != "name" {
+		t.Fatalf("inferred display country = %q from %q", country, source)
+	}
+	group.SourceGroups = []string{"source-b"}
+	ids, err = group.CandidateIDs()
+	if err != nil || len(ids) != 1 || ids[0] == good.ID {
+		t.Fatalf("filtered inferred candidates = %v, %v", ids, err)
+	}
+}

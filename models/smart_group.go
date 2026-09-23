@@ -86,18 +86,61 @@ func GetSmartGroup(id int) (SmartGroup, error) {
 	return group, err
 }
 
+// SmartGroupMemberStats explains why matching candidates are not usable.
+// Each candidate is assigned to its first failing criterion, so the counts add up.
+type SmartGroupMemberStats struct {
+	CandidateCount int `json:"candidateCount"`
+	DelayUnusable  int `json:"delayUnusable"`
+	DelayOverLimit int `json:"delayOverLimit"`
+	DelayStale     int `json:"delayStale"`
+	SpeedUnusable  int `json:"speedUnusable"`
+	SpeedBelowMin  int `json:"speedBelowMin"`
+	SpeedStale     int `json:"speedStale"`
+}
+
+// inferSmartGroupCountry uses the configured country rules only if no landing country is stored.
+// It never writes the inferred value back to the node or overrides a measured landing country.
+func inferSmartGroupCountry(node Node, rules []CountryRule) string {
+	if code := strings.ToUpper(strings.TrimSpace(node.LinkCountry)); code != "" {
+		return code
+	}
+	for _, name := range []string{node.LinkName, node.Name} {
+		if name == "" {
+			continue
+		}
+		for _, rule := range rules {
+			if rule.MatchesNodeName(name) {
+				return strings.ToUpper(rule.CountryCode)
+			}
+		}
+	}
+	return ""
+}
+
 // Candidates intentionally ignores current health so failed nodes can be retested.
+// Names are a fallback for nodes without a stored country, not proof of their landing country.
 func (g SmartGroup) Candidates() ([]Node, error) {
-	nodes, err := (&Node{}).ListWithFilters(NodeFilter{Countries: strings.Split(g.Countries, ",")})
+	nodes, err := (&Node{}).ListWithFilters(NodeFilter{})
 	if err != nil {
 		return nil, err
+	}
+	countries := make(map[string]bool)
+	for _, code := range strings.Split(g.Countries, ",") {
+		if code = strings.ToUpper(strings.TrimSpace(code)); code != "" {
+			countries[code] = true
+		}
+	}
+	if len(countries) == 0 {
+		return []Node{}, nil
 	}
 	groups := make(map[string]bool, len(g.SourceGroups))
 	for _, source := range g.SourceGroups {
 		groups[strings.ToLower(source)] = true
 	}
 	keyword := strings.ToLower(g.Keyword)
-	candidates := make([]Node, 0, len(nodes))
+	var countryRules []CountryRule
+	rulesLoaded := false
+	candidates := make([]Node, 0)
 	for _, node := range nodes {
 		if len(groups) > 0 && !groups[strings.ToLower(node.Group)] {
 			continue
@@ -106,7 +149,13 @@ func (g SmartGroup) Candidates() ([]Node, error) {
 			!strings.Contains(strings.ToLower(node.Name), keyword) && !strings.Contains(strings.ToLower(node.LinkName), keyword) {
 			continue
 		}
-		candidates = append(candidates, node)
+		if strings.TrimSpace(node.LinkCountry) == "" && !rulesLoaded {
+			countryRules = GetEnabledCountryRules()
+			rulesLoaded = true
+		}
+		if countries[inferSmartGroupCountry(node, countryRules)] {
+			candidates = append(candidates, node)
+		}
 	}
 	return candidates, nil
 }
@@ -124,38 +173,80 @@ func (g SmartGroup) CandidateIDs() ([]int, error) {
 	return ids, nil
 }
 
-// Members evaluates the latest persisted test result at read time.
-// A speed threshold of zero requires only a successful latency test; TCP-only profiles can then populate the view.
+// Members evaluates persisted checks dynamically. Zero minimum speed accepts TCP-only latency checks.
 func (g SmartGroup) Members() ([]Node, error) {
+	members, _, err := g.MembersWithStats()
+	return members, err
+}
+
+func (g SmartGroup) MembersWithStats() ([]Node, SmartGroupMemberStats, error) {
 	nodes, err := g.Candidates()
 	if err != nil {
-		return nil, err
+		return nil, SmartGroupMemberStats{}, err
 	}
+	stats := SmartGroupMemberStats{CandidateCount: len(nodes)}
 	cutoff := time.Now().Add(-time.Duration(g.MaxAgeHours) * time.Hour)
 	members := make([]Node, 0, len(nodes))
 	for _, node := range nodes {
-		if node.DelayStatus != "success" || node.DelayTime <= 0 || (g.MaxDelay > 0 && node.DelayTime > g.MaxDelay) {
-			continue
+		switch g.CandidateExclusionReason(node, cutoff) {
+		case "delayUnusable":
+			stats.DelayUnusable++
+		case "delayOverLimit":
+			stats.DelayOverLimit++
+		case "delayStale":
+			stats.DelayStale++
+		case "speedUnusable":
+			stats.SpeedUnusable++
+		case "speedBelowMin":
+			stats.SpeedBelowMin++
+		case "speedStale":
+			stats.SpeedStale++
+		default:
+			members = append(members, node)
 		}
-		if g.MinSpeed > 0 && (node.SpeedStatus != "success" || node.Speed < g.MinSpeed) {
-			continue
-		}
-		if g.MaxAgeHours > 0 {
-			delayAt, delayErr := time.ParseInLocation("2006-01-02 15:04:05", node.LatencyCheckAt, time.Local)
-			if delayErr != nil || delayAt.Before(cutoff) {
-				continue
-			}
-			if g.MinSpeed > 0 {
-				speedAt, speedErr := time.ParseInLocation("2006-01-02 15:04:05", node.SpeedCheckAt, time.Local)
-				if speedErr != nil || speedAt.Before(cutoff) {
-					continue
-				}
-			}
-		}
-		members = append(members, node)
 	}
 	sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
-	return members, nil
+	return members, stats, nil
+}
+
+// CandidateExclusionReason returns an empty string for a usable node.
+// The caller supplies one cutoff for a consistent snapshot of the current result window.
+func (g SmartGroup) CandidateExclusionReason(node Node, cutoff time.Time) string {
+	if node.DelayStatus != "success" || node.DelayTime <= 0 {
+		return "delayUnusable"
+	}
+	if g.MaxDelay > 0 && node.DelayTime > g.MaxDelay {
+		return "delayOverLimit"
+	}
+	if g.MaxAgeHours > 0 {
+		delayAt, err := time.ParseInLocation("2006-01-02 15:04:05", node.LatencyCheckAt, time.Local)
+		if err != nil || delayAt.Before(cutoff) {
+			return "delayStale"
+		}
+	}
+	if g.MinSpeed > 0 {
+		if node.SpeedStatus != "success" || node.Speed <= 0 {
+			return "speedUnusable"
+		}
+		if node.Speed < g.MinSpeed {
+			return "speedBelowMin"
+		}
+		if g.MaxAgeHours > 0 {
+			speedAt, err := time.ParseInLocation("2006-01-02 15:04:05", node.SpeedCheckAt, time.Local)
+			if err != nil || speedAt.Before(cutoff) {
+				return "speedStale"
+			}
+		}
+	}
+	return ""
+}
+
+// SmartGroupCountryForDisplay labels name-inferred countries without changing the persisted node.
+func SmartGroupCountryForDisplay(node Node) (code, source string) {
+	if strings.TrimSpace(node.LinkCountry) != "" {
+		return strings.ToUpper(strings.TrimSpace(node.LinkCountry)), "stored"
+	}
+	return inferSmartGroupCountry(node, GetEnabledCountryRules()), "name"
 }
 
 // ParseSmartGroupIDs parses the subscription's compact, ordered ID list.

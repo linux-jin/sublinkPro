@@ -18,6 +18,13 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 - Expanded the smart-group country chooser beyond countries already present on nodes (including Philippines), added optional node-name keyword and source-group filters, and showed candidate counts for diagnosing empty groups.
 - A zero minimum speed now accepts successful TCP latency checks; positive speed thresholds still require download-speed results. Batch country fill now updates the node cache immediately.
 
+- Moved smart-group candidate inspection and testing into a paginated dialog showing untested, failed, and healthy nodes with per-node exclusion reasons; added whole-group and single-node checks.
+
+### Fixed
+
+- Smart groups now use configured country-name rules when a node has no stored landing country, so country candidates can be tested rather than remaining permanently empty. Stored landing country still takes precedence; no node metadata is overwritten.
+- Added exclusion-reason counts and explicit name-inferred labels to distinguish no matching candidates from failed checks, thresholds, and stale results.
+
 ## [1.12.0] - 2026-09-18
 
 ### Added

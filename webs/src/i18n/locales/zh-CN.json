@@ -25,7 +25,7 @@
     "delay": "延迟",
     "speed": "速度",
     "rule": "延迟 ≤ {{delay}} ms · 最低速度 {{speed}} MB/s（0=仅延迟）· 有效期 {{age}} 小时",
-    "started": "已启动 {{count}} 个匹配候选节点的检测。任务完成后刷新可用节点。",
+    "started": "已启动 {{count}} 个匹配候选节点的检测。任务完成后将尝试刷新，也可手动刷新。",
     "firstHundred": "仅显示前 100 条，订阅仍使用全部成员。",
     "confirmDelete": "确定删除智能分组「{{name}}」？",
     "subscriptionHint": "按国家、关键词及可选原分组动态选取，不移动节点。",
@@ -38,8 +38,34 @@
     "sourceGroups": "原分组",
     "sourceGroupsHint": "可选；留空表示所有原分组，可多选。",
     "candidateSummary": "匹配候选 {{count}} 个，可用 {{healthy}} 个。",
-    "noCandidatesHint": "请检查节点落地国家、关键词和原分组条件；国家必须已写入节点落地国家字段。",
-    "noHealthyHint": "请检查延迟状态、最大延迟与结果有效期；若设置了最低速度，还须使用 mihomo 下载测速策略。"
+    "noCandidatesHint": "请检查国家规则是否能从节点原名推断国家；已保存的落地国家会优先使用。还要核对关键词与原分组条件。",
+    "noHealthyHint": "请检查延迟状态、最大延迟与结果有效期；若设置了最低速度，还须使用 mihomo 下载测速策略。",
+    "nameInferred": "按名称推断（未验证落地）",
+    "exclusions": {
+      "delayUnusable": "延迟未成功 {{count}}",
+      "delayOverLimit": "延迟超过上限 {{count}}",
+      "delayStale": "延迟结果过期/无时间 {{count}}",
+      "speedUnusable": "速度未成功 {{count}}",
+      "speedBelowMin": "速度低于下限 {{count}}",
+      "speedStale": "速度结果过期/无时间 {{count}}"
+    },
+    "dialogHint": "这里显示所有匹配的候选节点，包括未测速和不可用节点。选择测速策略后可检测全部候选或单个节点；任务完成后列表会尝试自动刷新，也可手动刷新。",
+    "status": "可用状态",
+    "available": "可用",
+    "checkOne": "测此节点",
+    "close": "关闭",
+    "previous": "上一页",
+    "next": "下一页",
+    "page": "第 {{page}} / {{total}} 页",
+    "tcpWarning": "当前智能分组要求下载速度，但选中的 TCP 策略只测延迟。请选择 mihomo 下载测速策略。",
+    "reasons": {
+      "delayUnusable": "延迟未成功",
+      "delayOverLimit": "延迟超过上限",
+      "delayStale": "延迟结果过期/无时间",
+      "speedUnusable": "速度未成功",
+      "speedBelowMin": "速度低于下限",
+      "speedStale": "速度结果过期/无时间"
+    }
   },
   "auth": {
     "page": {
