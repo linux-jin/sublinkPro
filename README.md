@@ -113,16 +113,15 @@ The fork follows this maintenance model:
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.12.0`
+**Latest stable release:** `v1.13.0`
 
-**v1.12.0 highlights:**
+**v1.13.0 highlights:**
 
-- Native Loon `.lcf` template management and full-profile generation, with Sub-Store retained as the no-template compatibility fallback.
-- Independent SOCKS5 accounts with encrypted passwords, direct routing-profile binding, and multiple listener endpoints.
-- A sanitized public `template/loon.lcf`; private certificates, credentials, subscriptions, host mappings, and SSIDs are not included.
-- Legacy `.lcf` assignments are automatically repaired, and node-import result dialogs now include complete Chinese and English translations.
+- Independent smart groups select nodes across source groups by stored country **or** country/name clues, with optional source-group restrictions.
+- Candidate checks, dynamic latency/speed and freshness requirements, per-node exclusion reasons, and bulk or individual tests in the smart-group dialog.
+- Smart groups can be used directly in dynamic/mixed subscriptions without moving source nodes; the subscription interface now exposes these associations clearly.
 
-The v1.12.0 release adds native Loon output, independent SOCKS5 accounts and listeners, while retaining the routing, node-field, and front-proxy improvements from v1.11.0.
+The v1.13.0 release adds independent country/name-based smart groups and subscription integration. See the [smart-group guide](docs/features/smart-groups.md) for matching and test requirements.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 

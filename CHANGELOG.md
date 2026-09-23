@@ -4,7 +4,7 @@ English | [简体中文](CHANGELOG.zh-CN.md)
 
 All notable SublinkPro releases are documented here. The README only keeps a short summary of the latest release; feature-level details live under `docs/features/`.
 
-## [Unreleased]
+## [1.13.0] - 2026-09-23
 
 ### Added
 
