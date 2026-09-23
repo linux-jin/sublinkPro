@@ -1,7 +1,7 @@
 {
   "smartGroups": {
     "title": "智能分组",
-    "description": "跨原分组按落地国家和最近测速结果动态筛出可用节点，不移动节点。检测按钮会对目标国家的所有候选节点测速，包括当前失败的节点。",
+    "description": "按落地国家筛选节点，可选关键词和原分组；原分组留空时跨全部分组。最低速度为 0 时只需成功的延迟检测，不移动节点。",
     "add": "新增分组",
     "edit": "编辑",
     "delete": "删除",
@@ -10,10 +10,10 @@
     "refresh": "刷新",
     "name": "分组名称",
     "country": "国家代码",
-    "countryHint": "使用两位代码，例如 GB、FR、DE；支持多选或手动输入。",
+    "countryHint": "可搜索国家名称或两位代码（如菲律宾 PH、英国 GB）；支持多选或手动输入。",
     "maxDelay": "最大延迟（ms）",
     "minSpeed": "最低速度（MB/s）",
-    "speedHint": "即使设为 0，仍要求速度测试成功且速度大于 0。",
+    "speedHint": "0 表示只要求延迟检测成功；设为正数时还要求下载测速成功。",
     "maxAge": "结果有效期（小时）",
     "zeroUnlimited": "0 表示不限制",
     "profile": "测速策略",
@@ -24,15 +24,22 @@
     "sourceGroup": "原分组",
     "delay": "延迟",
     "speed": "速度",
-    "rule": "延迟 ≤ {{delay}} ms · 速度 ≥ {{speed}} MB/s · 有效期 {{age}} 小时",
-    "started": "已启动 {{count}} 个候选节点的检测。完成后刷新列表。",
+    "rule": "延迟 ≤ {{delay}} ms · 最低速度 {{speed}} MB/s（0=仅延迟）· 有效期 {{age}} 小时",
+    "started": "已启动 {{count}} 个匹配候选节点的检测。任务完成后刷新可用节点。",
     "firstHundred": "仅显示前 100 条，订阅仍使用全部成员。",
     "confirmDelete": "确定删除智能分组「{{name}}」？",
-    "subscriptionHint": "跨所有原分组动态选取；不会移动节点。",
+    "subscriptionHint": "按国家、关键词及可选原分组动态选取，不移动节点。",
     "loadFailed": "加载智能分组失败",
     "saveFailed": "保存智能分组失败",
     "deleteFailed": "删除智能分组失败",
-    "checkFailed": "启动检测失败"
+    "checkFailed": "启动检测失败",
+    "keyword": "节点名称关键词",
+    "keywordHint": "可选，不区分大小写匹配节点显示名或原名。",
+    "sourceGroups": "原分组",
+    "sourceGroupsHint": "可选；留空表示所有原分组，可多选。",
+    "candidateSummary": "匹配候选 {{count}} 个，可用 {{healthy}} 个。",
+    "noCandidatesHint": "请检查节点落地国家、关键词和原分组条件；国家必须已写入节点落地国家字段。",
+    "noHealthyHint": "请检查延迟状态、最大延迟与结果有效期；若设置了最低速度，还须使用 mihomo 下载测速策略。"
   },
   "auth": {
     "page": {

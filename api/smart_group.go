@@ -87,7 +87,7 @@ func UpdateSmartGroup(c *gin.Context) {
 		c.JSON(400, gin.H{"code": 400, "msg": err.Error()})
 		return
 	}
-	if err := database.DB.Model(&existing).Select("Name", "Countries", "MaxDelay", "MinSpeed", "MaxAgeHours").Updates(&group).Error; err != nil {
+	if err := database.DB.Model(&existing).Select("Name", "Countries", "Keyword", "SourceGroups", "MaxDelay", "MinSpeed", "MaxAgeHours").Updates(&group).Error; err != nil {
 		c.JSON(400, gin.H{"code": 400, "msg": "名称已存在或保存失败"})
 		return
 	}
@@ -130,6 +130,11 @@ func SmartGroupMembers(c *gin.Context) {
 	if !ok {
 		return
 	}
+	candidates, err := group.Candidates()
+	if err != nil {
+		c.JSON(500, gin.H{"code": 500, "msg": "查询候选节点失败"})
+		return
+	}
 	members, err := group.Members()
 	if err != nil {
 		c.JSON(500, gin.H{"code": 500, "msg": "查询节点失败"})
@@ -143,7 +148,7 @@ func SmartGroupMembers(c *gin.Context) {
 			details = append(details, gin.H{"id": node.ID, "name": node.EffectiveName(), "group": node.Group, "country": node.LinkCountry, "delay": node.DelayTime, "speed": node.Speed})
 		}
 	}
-	c.JSON(200, gin.H{"code": 200, "data": gin.H{"ids": ids, "count": len(ids), "nodes": details}})
+	c.JSON(200, gin.H{"code": 200, "data": gin.H{"ids": ids, "count": len(ids), "candidateCount": len(candidates), "nodes": details}})
 }
 
 func CheckSmartGroupCandidates(c *gin.Context) {
@@ -168,7 +173,7 @@ func CheckSmartGroupCandidates(c *gin.Context) {
 		return
 	}
 	if len(ids) == 0 {
-		c.JSON(400, gin.H{"code": 400, "msg": "目标国家没有候选节点"})
+		c.JSON(400, gin.H{"code": 400, "msg": "当前国家、关键词和原分组条件下没有候选节点"})
 		return
 	}
 	go scheduler.ExecuteNodeCheckWithProfile(req.ProfileID, ids, models.TaskTriggerManual)

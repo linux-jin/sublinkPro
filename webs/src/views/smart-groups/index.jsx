@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -22,7 +22,7 @@ import {
   Typography
 } from '@mui/material';
 import MainCard from 'ui-component/cards/MainCard';
-import { getNodeCountries } from 'api/nodes';
+import { getNodeCountries, getNodeGroups } from 'api/nodes';
 import { getNodeCheckProfiles } from 'api/nodeCheck';
 import {
   checkSmartGroup,
@@ -34,13 +34,17 @@ import {
 } from 'api/smartGroups';
 import { formatCountry } from 'utils/countryDisplay';
 
-const emptyForm = { name: '', countries: '', maxDelay: 500, minSpeed: 0, maxAgeHours: 72 };
+const emptyForm = { name: '', countries: '', keyword: '', sourceGroups: [], maxDelay: 0, minSpeed: 0, maxAgeHours: 72 };
 const parseCountries = (value) => (value || '').split(',').filter(Boolean);
+// Intl's region names provide a full locale-aware country/territory catalog rather than only countries already found on nodes.
+const regionCodes = Array.from({ length: 26 * 26 }, (_, index) => String.fromCharCode(65 + Math.floor(index / 26), 65 + (index % 26)));
+const nonCountryRegions = new Set(['EU', 'UN', 'EZ', 'QO', 'ZZ']);
 
 export default function SmartGroupsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [groups, setGroups] = useState([]);
   const [countries, setCountries] = useState([]);
+  const [sourceGroups, setSourceGroups] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [profileId, setProfileId] = useState('');
   const [editing, setEditing] = useState(null);
@@ -49,6 +53,23 @@ export default function SmartGroupsPage() {
   const [members, setMembers] = useState(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const displayNames = useMemo(
+    () => new Intl.DisplayNames([i18n.resolvedLanguage || i18n.language], { type: 'region' }),
+    [i18n.resolvedLanguage, i18n.language]
+  );
+  const countryOptions = useMemo(
+    () =>
+      [...new Set([...countries, ...regionCodes.filter((code) => !nonCountryRegions.has(code) && displayNames.of(code) !== code)])].sort(),
+    [countries, displayNames]
+  );
+  const groupOptions = useMemo(
+    () => [...new Set([...sourceGroups, ...(form.sourceGroups || [])])].sort(),
+    [sourceGroups, form.sourceGroups]
+  );
+  const countryLabel = (code) => {
+    const name = displayNames.of(code);
+    return name && name !== code ? `${formatCountry(code)} — ${name}` : formatCountry(code);
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -66,6 +87,9 @@ export default function SmartGroupsPage() {
       .catch(() => {});
     void getNodeCheckProfiles()
       .then((response) => setProfiles(response.data || []))
+      .catch(() => {});
+    void getNodeGroups()
+      .then((response) => setSourceGroups(response.data || []))
       .catch(() => {});
   }, [refresh]);
 
@@ -169,6 +193,8 @@ export default function SmartGroupsPage() {
                 <Typography variant="body2">
                   {parseCountries(group.countries).map(formatCountry).join(' / ')} ·{' '}
                   {t('smartGroups.rule', { delay: group.maxDelay || '∞', speed: group.minSpeed || 0, age: group.maxAgeHours || '∞' })}
+                  {group.keyword && ` · ${t('smartGroups.keyword')}: ${group.keyword}`}
+                  {group.sourceGroups?.length > 0 && ` · ${t('smartGroups.sourceGroups')}: ${group.sourceGroups.join(' / ')}`}
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -181,7 +207,7 @@ export default function SmartGroupsPage() {
                 <Button
                   disabled={busy}
                   onClick={() => {
-                    setForm({ ...group });
+                    setForm({ ...group, sourceGroups: group.sourceGroups || [] });
                     setEditing(group);
                   }}
                 >
@@ -200,6 +226,12 @@ export default function SmartGroupsPage() {
               {view.name} — {t('smartGroups.members')} ({members?.count ?? '…'})
             </Typography>
             <Button onClick={() => void showMembers(view)}>{t('smartGroups.refresh')}</Button>
+            {members && (
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                {t('smartGroups.candidateSummary', { count: members.candidateCount ?? 0, healthy: members.count ?? 0 })}
+                {members.count === 0 && ` ${t(members.candidateCount ? 'smartGroups.noHealthyHint' : 'smartGroups.noCandidatesHint')}`}
+              </Typography>
+            )}
             {members && (
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
@@ -221,7 +253,7 @@ export default function SmartGroupsPage() {
                         <TableCell>{node.group}</TableCell>
                         <TableCell>{formatCountry(node.country)}</TableCell>
                         <TableCell>{node.delay} ms</TableCell>
-                        <TableCell>{node.speed} MB/s</TableCell>
+                        <TableCell>{node.speed > 0 ? `${node.speed} MB/s` : '—'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -245,12 +277,27 @@ export default function SmartGroupsPage() {
             <Autocomplete
               multiple
               freeSolo
-              options={countries}
+              options={countryOptions}
               value={parseCountries(form.countries)}
               onChange={(_event, values) => setForm({ ...form, countries: values.map((value) => value.trim().toUpperCase()).join(',') })}
-              getOptionLabel={(option) => formatCountry(option)}
+              getOptionLabel={countryLabel}
               renderInput={(params) => (
                 <TextField {...params} required label={t('smartGroups.country')} helperText={t('smartGroups.countryHint')} />
+              )}
+            />
+            <TextField
+              label={t('smartGroups.keyword')}
+              value={form.keyword || ''}
+              onChange={(event) => setForm({ ...form, keyword: event.target.value })}
+              helperText={t('smartGroups.keywordHint')}
+            />
+            <Autocomplete
+              multiple
+              options={groupOptions}
+              value={form.sourceGroups || []}
+              onChange={(_event, values) => setForm({ ...form, sourceGroups: values })}
+              renderInput={(params) => (
+                <TextField {...params} label={t('smartGroups.sourceGroups')} helperText={t('smartGroups.sourceGroupsHint')} />
               )}
             />
             <TextField

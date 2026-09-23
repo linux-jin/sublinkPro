@@ -1,7 +1,7 @@
 {
   "smartGroups": {
     "title": "Smart Groups",
-    "description": "Select healthy nodes across all source groups by landing country and recent test results, without moving them. Check tests all country candidates, including currently failed nodes.",
+    "description": "Filter by landing country, with optional node-name keyword and source groups. Empty source groups mean all groups. With zero minimum speed, a successful latency check suffices; source groups are unchanged.",
     "add": "Add group",
     "edit": "Edit",
     "delete": "Delete",
@@ -10,10 +10,10 @@
     "refresh": "Refresh",
     "name": "Group name",
     "country": "Country codes",
-    "countryHint": "Use two-letter codes such as GB, FR, DE; select or type multiple.",
+    "countryHint": "Search by name or two-letter code (e.g. Philippines PH, UK GB); select or type multiple.",
     "maxDelay": "Maximum latency (ms)",
     "minSpeed": "Minimum speed (MB/s)",
-    "speedHint": "Even at 0, speed must be positive and its test successful.",
+    "speedHint": "0 requires only a successful latency check; a positive minimum also requires a successful download-speed check.",
     "maxAge": "Result freshness (hours)",
     "zeroUnlimited": "0 means no limit",
     "profile": "Check profile",
@@ -24,15 +24,22 @@
     "sourceGroup": "Source group",
     "delay": "Latency",
     "speed": "Speed",
-    "rule": "Latency ≤ {{delay}} ms · Speed ≥ {{speed}} MB/s · Freshness {{age}} hours",
-    "started": "Started checks for {{count}} country candidates. Refresh after completion.",
+    "rule": "Latency ≤ {{delay}} ms · Minimum speed {{speed}} MB/s (0=latency only) · Freshness {{age}} hours",
+    "started": "Started checks for {{count}} matching candidates. Refresh healthy nodes after the task finishes.",
     "firstHundred": "Showing only the first 100; subscriptions use every member.",
     "confirmDelete": "Delete smart group “{{name}}”?",
-    "subscriptionHint": "Dynamically selects across all source groups without moving nodes.",
+    "subscriptionHint": "Dynamically selects by country, keyword and optional source groups without moving nodes.",
     "loadFailed": "Failed to load smart groups",
     "saveFailed": "Failed to save smart group",
     "deleteFailed": "Failed to delete smart group",
-    "checkFailed": "Failed to start check"
+    "checkFailed": "Failed to start check",
+    "keyword": "Node-name keyword",
+    "keywordHint": "Optional, case-insensitive substring of the display or original node name.",
+    "sourceGroups": "Source groups",
+    "sourceGroupsHint": "Optional; leave empty for all source groups, or select several.",
+    "candidateSummary": "{{count}} matching candidates, {{healthy}} healthy nodes.",
+    "noCandidatesHint": "Check landing countries, keyword and source-group filters. A node must have a stored landing-country code.",
+    "noHealthyHint": "Check latency status, maximum latency and freshness. If minimum speed is positive, use a mihomo download-speed profile."
   },
   "auth": {
     "page": {

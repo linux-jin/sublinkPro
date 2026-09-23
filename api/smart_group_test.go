@@ -47,8 +47,9 @@ func TestSmartGroupPreviewAndMembers(t *testing.T) {
 	}
 	var response struct {
 		Data struct {
-			Count int `json:"count"`
-			Nodes []struct {
+			Count          int `json:"count"`
+			CandidateCount int `json:"candidateCount"`
+			Nodes          []struct {
 				Group string `json:"group"`
 			} `json:"nodes"`
 		} `json:"data"`
@@ -56,7 +57,7 @@ func TestSmartGroupPreviewAndMembers(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if response.Data.Count != 2 || response.Data.Nodes[0].Group != "source-one" || response.Data.Nodes[1].Group != "source-two" {
+	if response.Data.Count != 2 || response.Data.CandidateCount != 2 || response.Data.Nodes[0].Group != "source-one" || response.Data.Nodes[1].Group != "source-two" {
 		t.Fatalf("members response = %+v", response.Data)
 	}
 }
@@ -89,7 +90,7 @@ func TestCreateAndUpdateSmartGroup(t *testing.T) {
 	router.POST("/", CreateSmartGroup)
 	router.PUT("/:id", UpdateSmartGroup)
 	create := httptest.NewRecorder()
-	router.ServeHTTP(create, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", bytes.NewBufferString(`{"name":"Europe","countries":"gb,FR","maxDelay":500}`)))
+	router.ServeHTTP(create, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", bytes.NewBufferString(`{"name":"Europe","countries":"gb,FR","keyword":"  fast ","sourceGroups":[" airport-a ","AIRPORT-A"],"maxDelay":500}`)))
 	if create.Code != http.StatusOK {
 		t.Fatalf("create status = %d: %s", create.Code, create.Body.String())
 	}
@@ -99,11 +100,11 @@ func TestCreateAndUpdateSmartGroup(t *testing.T) {
 	if err := json.Unmarshal(create.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if response.Data.Countries != "GB,FR" || response.Data.MaxAgeHours != 72 {
+	if response.Data.Countries != "GB,FR" || response.Data.MaxAgeHours != 72 || response.Data.Keyword != "fast" || len(response.Data.SourceGroups) != 1 || response.Data.SourceGroups[0] != "airport-a" {
 		t.Fatalf("created group = %+v", response.Data)
 	}
 	update := httptest.NewRecorder()
-	router.ServeHTTP(update, httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/"+strconv.Itoa(response.Data.ID), bytes.NewBufferString(`{"name":"Europe","countries":"DE","maxDelay":0,"minSpeed":0,"maxAgeHours":0}`)))
+	router.ServeHTTP(update, httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/"+strconv.Itoa(response.Data.ID), bytes.NewBufferString(`{"name":"Europe","countries":"DE","keyword":"","sourceGroups":[],"maxDelay":0,"minSpeed":0,"maxAgeHours":0}`)))
 	if update.Code != http.StatusOK {
 		t.Fatalf("update status = %d: %s", update.Code, update.Body.String())
 	}
@@ -111,7 +112,46 @@ func TestCreateAndUpdateSmartGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saved.Countries != "DE" || saved.MaxAgeHours != 0 || saved.MaxDelay != 0 {
+	if saved.Countries != "DE" || saved.MaxAgeHours != 0 || saved.MaxDelay != 0 || saved.Keyword != "" || len(saved.SourceGroups) != 0 {
 		t.Fatalf("updated group = %+v", saved)
+	}
+}
+
+func TestBatchFillCountryUpdatesSmartGroupCandidates(t *testing.T) {
+	oldDB := database.DB
+	t.Cleanup(func() {
+		if oldDB != nil {
+			_ = models.InitCountryRuleCache()
+		}
+	})
+	setupPreviewAPITestDB(t)
+	if err := database.DB.AutoMigrate(&models.CountryRule{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.DB.Create(&models.CountryRule{CountryCode: "PH", CountryName: "Philippines", Pattern: "Philippines", Enabled: true}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := models.InitCountryRuleCache(); err != nil {
+		t.Fatal(err)
+	}
+	node := models.Node{Name: "Philippines 01", LinkName: "Philippines 01", Link: "ss://ph-01", Protocol: "ss"}
+	if err := node.Add(); err != nil {
+		t.Fatal(err)
+	}
+	group := models.SmartGroup{Name: "PH", Countries: "PH"}
+	before, err := group.CandidateIDs()
+	if err != nil || len(before) != 0 {
+		t.Fatalf("candidates before fill = %v, %v", before, err)
+	}
+	router := gin.New()
+	router.POST("/fill", NodeBatchFillCountry)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/fill", bytes.NewBufferString(`{"onlyEmpty":true}`)))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("fill country status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	after, err := group.CandidateIDs()
+	if err != nil || len(after) != 1 || after[0] != node.ID {
+		t.Fatalf("candidates after fill = %v, %v", after, err)
 	}
 }

@@ -640,13 +640,13 @@ Base: `/api/v1/tasks`
 Base: `/api/v1/smart-groups`. Auth required. Mutating routes are demo-restricted. Independent views never change a node’s source group.
 
 - **GET** `/smart-groups` — list definitions.
-- **POST** `/smart-groups` — **JSON** create: `{"name":"Europe","countries":"GB,FR,DE","maxDelay":500,"minSpeed":1,"maxAgeHours":72}`. Countries are comma-separated ISO alpha-2 codes; omitted freshness defaults to 72 hours, explicit zero disables expiry.
+- **POST** `/smart-groups` — **JSON** create: `{"name":"Europe","countries":"GB,FR,DE","keyword":"London","sourceGroups":["Provider A","Provider B"],"maxDelay":0,"minSpeed":0,"maxAgeHours":72}`. Countries are comma-separated ISO alpha-2 codes; `keyword` matches node names case-insensitively; `sourceGroups` optionally limits to exact existing group names (empty means all groups). Omitted freshness defaults to 72 hours, explicit zero disables expiry; zero minimum speed requires only a successful latency check.
 - **PUT** `/smart-groups/{id}` — **JSON** full definition update.
 - **DELETE** `/smart-groups/{id}` — rejects with HTTP 409 while referenced by a subscription.
-- **GET** `/smart-groups/{id}/members` — `{ids, count, nodes}`; `nodes` is limited to the first 100 display items, `ids` covers all healthy members.
-- **POST** `/smart-groups/{id}/check` — **JSON** `{"profileId":1}` starts asynchronous checks for all country candidates, including failed/untested ones. The profile’s own group/tag scope does not restrict this explicit node list. Returns candidate `count`.
+- **GET** `/smart-groups/{id}/members` — `{ids, count, candidateCount, nodes}`; `candidateCount` is before health filtering; `nodes` is limited to the first 100 display items, `ids` covers all healthy members.
+- **POST** `/smart-groups/{id}/check` — **JSON** `{"profileId":1}` starts asynchronous checks for all candidates matching country, keyword and source groups, including failed/untested ones. The profile’s own group/tag scope does not restrict this explicit node list. Returns candidate `count`.
 
-Membership requires successful positive latency **and** speed results, optional thresholds, and unexpired latency/speed timestamps. Subscriptions accept form field `smartGroupIds`; form preview accepts JSON field `SmartGroupIDs` (array of integer IDs). See `docs/features/smart-groups.md`.
+Membership requires a successful positive latency result (and a fresh latency timestamp unless expiry is disabled). A positive minimum speed additionally requires a successful speed result and fresh speed timestamp. Subscriptions accept form field `smartGroupIds`; form preview accepts JSON field `SmartGroupIDs` (array of integer IDs). See `docs/features/smart-groups.md`.
 
 ---
 
