@@ -71,7 +71,13 @@
     "matchSources": {
       "countryName": "Matched country in name (not verified landing)",
       "keyword": "Matched name keyword"
-    }
+    },
+    "sourceAirport": "Source airport",
+    "manualNode": "Manually added",
+    "deletedAirport": "Source airport deleted (#{{id}})",
+    "eligibleForSubscription": "Passed · eligible for subscription",
+    "notEligibleForSubscription": "Not passed · excluded by this group",
+    "subscriptionStatusHint": "Status reflects this smart group’s current check rules. “Eligible” does not guarantee inclusion in a final subscription; subscription filters, scripts, and name deduplication still apply."
   },
   "auth": {
     "page": {

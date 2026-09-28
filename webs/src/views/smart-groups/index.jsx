@@ -9,6 +9,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -254,6 +255,9 @@ export default function SmartGroupsPage() {
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Typography variant="body2">{t('smartGroups.dialogHint')}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t('smartGroups.subscriptionStatusHint')}
+            </Typography>
             {checkMessage && (
               <Alert severity="info" onClose={() => setCheckMessage('')}>
                 {checkMessage}
@@ -308,6 +312,7 @@ export default function SmartGroupsPage() {
                       <TableCell>ID</TableCell>
                       <TableCell>{t('smartGroups.node')}</TableCell>
                       <TableCell>{t('smartGroups.sourceGroup')}</TableCell>
+                      <TableCell>{t('smartGroups.sourceAirport')}</TableCell>
                       <TableCell>{t('smartGroups.country')}</TableCell>
                       <TableCell>{t('smartGroups.delay')}</TableCell>
                       <TableCell>{t('smartGroups.speed')}</TableCell>
@@ -321,6 +326,10 @@ export default function SmartGroupsPage() {
                         <TableCell>{node.id}</TableCell>
                         <TableCell>{node.name}</TableCell>
                         <TableCell>{node.group || '—'}</TableCell>
+                        <TableCell>
+                          {node.airportName ||
+                            (node.airportId > 0 ? t('smartGroups.deletedAirport', { id: node.airportId }) : t('smartGroups.manualNode'))}
+                        </TableCell>
                         <TableCell>
                           {formatCountry(node.country)}
                           {node.countrySource === 'name' && (
@@ -336,7 +345,20 @@ export default function SmartGroupsPage() {
                         </TableCell>
                         <TableCell>{node.delay > 0 ? `${node.delay} ms` : '—'}</TableCell>
                         <TableCell>{node.speed > 0 ? `${node.speed} MB/s` : '—'}</TableCell>
-                        <TableCell>{node.reason ? t(`smartGroups.reasons.${node.reason}`) : t('smartGroups.available')}</TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            color={node.includedBySmartGroup ? 'success' : 'default'}
+                            label={t(
+                              node.includedBySmartGroup ? 'smartGroups.eligibleForSubscription' : 'smartGroups.notEligibleForSubscription'
+                            )}
+                          />
+                          {node.reason && (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                              {t(`smartGroups.reasons.${node.reason}`)}
+                            </Typography>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Button size="small" disabled={busy || !profileId} onClick={() => void runCheck(view, node.id)}>
                             {t('smartGroups.checkOne')}

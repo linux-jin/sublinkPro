@@ -4,6 +4,12 @@ English | [简体中文](CHANGELOG.zh-CN.md)
 
 All notable SublinkPro releases are documented here. The README only keeps a short summary of the latest release; feature-level details live under `docs/features/`.
 
+## [Unreleased]
+
+### Added
+
+- Smart-group candidates now display their original source airport separately from their original group, and distinguish nodes currently passing this smart group's checks from excluded candidates. Final subscriptions may still filter or deduplicate eligible nodes.
+
 ## [1.13.0] - 2026-09-23
 
 ### Added

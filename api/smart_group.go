@@ -161,6 +161,15 @@ func SmartGroupMembers(c *gin.Context) {
 		return
 	}
 	sort.Slice(candidates, func(i, j int) bool { return candidates[i].ID < candidates[j].ID })
+	airports, err := (&models.Airport{}).List()
+	if err != nil {
+		c.JSON(500, gin.H{"code": 500, "msg": "查询来源机场失败"})
+		return
+	}
+	airportNames := make(map[int]string, len(airports))
+	for _, airport := range airports {
+		airportNames[airport.ID] = airport.Name
+	}
 	candidateNodes := make([]gin.H, 0, pageSize)
 	if page <= (len(candidates)+pageSize-1)/pageSize {
 		start := (page - 1) * pageSize
@@ -168,12 +177,14 @@ func SmartGroupMembers(c *gin.Context) {
 		cutoff := time.Now().Add(-time.Duration(group.MaxAgeHours) * time.Hour)
 		for _, node := range candidates[start:end] {
 			country, countrySource := models.SmartGroupCountryForDisplay(node)
+			reason := group.CandidateExclusionReason(node, cutoff)
 			candidateNodes = append(candidateNodes, gin.H{
 				"id": node.ID, "name": node.EffectiveName(), "group": node.Group,
+				"airportId": node.SourceID, "airportName": airportNames[node.SourceID],
 				"country": country, "countrySource": countrySource, "matchSource": group.MatchSource(node),
 				"delay": node.DelayTime, "speed": node.Speed,
 				"delayStatus": node.DelayStatus, "speedStatus": node.SpeedStatus,
-				"reason": group.CandidateExclusionReason(node, cutoff),
+				"reason": reason, "includedBySmartGroup": reason == "",
 			})
 		}
 	}

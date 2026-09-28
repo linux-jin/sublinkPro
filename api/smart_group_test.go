@@ -172,16 +172,20 @@ func TestSmartGroupMembersListsPagedCandidatesWithReasons(t *testing.T) {
 	if err := database.DB.Create(&group).Error; err != nil {
 		t.Fatal(err)
 	}
+	airport := models.Airport{Name: "Original Airport", URL: "https://example.test/airport", CronExpr: "0 0 * * *", Enabled: true}
+	if err := airport.Add(); err != nil {
+		t.Fatal(err)
+	}
 	now := time.Now().Format("2006-01-02 15:04:05")
 	for _, item := range []struct {
 		name, status, country string
-		delay                 int
+		delay, sourceID       int
 	}{
-		{"first-untested", "untested", "GB", 0},
-		{"second-healthy", "success", "GB", 90},
-		{"third-other-country", "success", "DE", 70},
+		{"first-untested", "untested", "GB", 0, airport.ID},
+		{"second-healthy", "success", "GB", 90, 0},
+		{"third-other-country", "success", "DE", 70, 0},
 	} {
-		node := models.Node{Name: item.name, LinkName: item.name, Link: "ss://" + item.name, Protocol: "ss", LinkCountry: item.country,
+		node := models.Node{Name: item.name, LinkName: item.name, Link: "ss://" + item.name, Protocol: "ss", LinkCountry: item.country, SourceID: item.sourceID,
 			DelayStatus: item.status, DelayTime: item.delay, LatencyCheckAt: now}
 		if err := node.Add(); err != nil {
 			t.Fatal(err)
@@ -190,10 +194,12 @@ func TestSmartGroupMembersListsPagedCandidatesWithReasons(t *testing.T) {
 	router := gin.New()
 	router.GET("/:id/members", SmartGroupMembers)
 	for _, tt := range []struct {
-		query, name, reason string
+		query, name, reason, airportName string
+		airportID                        int
+		included                         bool
 	}{
-		{"?page=1&pageSize=1", "first-untested", "delayUnusable"},
-		{"?page=2&pageSize=1", "second-healthy", ""},
+		{"?page=1&pageSize=1", "first-untested", "delayUnusable", "Original Airport", airport.ID, false},
+		{"?page=2&pageSize=1", "second-healthy", "", "", 0, true},
 	} {
 		response := httptest.NewRecorder()
 		router.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/"+strconv.Itoa(group.ID)+"/members"+tt.query, nil))
@@ -203,8 +209,12 @@ func TestSmartGroupMembersListsPagedCandidatesWithReasons(t *testing.T) {
 		var data struct {
 			Data struct {
 				Count, CandidateCount, Page int
-				CandidateNodes              []struct{ Name, Reason, MatchSource string } `json:"candidateNodes"`
-				StatusCounts                struct {
+				CandidateNodes              []struct {
+					Name, Reason, MatchSource, AirportName string
+					AirportID                              int  `json:"airportId"`
+					Included                               bool `json:"includedBySmartGroup"`
+				} `json:"candidateNodes"`
+				StatusCounts struct {
 					DelayUnusable int `json:"delayUnusable"`
 				} `json:"statusCounts"`
 			} `json:"data"`
@@ -213,8 +223,12 @@ func TestSmartGroupMembersListsPagedCandidatesWithReasons(t *testing.T) {
 			t.Fatal(err)
 		}
 		if data.Data.Count != 1 || data.Data.CandidateCount != 2 || data.Data.StatusCounts.DelayUnusable != 1 ||
-			len(data.Data.CandidateNodes) != 1 || data.Data.CandidateNodes[0].Name != tt.name || data.Data.CandidateNodes[0].Reason != tt.reason || data.Data.CandidateNodes[0].MatchSource != "landingCountry" {
+			len(data.Data.CandidateNodes) != 1 || data.Data.CandidateNodes[0].Name != tt.name || data.Data.CandidateNodes[0].Reason != tt.reason || data.Data.CandidateNodes[0].MatchSource != "landingCountry" ||
+			data.Data.CandidateNodes[0].AirportName != tt.airportName || data.Data.CandidateNodes[0].Included != tt.included {
 			t.Fatalf("unexpected candidate page %s: %+v", tt.query, data.Data)
+		}
+		if data.Data.CandidateNodes[0].AirportID != tt.airportID {
+			t.Fatalf("wrong airport ID for %s: %+v", tt.query, data.Data.CandidateNodes[0])
 		}
 	}
 	response := httptest.NewRecorder()

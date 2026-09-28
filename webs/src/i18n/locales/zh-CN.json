@@ -71,7 +71,13 @@
     "matchSources": {
       "countryName": "按名称中的国家匹配（非落地确认）",
       "keyword": "按名称关键词匹配"
-    }
+    },
+    "sourceAirport": "来源机场",
+    "manualNode": "手动节点",
+    "deletedAirport": "原机场已删除 (#{{id}})",
+    "eligibleForSubscription": "通过分组检测 · 可供订阅",
+    "notEligibleForSubscription": "未通过 · 不由此分组加入",
+    "subscriptionStatusHint": "状态按当前智能分组的检测规则计算；“可供订阅”不等于最终订阅一定保留，订阅自身的过滤、脚本及同名去重仍会生效。"
   },
   "auth": {
     "page": {
