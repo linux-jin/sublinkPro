@@ -113,15 +113,15 @@ The fork follows this maintenance model:
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.13.0`
+**Latest stable release:** `v1.13.1`
 
-**v1.13.0 highlights:**
+**v1.13.1 highlights:**
 
-- Independent smart groups select nodes across source groups by stored country **or** country/name clues, with optional source-group restrictions.
-- Candidate checks, dynamic latency/speed and freshness requirements, per-node exclusion reasons, and bulk or individual tests in the smart-group dialog.
-- Smart groups can be used directly in dynamic/mixed subscriptions without moving source nodes; the subscription interface now exposes these associations clearly.
+- Smart-group candidate rows now show the original source airport separately from the original group.
+- Eligibility labels distinguish candidates currently passing the smart-group checks from excluded nodes; subscription filtering and deduplication still apply.
+- A compact responsive dialog replaces the wide table, with clearer test actions, summary counts, and mobile-friendly pagination.
 
-The v1.13.0 release adds independent country/name-based smart groups and subscription integration. See the [smart-group guide](docs/features/smart-groups.md) for matching and test requirements.
+v1.13.1 improves the smart-group candidate inspection experience introduced in v1.13.0. See the [smart-group guide](docs/features/smart-groups.md) for matching and test requirements.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 

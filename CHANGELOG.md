@@ -6,9 +6,14 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-09-28
+
 ### Added
 
 - Smart-group candidates now display their original source airport separately from their original group, and distinguish nodes currently passing this smart group's checks from excluded candidates. Final subscriptions may still filter or deduplicate eligible nodes.
+
+### Changed
+
 - Redesigned the smart-group candidate dialog as compact responsive rows with one content scroller, readable status/airport details, clear summary counts and test actions, and mobile-friendly pagination.
 
 ## [1.13.0] - 2026-09-23
