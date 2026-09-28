@@ -15,15 +15,10 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography
 } from '@mui/material';
@@ -39,6 +34,7 @@ import {
   updateSmartGroup
 } from 'api/smartGroups';
 import { formatCountry } from 'utils/countryDisplay';
+import CloseIcon from '@mui/icons-material/Close';
 
 const emptyForm = { name: '', countries: '', keyword: '', sourceGroups: [], maxDelay: 0, minSpeed: 0, maxAgeHours: 72 };
 const parseCountries = (value) => (value || '').split(',').filter(Boolean);
@@ -248,148 +244,217 @@ export default function SmartGroupsPage() {
           </Paper>
         ))}
       </Stack>
-      <Dialog open={view !== null} onClose={() => setView(null)} fullWidth maxWidth="lg" fullScreen={isMobile}>
-        <DialogTitle>
-          {view?.name} — {t('smartGroups.members')}
-        </DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <Typography variant="body2">{t('smartGroups.dialogHint')}</Typography>
-            <Typography variant="caption" color="text.secondary">
-              {t('smartGroups.subscriptionStatusHint')}
+      <Dialog
+        open={view !== null}
+        onClose={() => setView(null)}
+        fullWidth
+        maxWidth="lg"
+        fullScreen={isMobile}
+        PaperProps={{ sx: { bgcolor: 'background.paper', maxHeight: isMobile ? '100dvh' : '90dvh' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h3" noWrap>
+              {view?.name}
             </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t('smartGroups.membersTitle')}
+            </Typography>
+          </Box>
+          <IconButton aria-label={t('smartGroups.close')} onClick={() => setView(null)} size="small">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ px: { xs: 2, sm: 3 }, bgcolor: 'background.default' }}>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2, bgcolor: 'background.paper' }}>
+              <Stack spacing={1.25}>
+                {members ? (
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip variant="outlined" label={t('smartGroups.candidatesCount', { count: members.candidateCount })} />
+                    <Chip color="success" variant="outlined" label={t('smartGroups.healthyCount', { count: members.count })} />
+                    {members.statusCounts &&
+                      exclusionKeys
+                        .filter((key) => members.statusCounts[key] > 0)
+                        .map((key) => (
+                          <Chip
+                            key={key}
+                            size="small"
+                            variant="outlined"
+                            label={t(`smartGroups.exclusions.${key}`, { count: members.statusCounts[key] })}
+                          />
+                        ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    {t('smartGroups.loadingCandidates')}
+                  </Typography>
+                )}
+                <Typography variant="caption" color="text.secondary">
+                  {t('smartGroups.subscriptionStatusHint')}
+                </Typography>
+              </Stack>
+            </Paper>
             {checkMessage && (
               <Alert severity="info" onClose={() => setCheckMessage('')}>
                 {checkMessage}
               </Alert>
             )}
-            {members && (
-              <Typography variant="body2">
-                {t('smartGroups.candidateSummary', { count: members.candidateCount ?? 0, healthy: members.count ?? 0 })}
-                {members.count === 0 && ` ${t(members.candidateCount ? 'smartGroups.noHealthyHint' : 'smartGroups.noCandidatesHint')}`}
-              </Typography>
-            )}
-            {members?.statusCounts && members.candidateCount > members.count && (
-              <Typography variant="caption" color="text.secondary">
-                {exclusionKeys
-                  .filter((key) => members.statusCounts[key] > 0)
-                  .map((key) => t(`smartGroups.exclusions.${key}`, { count: members.statusCounts[key] }))
-                  .join(' · ')}
-              </Typography>
-            )}
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
-              <TextField
-                select
-                size="small"
-                label={t('smartGroups.profile')}
-                value={profileId}
-                onChange={(event) => setProfileId(event.target.value)}
-                sx={{ minWidth: 220 }}
-              >
-                {profiles.map((profile) => (
-                  <MenuItem key={profile.id ?? profile.ID} value={profile.id ?? profile.ID}>
-                    {profile.name ?? profile.Name}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Button variant="contained" disabled={busy || !members?.candidateCount} onClick={() => void runCheck(view)}>
-                {t('smartGroups.check')}
-              </Button>
-              <Button disabled={loadingMembers} onClick={() => void showMembers(view, memberPage)}>
-                {t('smartGroups.refresh')}
-              </Button>
-            </Stack>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.paper' }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+                <TextField
+                  select
+                  size="small"
+                  label={t('smartGroups.profile')}
+                  value={profileId}
+                  onChange={(event) => setProfileId(event.target.value)}
+                  sx={{ minWidth: { sm: 220 }, width: { xs: '100%', sm: 'auto' } }}
+                >
+                  {profiles.map((profile) => (
+                    <MenuItem key={profile.id ?? profile.ID} value={profile.id ?? profile.ID}>
+                      {profile.name ?? profile.Name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                  <Button
+                    variant="contained"
+                    disabled={busy || !members?.candidateCount}
+                    onClick={() => void runCheck(view)}
+                    sx={{ flex: { xs: 1, sm: 'none' } }}
+                  >
+                    {t('smartGroups.check')}
+                  </Button>
+                  <Button variant="outlined" disabled={loadingMembers} onClick={() => void showMembers(view, memberPage)}>
+                    {t('smartGroups.refresh')}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Paper>
             {view?.minSpeed > 0 && profiles.find((profile) => String(profile.id ?? profile.ID) === String(profileId))?.mode === 'tcp' && (
               <Alert severity="warning">{t('smartGroups.tcpWarning')}</Alert>
             )}
             {loadingMembers && <CircularProgress size={24} />}
-            {members?.candidateCount === 0 && <Alert severity="info">{t('smartGroups.noCandidatesHint')}</Alert>}
+            {!loadingMembers && members?.candidateCount === 0 && <Alert severity="info">{t('smartGroups.noCandidatesHint')}</Alert>}
             {members?.candidateCount > 0 && (
-              <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: isMobile ? 'none' : 520 }}>
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>{t('smartGroups.node')}</TableCell>
-                      <TableCell>{t('smartGroups.sourceGroup')}</TableCell>
-                      <TableCell>{t('smartGroups.sourceAirport')}</TableCell>
-                      <TableCell>{t('smartGroups.country')}</TableCell>
-                      <TableCell>{t('smartGroups.delay')}</TableCell>
-                      <TableCell>{t('smartGroups.speed')}</TableCell>
-                      <TableCell>{t('smartGroups.status')}</TableCell>
-                      <TableCell>{t('smartGroups.check')}</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(members.candidateNodes || []).map((node) => (
-                      <TableRow key={node.id}>
-                        <TableCell>{node.id}</TableCell>
-                        <TableCell>{node.name}</TableCell>
-                        <TableCell>{node.group || '—'}</TableCell>
-                        <TableCell>
-                          {node.airportName ||
-                            (node.airportId > 0 ? t('smartGroups.deletedAirport', { id: node.airportId }) : t('smartGroups.manualNode'))}
-                        </TableCell>
-                        <TableCell>
-                          {formatCountry(node.country)}
-                          {node.countrySource === 'name' && (
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                              {t('smartGroups.nameInferred')}
-                            </Typography>
-                          )}
-                          {node.matchSource && node.matchSource !== 'landingCountry' && (
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                              {t(`smartGroups.matchSources.${node.matchSource}`)}
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>{node.delay > 0 ? `${node.delay} ms` : '—'}</TableCell>
-                        <TableCell>{node.speed > 0 ? `${node.speed} MB/s` : '—'}</TableCell>
-                        <TableCell>
+              <Stack spacing={1}>
+                <Typography variant="subtitle1" fontWeight={600}>
+                  {t('smartGroups.candidateList')}
+                </Typography>
+                {(members.candidateNodes || []).map((node) => (
+                  <Paper
+                    key={node.id}
+                    variant="outlined"
+                    sx={{
+                      px: { xs: 1.5, sm: 2 },
+                      py: 1.25,
+                      borderRadius: 2,
+                      bgcolor: 'background.paper',
+                      '&:hover': { bgcolor: 'action.hover' }
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        alignItems: 'center',
+                        gap: { xs: 1, md: 2 },
+                        gridTemplateColumns: { xs: 'minmax(0, 1fr) auto', md: 'minmax(0, 2.4fr) minmax(0, 1.5fr) minmax(100px, 1fr) auto' }
+                      }}
+                    >
+                      <Box sx={{ minWidth: 0, gridColumn: { xs: '1 / -1', md: 'auto' } }}>
+                        <Typography variant="subtitle2" fontWeight={600} sx={{ overflowWrap: 'anywhere' }}>
+                          {node.name}
+                        </Typography>
+                        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mt: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            #{node.id}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatCountry(node.country) || '—'}
+                          </Typography>
                           <Chip
                             size="small"
+                            variant="outlined"
                             color={node.includedBySmartGroup ? 'success' : 'default'}
-                            label={t(
-                              node.includedBySmartGroup ? 'smartGroups.eligibleForSubscription' : 'smartGroups.notEligibleForSubscription'
-                            )}
+                            label={t(node.includedBySmartGroup ? 'smartGroups.eligibleShort' : 'smartGroups.excludedShort')}
                           />
-                          {node.reason && (
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                              {t(`smartGroups.reasons.${node.reason}`)}
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Button size="small" disabled={busy || !profileId} onClick={() => void runCheck(view, node.id)}>
-                            {t('smartGroups.checkOne')}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-            {members && members.candidateCount > (members.pageSize || 30) && (
-              <Stack direction="row" alignItems="center" justifyContent="center" spacing={2}>
-                <Button disabled={loadingMembers || memberPage <= 1} onClick={() => void showMembers(view, memberPage - 1)}>
-                  {t('smartGroups.previous')}
-                </Button>
-                <Typography variant="body2">
-                  {t('smartGroups.page', { page: memberPage, total: Math.ceil(members.candidateCount / (members.pageSize || 30)) })}
-                </Typography>
-                <Button
-                  disabled={loadingMembers || memberPage * (members.pageSize || 30) >= members.candidateCount}
-                  onClick={() => void showMembers(view, memberPage + 1)}
-                >
-                  {t('smartGroups.next')}
-                </Button>
+                        </Stack>
+                        {(node.reason || node.matchSource !== 'landingCountry' || node.countrySource === 'name') && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                            {[
+                              node.reason && t(`smartGroups.reasons.${node.reason}`),
+                              node.matchSource &&
+                                node.matchSource !== 'landingCountry' &&
+                                t(`smartGroups.matchSources.${node.matchSource}`),
+                              node.countrySource === 'name' && t('smartGroups.nameInferred')
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Box sx={{ minWidth: 0, gridColumn: { xs: '1 / -1', md: 'auto' } }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {t('smartGroups.sourceGroup')}:{' '}
+                          <Box component="span" sx={{ color: 'text.primary' }}>
+                            {node.group || '—'}
+                          </Box>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflowWrap: 'anywhere' }}>
+                          {t('smartGroups.sourceAirport')}:{' '}
+                          <Box component="span" sx={{ color: 'text.primary' }}>
+                            {node.airportName ||
+                              (node.airportId > 0 ? t('smartGroups.deletedAirport', { id: node.airportId }) : t('smartGroups.manualNode'))}
+                          </Box>
+                        </Typography>
+                      </Box>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="body2" noWrap>
+                          {t('smartGroups.delay')}: {node.delay > 0 ? `${node.delay} ms` : '—'}
+                        </Typography>
+                        <Typography variant="body2" noWrap>
+                          {t('smartGroups.speed')}: {node.speed > 0 ? `${node.speed} MB/s` : '—'}
+                        </Typography>
+                      </Box>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        disabled={busy || !profileId}
+                        onClick={() => void runCheck(view, node.id)}
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        {t('smartGroups.checkOne')}
+                      </Button>
+                    </Box>
+                  </Paper>
+                ))}
               </Stack>
             )}
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setView(null)}>{t('smartGroups.close')}</Button>
+        <DialogActions
+          sx={{ px: { xs: 2, sm: 3 }, py: 1.25, borderTop: '1px solid', borderColor: 'divider', justifyContent: 'space-between' }}
+        >
+          <Typography variant="caption" color="text.secondary">
+            {members
+              ? t('smartGroups.page', {
+                  page: memberPage,
+                  total: Math.max(1, Math.ceil(members.candidateCount / (members.pageSize || 30)))
+                })
+              : '—'}
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            <Button size="small" disabled={loadingMembers || memberPage <= 1} onClick={() => void showMembers(view, memberPage - 1)}>
+              {t('smartGroups.previous')}
+            </Button>
+            <Button
+              size="small"
+              disabled={loadingMembers || !members || memberPage * (members.pageSize || 30) >= members.candidateCount}
+              onClick={() => void showMembers(view, memberPage + 1)}
+            >
+              {t('smartGroups.next')}
+            </Button>
+          </Stack>
         </DialogActions>
       </Dialog>
       <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="sm">

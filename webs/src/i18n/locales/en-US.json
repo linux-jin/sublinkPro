@@ -19,7 +19,7 @@
     "profile": "Check profile",
     "chooseProfile": "Select a check profile first",
     "check": "Check candidates",
-    "members": "Healthy nodes",
+    "members": "View candidates",
     "node": "Node",
     "sourceGroup": "Source group",
     "delay": "Latency",
@@ -77,7 +77,14 @@
     "deletedAirport": "Source airport deleted (#{{id}})",
     "eligibleForSubscription": "Passed · eligible for subscription",
     "notEligibleForSubscription": "Not passed · excluded by this group",
-    "subscriptionStatusHint": "Status reflects this smart group’s current check rules. “Eligible” does not guarantee inclusion in a final subscription; subscription filters, scripts, and name deduplication still apply."
+    "subscriptionStatusHint": "Eligible means this smart group passes the node. Subscription filters, scripts and name deduplication may still exclude it.",
+    "membersTitle": "Candidates and check results",
+    "candidatesCount": "{{count}} candidates",
+    "healthyCount": "{{count}} available",
+    "candidateList": "Candidate nodes",
+    "eligibleShort": "Eligible",
+    "excludedShort": "Not passed",
+    "loadingCandidates": "Loading candidates…"
   },
   "auth": {
     "page": {

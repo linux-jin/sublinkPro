@@ -19,7 +19,7 @@
     "profile": "测速策略",
     "chooseProfile": "请先选择测速策略",
     "check": "测速候选节点",
-    "members": "可用节点",
+    "members": "查看候选节点",
     "node": "节点",
     "sourceGroup": "原分组",
     "delay": "延迟",
@@ -77,7 +77,14 @@
     "deletedAirport": "原机场已删除 (#{{id}})",
     "eligibleForSubscription": "通过分组检测 · 可供订阅",
     "notEligibleForSubscription": "未通过 · 不由此分组加入",
-    "subscriptionStatusHint": "状态按当前智能分组的检测规则计算；“可供订阅”不等于最终订阅一定保留，订阅自身的过滤、脚本及同名去重仍会生效。"
+    "subscriptionStatusHint": "可供订阅＝通过本智能分组检测；订阅自身的过滤、脚本和同名去重仍可能排除该节点。",
+    "membersTitle": "候选节点与检测结果",
+    "candidatesCount": "候选 {{count}}",
+    "healthyCount": "可用 {{count}}",
+    "candidateList": "候选节点",
+    "eligibleShort": "可供订阅",
+    "excludedShort": "未通过",
+    "loadingCandidates": "正在加载候选节点…"
   },
   "auth": {
     "page": {
