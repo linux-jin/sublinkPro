@@ -100,3 +100,11 @@ curl --proxy socks5h://127.0.0.1:1080 \
 状态统计、逐节点选路统计、活动连接列表和粘性租约仅属于当前网关进程生命周期；停止或重新应用设置后会清空这些内存状态。节点负载接口在服务端完成筛选、排序和分页，使页面三秒刷新时只渲染当前请求页。
 
 主动健康探测会对所有已启用路由 Profile 的候选节点取并集并去重。严格指定节点 Profile 只贡献指定节点；开启指定节点回退的 Profile 会贡献指定节点及回退池；其他 Profile 贡献各自配置后的候选节点池。探测固定使用 Cloudflare HTTPS 连通性检测地址，不允许管理员配置任意探测 URL。每轮最多使用 4 个 worker 且不会重叠；状态响应包含完整聚合计数，但最多返回排序后的前 200 条节点记录，避免三秒轮询产生过大响应；失败探测会安全淘汰对应适配器租约，并使用最长一小时的指数冷却。
+
+## Fork 测试镜像
+
+用于联测 OpenVPN、WebDAV 与 SOCKS5 网关的 fork `test/socks5` 分支会发布为 `ghcr.io/linux-jin/sublink-pro:test-socks5`。这是测试构建，并非稳定版；请使用独立数据目录，测试前备份现有数据。上游贡献分支仍为 `feature/upstream-socks5`，不包含本 fork 专用的镜像发布配置。
+
+```bash
+docker pull ghcr.io/linux-jin/sublink-pro:test-socks5
+```

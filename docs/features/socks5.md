@@ -100,3 +100,11 @@ All endpoints below require an authenticated administrator. The destructive `POS
 The status counters, per-node routing statistics, active connection list, and sticky leases belong to the current gateway server lifetime; stopping or reapplying settings resets them. The routing endpoint performs filtering, sorting, and pagination on the server so three-second UI refreshes render only the requested page.
 
 Active health checks probe the deduplicated union of candidate nodes from every enabled routing profile. Strict specific-node profiles contribute only their configured node; profiles with specific-node fallback contribute that node plus their configured fallback pool. Other profiles contribute their configured candidate pool. Probes use a fixed Cloudflare HTTPS connectivity endpoint; administrators cannot configure an arbitrary probe URL. Sweeps use at most four workers and never overlap. Status responses include aggregate counts and at most the first 200 sorted node records to keep three-second monitoring polls bounded. Failed probes retire the failed adapter lease safely and apply exponential cooldown capped at one hour.
+
+## Fork test image
+
+For integration testing of OpenVPN, WebDAV, and the SOCKS5 gateway, the fork publishes the `test/socks5` branch to `ghcr.io/linux-jin/sublink-pro:test-socks5`. This is a test build, not a stable release; use a separate data directory and back up existing data before testing. The upstream contribution branch remains `feature/upstream-socks5` and does not include this fork-specific publishing configuration.
+
+```bash
+docker pull ghcr.io/linux-jin/sublink-pro:test-socks5
+```
