@@ -6,6 +6,10 @@
 
 ## [未发布]
 
+### 调整
+
+- 同步上游依赖更新：mihomo、Go 网络与数据库相关库，以及 React、React Router、Monaco Editor、Vite 和前端工具链。
+
 ## [1.13.1] - 2026 年 9 月 28 日
 
 ### 新增
