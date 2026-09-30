@@ -6,6 +6,8 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+## [1.13.2] - 2026-09-30
+
 ### Changed
 
 - Synced upstream dependency updates: mihomo, Go networking and database libraries, React, React Router, Monaco Editor, Vite, and frontend tooling.

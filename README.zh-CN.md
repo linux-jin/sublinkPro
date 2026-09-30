@@ -113,15 +113,15 @@
 
 ## 🆕 版本状态
 
-**最新稳定版：** `v1.13.1`
+**最新稳定版：** `v1.13.2`
 
-**v1.13.1 主要更新：**
+**v1.13.2 维护更新：**
 
-- 智能分组候选节点分别显示来源机场与原分组，便于辨认节点出处。
-- 可用状态区分当前通过分组检测的节点与被排除候选；订阅自身仍会过滤或去重。
-- 紧凑响应式弹框替代宽表格，测速入口、汇总数量及移动端分页更清晰。
+- 同步上游 Go 依赖，包括 mihomo 1.19.31 及网络、数据库相关库。
+- 更新前端依赖，包括 React 19.3.0、React Router 7.18.4、Monaco Editor 0.57.0 和 Vite 8.3.1。
+- 本次没有新增应用功能；v1.13.1 的智能分组改进仍然保留。
 
-v1.13.1 改进了 v1.13.0 引入的智能分组候选节点查看体验。匹配规则和测速要求详见[智能分组指南](docs/features/smart-groups.zh-CN.md)。
+匹配规则和测速要求详见[智能分组指南](docs/features/smart-groups.zh-CN.md)。
 
 完整版本历史请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)，正式发布包参见 [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases)。
 

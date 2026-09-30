@@ -113,15 +113,15 @@ The fork follows this maintenance model:
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.13.1`
+**Latest stable release:** `v1.13.2`
 
-**v1.13.1 highlights:**
+**v1.13.2 maintenance update:**
 
-- Smart-group candidate rows now show the original source airport separately from the original group.
-- Eligibility labels distinguish candidates currently passing the smart-group checks from excluded nodes; subscription filtering and deduplication still apply.
-- A compact responsive dialog replaces the wide table, with clearer test actions, summary counts, and mobile-friendly pagination.
+- Synced upstream Go dependencies, including mihomo 1.19.31 and networking/database libraries.
+- Updated frontend dependencies, including React 19.3.0, React Router 7.18.4, Monaco Editor 0.57.0, and Vite 8.3.1.
+- No application feature changes; the smart-group improvements from v1.13.1 remain available.
 
-v1.13.1 improves the smart-group candidate inspection experience introduced in v1.13.0. See the [smart-group guide](docs/features/smart-groups.md) for matching and test requirements.
+See the [smart-group guide](docs/features/smart-groups.md) for matching and test requirements.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 
