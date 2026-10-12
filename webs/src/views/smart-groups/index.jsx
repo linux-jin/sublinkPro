@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTaskProgress } from 'contexts/TaskProgressContext';
@@ -11,6 +11,9 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
+  Divider,
+  FormControlLabel,
   Dialog,
   DialogActions,
   DialogContent,
@@ -19,6 +22,7 @@ import {
   MenuItem,
   Paper,
   Stack,
+  Switch,
   TextField,
   Typography
 } from '@mui/material';
@@ -35,8 +39,22 @@ import {
 } from 'api/smartGroups';
 import { formatCountry } from 'utils/countryDisplay';
 import CloseIcon from '@mui/icons-material/Close';
+import CronExpressionGenerator, { validateCronExpression } from 'components/CronExpressionGenerator';
+import { formatDateTime } from 'i18n/locales';
 
-const emptyForm = { name: '', countries: '', keyword: '', sourceGroups: [], maxDelay: 0, minSpeed: 0, maxAgeHours: 72 };
+const emptyForm = {
+  name: '',
+  countries: '',
+  keyword: '',
+  sourceGroups: [],
+  maxDelay: 0,
+  minSpeed: 0,
+  maxAgeHours: 72,
+  checkProfileId: 0,
+  scheduleEnabled: false,
+  cronExpr: '0 3 * * *',
+  checkAfterAirportUpdate: false
+};
 const parseCountries = (value) => (value || '').split(',').filter(Boolean);
 // Intl's region names provide a full locale-aware country/territory catalog rather than only countries already found on nodes.
 const regionCodes = Array.from({ length: 26 * 26 }, (_, index) => String.fromCharCode(65 + Math.floor(index / 26), 65 + (index % 26)));
@@ -57,6 +75,11 @@ export default function SmartGroupsPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [view, setView] = useState(null);
+  const memberRequest = useRef(0);
+  const closeMembers = () => {
+    memberRequest.current += 1;
+    setView(null);
+  };
   const [members, setMembers] = useState(null);
   const [memberPage, setMemberPage] = useState(1);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -107,6 +130,24 @@ export default function SmartGroupsPage() {
       .catch(() => {});
   }, [refresh]);
 
+  const automaticChecks = Boolean(form.scheduleEnabled || form.checkAfterAirportUpdate);
+  const selectedAutoProfile = profiles.find((profile) => String(profile.id ?? profile.ID) === String(form.checkProfileId));
+  const autoProfileMissing = automaticChecks && !selectedAutoProfile;
+  const autoProfileMismatch = Number(form.minSpeed) > 0 && selectedAutoProfile?.mode === 'tcp';
+  const cronInvalid = Boolean(form.scheduleEnabled) && !validateCronExpression(form.cronExpr || '');
+  const manualProfileMismatch =
+    Number(view?.minSpeed) > 0 && profiles.find((profile) => String(profile.id ?? profile.ID) === String(profileId))?.mode === 'tcp';
+  const hasAutomaticGroups = groups.some((group) => group.scheduleEnabled || group.checkAfterAirportUpdate || group.checkRunning);
+  const formatCheckTime = (value) =>
+    value
+      ? formatDateTime(value, i18n.resolvedLanguage || i18n.language, {
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : t('smartGroups.notTriggered');
+
   const save = async () => {
     setBusy(true);
     try {
@@ -123,29 +164,43 @@ export default function SmartGroupsPage() {
 
   const showMembers = useCallback(
     async (group, page = 1) => {
+      const request = ++memberRequest.current;
       setView(group);
       setMemberPage(page);
       setLoadingMembers(true);
       try {
         const response = await getSmartGroupMembers(group.id, page);
+        if (request !== memberRequest.current) return;
         setMembers(response.data);
+        if (response.data?.checkInfo) setView(response.data.checkInfo);
       } catch (error) {
-        setCheckMessage(error.message || t('smartGroups.loadFailed'));
+        if (request === memberRequest.current) setCheckMessage(error.message || t('smartGroups.loadFailed'));
       } finally {
-        setLoadingMembers(false);
+        if (request === memberRequest.current) setLoadingMembers(false);
       }
     },
     [t]
   );
 
   useEffect(() => {
-    if (!view) return undefined;
     const onComplete = ({ taskType }) => {
-      if (taskType === 'speed_test') void showMembers(view, memberPage);
+      if (taskType === 'speed_test') {
+        void refresh();
+        if (view) void showMembers(view, memberPage);
+      }
     };
     registerOnComplete(onComplete);
     return () => unregisterOnComplete(onComplete);
-  }, [view, memberPage, showMembers, registerOnComplete, unregisterOnComplete]);
+  }, [view, memberPage, showMembers, refresh, registerOnComplete, unregisterOnComplete]);
+
+  useEffect(() => {
+    if (!hasAutomaticGroups && !view?.checkRunning) return undefined;
+    const interval = setInterval(() => {
+      void refresh();
+      if (view) void showMembers(view, memberPage);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [hasAutomaticGroups, view, memberPage, refresh, showMembers]);
 
   const runCheck = async (group, nodeId = 0) => {
     if (!profileId) {
@@ -157,6 +212,8 @@ export default function SmartGroupsPage() {
     try {
       const response = await checkSmartGroup(group.id, Number(profileId), nodeId);
       setCheckMessage(t('smartGroups.started', { count: response.data?.count || 0 }));
+      setView((current) => (current?.id === group.id ? { ...current, checkRunning: true } : current));
+      await refresh();
     } catch (error) {
       setCheckMessage(error.message || t('smartGroups.checkFailed'));
     } finally {
@@ -169,7 +226,7 @@ export default function SmartGroupsPage() {
     setBusy(true);
     try {
       await deleteSmartGroup(group.id);
-      if (view?.id === group.id) setView(null);
+      if (view?.id === group.id) closeMembers();
       await refresh();
     } catch (error) {
       setMessage(error.message || t('smartGroups.deleteFailed'));
@@ -212,6 +269,19 @@ export default function SmartGroupsPage() {
                   {group.keyword && ` · ${t('smartGroups.keywordAlternative')}: ${group.keyword}`}
                   {group.sourceGroups?.length > 0 && ` · ${t('smartGroups.sourceGroups')}: ${group.sourceGroups.join(' / ')}`}
                 </Typography>
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+                  {group.scheduleEnabled && (
+                    <Chip size="small" variant="outlined" label={t('smartGroups.scheduleSummary', { cron: group.cronExpr })} />
+                  )}
+                  {group.checkAfterAirportUpdate && <Chip size="small" variant="outlined" label={t('smartGroups.afterAirportUpdate')} />}
+                  {group.checkRunning && <Chip size="small" color="info" label={t('smartGroups.checkRunning')} />}
+                </Stack>
+                {(group.checkProfileId > 0 || group.lastCheckAt) && (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                    {t('smartGroups.lastTriggered')}: {formatCheckTime(group.lastCheckAt)} · {t('smartGroups.nextCheck')}:{' '}
+                    {group.nextCheckAt ? formatCheckTime(group.nextCheckAt) : t('smartGroups.notScheduled')}
+                  </Typography>
+                )}
               </Box>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 <Button
@@ -219,6 +289,7 @@ export default function SmartGroupsPage() {
                   onClick={() => {
                     setMembers(null);
                     setCheckMessage('');
+                    if (group.checkProfileId) setProfileId(String(group.checkProfileId));
                     void showMembers(group);
                   }}
                 >
@@ -230,7 +301,12 @@ export default function SmartGroupsPage() {
                 <Button
                   disabled={busy}
                   onClick={() => {
-                    setForm({ ...group, sourceGroups: group.sourceGroups || [] });
+                    setForm({
+                      ...emptyForm,
+                      ...group,
+                      sourceGroups: group.sourceGroups || [],
+                      cronExpr: group.cronExpr || emptyForm.cronExpr
+                    });
                     setEditing(group);
                   }}
                 >
@@ -246,7 +322,7 @@ export default function SmartGroupsPage() {
       </Stack>
       <Dialog
         open={view !== null}
-        onClose={() => setView(null)}
+        onClose={closeMembers}
         fullWidth
         maxWidth="lg"
         fullScreen={isMobile}
@@ -261,7 +337,7 @@ export default function SmartGroupsPage() {
               {t('smartGroups.membersTitle')}
             </Typography>
           </Box>
-          <IconButton aria-label={t('smartGroups.close')} onClick={() => setView(null)} size="small">
+          <IconButton aria-label={t('smartGroups.close')} onClick={closeMembers} size="small">
             <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
@@ -319,7 +395,7 @@ export default function SmartGroupsPage() {
                 <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                   <Button
                     variant="contained"
-                    disabled={busy || !members?.candidateCount}
+                    disabled={busy || view?.checkRunning || manualProfileMismatch || !members?.candidateCount}
                     onClick={() => void runCheck(view)}
                     sx={{ flex: { xs: 1, sm: 'none' } }}
                   >
@@ -331,9 +407,8 @@ export default function SmartGroupsPage() {
                 </Stack>
               </Stack>
             </Paper>
-            {view?.minSpeed > 0 && profiles.find((profile) => String(profile.id ?? profile.ID) === String(profileId))?.mode === 'tcp' && (
-              <Alert severity="warning">{t('smartGroups.tcpWarning')}</Alert>
-            )}
+            {view?.checkRunning && <Alert severity="info">{t('smartGroups.checkRunningHint')}</Alert>}
+            {manualProfileMismatch && <Alert severity="warning">{t('smartGroups.tcpWarning')}</Alert>}
             {loadingMembers && <CircularProgress size={24} />}
             {!loadingMembers && members?.candidateCount === 0 && <Alert severity="info">{t('smartGroups.noCandidatesHint')}</Alert>}
             {members?.candidateCount > 0 && (
@@ -419,7 +494,7 @@ export default function SmartGroupsPage() {
                       <Button
                         size="small"
                         variant="outlined"
-                        disabled={busy || !profileId}
+                        disabled={busy || view?.checkRunning || manualProfileMismatch || !profileId}
                         onClick={() => void runCheck(view, node.id)}
                         sx={{ whiteSpace: 'nowrap' }}
                       >
@@ -460,7 +535,7 @@ export default function SmartGroupsPage() {
       <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
         <DialogTitle>{editing?.id ? t('smartGroups.edit') : t('smartGroups.add')}</DialogTitle>
         <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
+          <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label={t('smartGroups.name')}
               required
@@ -514,11 +589,74 @@ export default function SmartGroupsPage() {
               onChange={(event) => setForm({ ...form, maxAgeHours: Number(event.target.value) })}
               helperText={t('smartGroups.zeroUnlimited')}
             />
+            <Divider />
+            <Typography variant="h5">{t('smartGroups.automaticChecks')}</Typography>
+            <TextField
+              select
+              fullWidth
+              label={t('smartGroups.defaultProfile')}
+              value={form.checkProfileId || 0}
+              onChange={(event) => setForm({ ...form, checkProfileId: Number(event.target.value) })}
+              helperText={t('smartGroups.autoProfileHint')}
+              error={autoProfileMissing || autoProfileMismatch}
+            >
+              <MenuItem value={0}>{t('smartGroups.noDefaultProfile')}</MenuItem>
+              {profiles.map((profile) => (
+                <MenuItem key={profile.id ?? profile.ID} value={profile.id ?? profile.ID}>
+                  {profile.name ?? profile.Name} · {profile.mode === 'tcp' ? 'TCP' : 'mihomo'}
+                </MenuItem>
+              ))}
+            </TextField>
+            {autoProfileMismatch && <Alert severity="warning">{t('smartGroups.tcpWarning')}</Alert>}
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={Boolean(form.scheduleEnabled)}
+                  onChange={(event) =>
+                    setForm({ ...form, scheduleEnabled: event.target.checked, cronExpr: form.cronExpr || emptyForm.cronExpr })
+                  }
+                />
+              }
+              label={t('smartGroups.scheduleEnabled')}
+            />
+            <Collapse in={Boolean(form.scheduleEnabled)}>
+              <Stack spacing={1.5}>
+                <CronExpressionGenerator
+                  value={form.cronExpr || ''}
+                  onChange={(value) => setForm({ ...form, cronExpr: value })}
+                  label={t('smartGroups.cronExpr')}
+                  error={cronInvalid}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  {t('smartGroups.scheduleTimezoneHint', {
+                    timezone: form.checkTimezone || groups[0]?.checkTimezone || t('smartGroups.serverTimezone')
+                  })}
+                </Typography>
+                {cronInvalid && <Alert severity="warning">{t('smartGroups.invalidCron')}</Alert>}
+              </Stack>
+            </Collapse>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={Boolean(form.checkAfterAirportUpdate)}
+                  onChange={(event) => setForm({ ...form, checkAfterAirportUpdate: event.target.checked })}
+                />
+              }
+              label={t('smartGroups.afterAirportUpdate')}
+            />
+            <Typography variant="caption" color="text.secondary">
+              {t('smartGroups.afterAirportUpdateHint')}
+            </Typography>
+            <Alert severity="info">{t('smartGroups.autoCheckHint')}</Alert>
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditing(null)}>{t('smartGroups.cancel')}</Button>
-          <Button disabled={busy} variant="contained" onClick={() => void save()}>
+          <Button
+            disabled={busy || cronInvalid || autoProfileMissing || autoProfileMismatch}
+            variant="contained"
+            onClick={() => void save()}
+          >
             {t('smartGroups.save')}
           </Button>
         </DialogActions>

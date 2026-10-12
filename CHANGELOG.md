@@ -6,6 +6,20 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### Added
+
+- Added opt-in smart-group five-field Cron candidate checks, saved default profiles, server-timezone hints, running status and last-trigger/next-run display.
+- Added airport-refresh linkage limited to matching candidates from the updated airport, including unchanged/failed nodes, with same-profile batch deduplication and queued follow-up updates.
+
+### Changed
+
+- Protected groups against overlapping manual/Cron/update checks and referenced profiles against deletion or incompatible TCP edits. Results dynamically decide membership without OpenClash control or moving nodes.
+
+### Fixed
+
+- Reject zero-step and invalid numeric Cron before preview evaluation to prevent browser freezes with `*/0`.
+
+
 ## [1.13.2] - 2026-09-30
 
 ### Changed

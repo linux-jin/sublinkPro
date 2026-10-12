@@ -8,20 +8,30 @@ import (
 	"strings"
 	"sublink/database"
 	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
 // SmartGroup is an independent, dynamic view of nodes. It never modifies Node.Group.
 type SmartGroup struct {
-	ID           int       `gorm:"primaryKey" json:"id"`
-	Name         string    `gorm:"size:191;uniqueIndex;not null" json:"name"`
-	Countries    string    `gorm:"size:191;not null" json:"countries"` // comma-separated ISO 3166-1 alpha-2 codes
-	Keyword      string    `gorm:"size:191" json:"keyword"`
-	SourceGroups []string  `gorm:"serializer:json;type:text" json:"sourceGroups"`
-	MaxDelay     int       `json:"maxDelay"`
-	MinSpeed     float64   `json:"minSpeed"`
-	MaxAgeHours  int       `json:"maxAgeHours"` // 0 disables the freshness check
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID                      int        `gorm:"primaryKey" json:"id"`
+	Name                    string     `gorm:"size:191;uniqueIndex;not null" json:"name"`
+	Countries               string     `gorm:"size:191;not null" json:"countries"` // comma-separated ISO 3166-1 alpha-2 codes
+	Keyword                 string     `gorm:"size:191" json:"keyword"`
+	SourceGroups            []string   `gorm:"serializer:json;type:text" json:"sourceGroups"`
+	MaxDelay                int        `json:"maxDelay"`
+	MinSpeed                float64    `json:"minSpeed"`
+	MaxAgeHours             int        `json:"maxAgeHours"` // 0 disables the freshness check
+	CheckProfileID          int        `json:"checkProfileId"`
+	ScheduleEnabled         bool       `json:"scheduleEnabled"`
+	CronExpr                string     `gorm:"size:191" json:"cronExpr"`
+	CheckAfterAirportUpdate bool       `json:"checkAfterAirportUpdate"`
+	LastCheckAt             *time.Time `json:"lastCheckAt"` // last trigger, not proof every candidate succeeded
+	NextCheckAt             *time.Time `gorm:"-" json:"nextCheckAt"`
+	CheckRunning            bool       `gorm:"-" json:"checkRunning"`
+	CheckTimezone           string     `gorm:"-" json:"checkTimezone"`
+	CreatedAt               time.Time  `json:"createdAt"`
+	UpdatedAt               time.Time  `json:"updatedAt"`
 }
 
 func (g *SmartGroup) Validate() error {
@@ -72,6 +82,26 @@ func (g *SmartGroup) Validate() error {
 		return fmt.Errorf("最多选择64个原分组")
 	}
 	g.SourceGroups = groups
+	g.CronExpr = strings.Join(strings.Fields(g.CronExpr), " ")
+	if g.CheckProfileID < 0 || ((g.ScheduleEnabled || g.CheckAfterAirportUpdate) && g.CheckProfileID <= 0) {
+		return fmt.Errorf("启用自动检测时请选择节点检测策略")
+	}
+	if g.ScheduleEnabled && g.CronExpr == "" {
+		return fmt.Errorf("启用定时检测时必须填写 Cron 表达式")
+	}
+	if len(g.CronExpr) > 191 {
+		return fmt.Errorf("cron 表达式过长")
+	}
+	if g.CronExpr != "" {
+		// UI and schedules intentionally use five fields in the server's local timezone.
+		if len(strings.Fields(g.CronExpr)) != 5 {
+			return fmt.Errorf("cron 必须是五字段表达式（分 时 日 月 星期）")
+		}
+		parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+		if _, err := parser.Parse(g.CronExpr); err != nil {
+			return fmt.Errorf("cron 表达式无效: %w", err)
+		}
+	}
 	return nil
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"sublink/database"
 	"sublink/models"
+	"sublink/services/scheduler"
 )
 
 func TestSmartGroupPreviewAndMembers(t *testing.T) {
@@ -268,5 +269,152 @@ func TestSmartGroupCheckRejectsNodeOutsideCandidates(t *testing.T) {
 	router.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/"+strconv.Itoa(group.ID)+"/check", bytes.NewBufferString(`{"profileId":`+strconv.Itoa(profile.ID)+`,"nodeId":`+strconv.Itoa(outsideNodeID)+`}`)))
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("non-candidate node status = %d: %s", response.Code, response.Body.String())
+	}
+}
+
+func TestSmartGroupAutomationAPIAndReadonlyState(t *testing.T) {
+	setupPreviewAPITestDB(t)
+	profile := models.NodeCheckProfile{Name: "automation", Mode: "mihomo"}
+	if err := profile.Add(); err != nil {
+		t.Fatal(err)
+	}
+	router := gin.New()
+	router.POST("/", CreateSmartGroup)
+	router.PUT("/:id", UpdateSmartGroup)
+	router.DELETE("/:id", DeleteSmartGroup)
+	request := func(method, path, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, httptest.NewRequestWithContext(context.Background(), method, path, bytes.NewBufferString(body)))
+		return r
+	}
+	body := `{"name":"scheduled","countries":"GB","minSpeed":1,"checkProfileId":` + strconv.Itoa(profile.ID) + `,"scheduleEnabled":true,"cronExpr":"0 3 * * *","checkAfterAirportUpdate":true,"lastCheckAt":"2000-01-01T00:00:00Z","checkRunning":true}`
+	r := request(http.MethodPost, "/", body)
+	if r.Code != http.StatusOK {
+		t.Fatalf("create: %d %s", r.Code, r.Body.String())
+	}
+	var response struct {
+		Data models.SmartGroup `json:"data"`
+	}
+	if err := json.Unmarshal(r.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	group := response.Data
+	t.Cleanup(func() { scheduler.GetSchedulerManager().RemoveSmartGroupJob(group.ID) })
+	if group.LastCheckAt != nil || group.CheckRunning || group.NextCheckAt == nil || group.CheckTimezone == "" {
+		t.Fatalf("runtime fields = %+v", group)
+	}
+	path := "/" + strconv.Itoa(group.ID)
+	r = request(http.MethodPut, path, `{"name":"scheduled","countries":"GB","minSpeed":1,"checkProfileId":999999,"scheduleEnabled":true,"cronExpr":"0 4 * * *"}`)
+	if r.Code != http.StatusBadRequest {
+		t.Fatalf("invalid update: %d %s", r.Code, r.Body.String())
+	}
+	unchanged, err := models.GetSmartGroup(group.ID)
+	if err != nil || unchanged.CronExpr != "0 3 * * *" || unchanged.CheckProfileID != profile.ID {
+		t.Fatalf("invalid update changed config: %+v %v", unchanged, err)
+	}
+	triggered := time.Now().Add(-time.Hour)
+	if err := database.DB.Model(&group).Update("last_check_at", triggered).Error; err != nil {
+		t.Fatal(err)
+	}
+	r = request(http.MethodPut, path, `{"name":"legacy-edit","countries":"DE","minSpeed":1,"lastCheckAt":null}`)
+	if r.Code != http.StatusOK {
+		t.Fatalf("legacy update: %d %s", r.Code, r.Body.String())
+	}
+	saved, err := models.GetSmartGroup(group.ID)
+	if err != nil || saved.CheckProfileID != profile.ID || !saved.ScheduleEnabled || !saved.CheckAfterAirportUpdate || saved.CronExpr != "0 3 * * *" || saved.LastCheckAt == nil || !saved.LastCheckAt.Equal(triggered) {
+		t.Fatalf("legacy settings/state lost: %+v %v", saved, err)
+	}
+	r = request(http.MethodPut, path, `{"name":"disabled","countries":"DE","checkProfileId":0,"scheduleEnabled":false,"checkAfterAirportUpdate":false,"cronExpr":""}`)
+	if r.Code != http.StatusOK {
+		t.Fatalf("disable: %d %s", r.Code, r.Body.String())
+	}
+	saved, err = models.GetSmartGroup(group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := scheduler.GetSchedulerManager().SmartGroupCheckInfo(saved)
+	if info.NextCheckAt != nil || saved.CheckProfileID != 0 || saved.ScheduleEnabled || saved.CheckAfterAirportUpdate {
+		t.Fatalf("disable persisted = %+v", info)
+	}
+	r = request(http.MethodDelete, path, "")
+	if r.Code != http.StatusOK {
+		t.Fatalf("delete: %d %s", r.Code, r.Body.String())
+	}
+}
+
+func TestSmartGroupAutomationAPIRejectsInvalidProfilesAndCron(t *testing.T) {
+	setupPreviewAPITestDB(t)
+	profile := models.NodeCheckProfile{Name: "tcp-only", Mode: "tcp"}
+	if err := profile.Add(); err != nil {
+		t.Fatal(err)
+	}
+	router := gin.New()
+	router.POST("/", CreateSmartGroup)
+	for _, body := range []string{
+		`{"name":"missing","countries":"GB","scheduleEnabled":true,"cronExpr":"0 3 * * *"}`,
+		`{"name":"unknown","countries":"GB","checkProfileId":999999,"checkAfterAirportUpdate":true}`,
+		`{"name":"bad-cron","countries":"GB","checkProfileId":` + strconv.Itoa(profile.ID) + `,"scheduleEnabled":true,"cronExpr":"*/0 * * * *"}`,
+		`{"name":"tcp-speed","countries":"GB","minSpeed":1,"checkProfileId":` + strconv.Itoa(profile.ID) + `,"checkAfterAirportUpdate":true}`,
+	} {
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", bytes.NewBufferString(body)))
+		if r.Code != http.StatusBadRequest {
+			t.Fatalf("invalid create: %d %s (%s)", r.Code, r.Body.String(), body)
+		}
+	}
+	groups, err := models.ListSmartGroups()
+	if err != nil || len(groups) != 0 {
+		t.Fatalf("invalid group saved: %+v %v", groups, err)
+	}
+}
+
+func TestProfileSmartGroupReferenceProtection(t *testing.T) {
+	setupPreviewAPITestDB(t)
+	profile := models.NodeCheckProfile{Name: "referenced", Mode: "mihomo"}
+	if err := profile.Add(); err != nil {
+		t.Fatal(err)
+	}
+	group := models.SmartGroup{Name: "dependent", Countries: "GB", MinSpeed: 1, CheckProfileID: profile.ID, CheckAfterAirportUpdate: true}
+	if err := database.DB.Create(&group).Error; err != nil {
+		t.Fatal(err)
+	}
+	router := gin.New()
+	router.PUT("/:id", UpdateNodeCheckProfile)
+	router.DELETE("/:id", DeleteNodeCheckProfile)
+	path := "/" + strconv.Itoa(profile.ID)
+	for _, method := range []string{http.MethodPut, http.MethodDelete} {
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, httptest.NewRequestWithContext(context.Background(), method, path, bytes.NewBufferString(`{"name":"referenced","mode":"tcp"}`)))
+		var response struct {
+			Code int `json:"code"`
+		}
+		if err := json.Unmarshal(r.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Code == 200 {
+			t.Fatalf("profile mutation accepted: %s %s", method, r.Body.String())
+		}
+		saved, err := models.GetNodeCheckProfileByID(profile.ID)
+		if err != nil || saved.Mode != "mihomo" {
+			t.Fatalf("profile mutated: %+v %v", saved, err)
+		}
+	}
+	// Even disabled automation keeps a saved default-profile reference protected.
+	if err := database.DB.Model(&group).Update("check_after_airport_update", false).Error; err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRecorder()
+	router.ServeHTTP(r, httptest.NewRequestWithContext(context.Background(), http.MethodDelete, path, nil))
+	if _, err := models.GetNodeCheckProfileByID(profile.ID); err != nil {
+		t.Fatal("default profile reference removed")
+	}
+	if err := database.DB.Model(&group).Update("check_profile_id", 0).Error; err != nil {
+		t.Fatal(err)
+	}
+	r = httptest.NewRecorder()
+	router.ServeHTTP(r, httptest.NewRequestWithContext(context.Background(), http.MethodDelete, path, nil))
+	if _, err := models.GetNodeCheckProfileByID(profile.ID); err == nil {
+		t.Fatalf("unreferenced profile not deleted: %s", r.Body.String())
 	}
 }

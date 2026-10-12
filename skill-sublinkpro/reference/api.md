@@ -641,10 +641,23 @@ Base: `/api/v1/smart-groups`. Auth required. Mutating routes are demo-restricted
 
 - **GET** `/smart-groups` — list definitions.
 - **POST** `/smart-groups` — **JSON** create: `{"name":"Europe","countries":"GB,FR,DE","keyword":"London","sourceGroups":["Provider A","Provider B"],"maxDelay":0,"minSpeed":0,"maxAgeHours":72}`. Countries are comma-separated ISO alpha-2 codes; `keyword` matches node names case-insensitively as an OR alternative to selected-country matches; `sourceGroups` optionally restricts to exact existing group names (AND, empty means all groups). Omitted freshness defaults to 72 hours, explicit zero disables expiry; zero minimum speed requires only a successful latency check.
-- **PUT** `/smart-groups/{id}` — **JSON** full definition update.
+- **PUT** `/smart-groups/{id}` — **JSON** full definition update. Legacy clients omitting automation fields preserve saved values; explicitly send false/zero/empty to disable or clear them. Runtime timestamps are read-only.
 - **DELETE** `/smart-groups/{id}` — rejects with HTTP 409 while referenced by a subscription.
-- **GET** `/smart-groups/{id}/members` — `{ids, count, candidateCount, statusCounts, nodes, candidateNodes, page, pageSize}`; accepts optional `page` (>=1) and `pageSize` (1–100, default 30). `candidateCount` is before health filtering. `statusCounts` provides mutually exclusive exclusion reasons (`delayUnusable`, `delayOverLimit`, `delayStale`, `speedUnusable`, `speedBelowMin`, `speedStale`). `nodes` is limited to the first 100 healthy display items; paged `candidateNodes` includes untested/failed candidates, original `group`, source `airportId` / `airportName` (empty name for manual/deleted source), `reason` (first failed criterion; empty means usable), `includedBySmartGroup` (true exactly when checks pass), latency/speed status, `countrySource` (`stored` or name-inferred `name`), and `matchSource` (`landingCountry`, `countryName`, or `keyword`); `ids` covers all healthy members.
-- **POST** `/smart-groups/{id}/check` — **JSON** `{"profileId":1}` starts asynchronous checks for all candidates; `{"profileId":1,"nodeId":42}` tests one candidate only (non-candidates are rejected). All-node checks cover every candidate matching selected stored `LinkCountry` OR a selected-country name rule / standalone ISO code in the node name OR the optional name keyword; optional source groups still restrict candidates. Name matching can include nodes with a different stored landing country, does not alter that country, and is not verified landing geography. The profile’s own group/tag scope does not restrict this explicit node list. Returns candidate `count`.
+- **GET** `/smart-groups/{id}/members` — `{ids, count, candidateCount, statusCounts, nodes, candidateNodes, page, pageSize, checkInfo}`; accepts optional `page` (>=1) and `pageSize` (1–100, default 30). `candidateCount` is before health filtering. `statusCounts` provides mutually exclusive exclusion reasons (`delayUnusable`, `delayOverLimit`, `delayStale`, `speedUnusable`, `speedBelowMin`, `speedStale`). `nodes` is limited to the first 100 healthy display items; paged `candidateNodes` includes untested/failed candidates, original `group`, source `airportId` / `airportName` (empty name for manual/deleted source), `reason` (first failed criterion; empty means usable), `includedBySmartGroup` (true exactly when checks pass), latency/speed status, `countrySource` (`stored` or name-inferred `name`), and `matchSource` (`landingCountry`, `countryName`, or `keyword`); `ids` covers all healthy members.
+- **POST** `/smart-groups/{id}/check` — **JSON** `{"profileId":1}` starts asynchronous checks for all candidates; `{"profileId":1,"nodeId":42}` tests one candidate only (non-candidates are rejected). All-node checks cover every candidate matching selected stored `LinkCountry` OR a selected-country name rule / standalone ISO code in the node name OR the optional name keyword; optional source groups still restrict candidates. Name matching can include nodes with a different stored landing country, does not alter that country, and is not verified landing geography. The profile’s own group/tag scope does not restrict this explicit node list. Returns candidate `count`. HTTP 409 means this group is running; HTTP 400 covers empty candidates, invalid profiles/non-candidate IDs and TCP with a positive download-speed requirement.
+
+Automation fields on create/update:
+
+| Field | Meaning / default |
+| --- | --- |
+| `checkProfileId` | Saved default profile ID; 0 means none, valid positive ID required when either automatic switch is on. |
+| `scheduleEnabled` | Per-group candidate Cron, defaults false. |
+| `cronExpr` | Five fields in server local timezone, e.g. `0 3 * * *`; required when scheduled. Nonempty expressions are validated even when disabled; no seconds/timezone prefix. |
+| `checkAfterAirportUpdate` | Check this airport's matching candidates after successful refresh, including unchanged/failed nodes; defaults false. |
+
+Example extension: `{"checkProfileId":1,"scheduleEnabled":true,"cronExpr":"0 3 * * *","checkAfterAirportUpdate":true}`. Profile `enabled` controls its own Cron only. Positive `minSpeed` rejects TCP.
+
+List/create/update responses and members' `checkInfo` include `lastCheckAt` (nullable persisted last **trigger**, client writes ignored), `nextCheckAt` (nullable server next scheduled run), `checkRunning` (runtime reservation), and `checkTimezone` (server timezone/offset). None prove all candidates passed. Saving hot-replaces Cron; disable/delete removes it, startup/reload restores it. Manual/Cron overlap rejects/skips per group; airport updates received during checks queue a coalesced follow-up using latest config/candidates. Same-profile targets are unioned within an airport-update batch. Empty candidates never fall back to all nodes. Existing airport post-update checks and independent profiles may duplicate work. No OpenClash/OpenWrt control.
 
 `includedBySmartGroup` means eligible as this group's contribution, not guaranteed inclusion in every final subscription: subscription filters, scripts, and effective-name deduplication apply afterward.
 
@@ -660,8 +673,8 @@ Base: `/api/v1/node-check`
 - **GET** `/node-check/profiles` — list profiles
 - **GET** `/node-check/profiles/{id}`
 - **POST** `/node-check/profiles` — **JSON** create (demo-restricted)
-- **PUT** `/node-check/profiles/{id}` — **JSON** (demo-restricted)
-- **DELETE** `/node-check/profiles/{id}` (demo-restricted)
+- **PUT** `/node-check/profiles/{id}` — **JSON** (demo-restricted); cannot switch to TCP while an automatic smart group with positive `minSpeed` references it.
+- **DELETE** `/node-check/profiles/{id}` (demo-restricted); rejects saved smart-group default references even when automation is off. Clear/change group references first.
 - **POST** `/node-check/profiles/{id}/run` — run a profile (demo-restricted)
 - **POST** `/node-check/run` — **JSON** `{"profileId":0, "nodeIds":[...]}` — general run entry (demo-restricted)
 

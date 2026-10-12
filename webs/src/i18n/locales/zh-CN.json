@@ -84,7 +84,26 @@
     "candidateList": "候选节点",
     "eligibleShort": "可供订阅",
     "excludedShort": "未通过",
-    "loadingCandidates": "正在加载候选节点…"
+    "loadingCandidates": "正在加载候选节点…",
+    "automaticChecks": "自动检测候选节点",
+    "defaultProfile": "默认节点检测策略",
+    "noDefaultProfile": "不设置默认策略",
+    "autoProfileHint": "仅复用策略的检测参数，不使用策略的原分组/标签范围；策略自身的定时开关可以关闭。",
+    "scheduleEnabled": "定时检测全部候选节点",
+    "cronExpr": "检测时间（五字段 Cron）",
+    "scheduleTimezoneHint": "Cron 按服务器时区 {{timezone}} 执行。编辑器预览使用浏览器时区，请以分组卡片显示的服务端下次计划为准。",
+    "serverTimezone": "服务器本地时区",
+    "invalidCron": "请输入有效的五字段 Cron（分 时 日 月 星期）。",
+    "afterAirportUpdate": "机场更新后检测匹配候选节点",
+    "afterAirportUpdateHint": "机场更新成功后，只检测来自该机场的匹配候选（含未变化和此前失败的节点）。同策略的分组会合并去重。这与机场原有“更新后检测”独立，同时开启可能重复检测。",
+    "autoCheckHint": "未测/失败节点会重新检测，结果自动影响动态成员，不搬移原节点。同分组不并行检测；检测期间收到机场更新，会排队补测。",
+    "scheduleSummary": "定时：{{cron}}",
+    "lastTriggered": "最近触发",
+    "nextCheck": "下次定时检测",
+    "notTriggered": "尚未触发",
+    "notScheduled": "未安排",
+    "checkRunning": "检测中 / 排队中",
+    "checkRunningHint": "此分组正在检测或排队，请等待当前任务结束再手动检测；期间的机场更新会自动排队补测。"
   },
   "auth": {
     "page": {

@@ -84,7 +84,26 @@
     "candidateList": "Candidate nodes",
     "eligibleShort": "Eligible",
     "excludedShort": "Not passed",
-    "loadingCandidates": "Loading candidates…"
+    "loadingCandidates": "Loading candidates…",
+    "automaticChecks": "Automatic candidate checks",
+    "defaultProfile": "Default check profile",
+    "noDefaultProfile": "No default profile",
+    "autoProfileHint": "Uses this profile’s check parameters, not its group/tag scope. Its own scheduled toggle can remain off.",
+    "scheduleEnabled": "Check all candidates on a schedule",
+    "cronExpr": "Check schedule (5-field Cron)",
+    "scheduleTimezoneHint": "Cron runs in server time: {{timezone}}. The editor preview uses your browser time; use the server’s next run shown on the group card.",
+    "serverTimezone": "server local timezone",
+    "invalidCron": "Enter a valid 5-field Cron expression (minute hour day month weekday).",
+    "afterAirportUpdate": "Check matching candidates after airport updates",
+    "afterAirportUpdateHint": "After a successful airport refresh, checks only matching candidates from that airport (including unchanged/failed nodes). Same-profile group targets are combined. This is independent of the airport’s existing post-update check; enabling both can repeat checks.",
+    "autoCheckHint": "Failed/untested candidates are retested. Results update dynamic membership; no nodes are moved. Overlapping checks for this group are skipped, and airport updates received during a check are queued for a follow-up.",
+    "scheduleSummary": "Scheduled: {{cron}}",
+    "lastTriggered": "Last triggered",
+    "nextCheck": "Next scheduled check",
+    "notTriggered": "Not triggered yet",
+    "notScheduled": "Not scheduled",
+    "checkRunning": "Checking / queued",
+    "checkRunningHint": "This group is checking or queued. Please wait before starting another manual check; airport updates will be followed up automatically."
   },
   "auth": {
     "page": {

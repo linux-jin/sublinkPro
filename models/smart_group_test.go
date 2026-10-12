@@ -202,3 +202,34 @@ func TestSmartGroupCountryCodeTokenMatchesNameWithoutRule(t *testing.T) {
 		t.Fatalf("match source = %q, want countryName", got)
 	}
 }
+
+func TestSmartGroupAutomaticCheckValidation(t *testing.T) {
+	for _, tt := range []struct {
+		name, cron             string
+		profile                int
+		schedule, after, valid bool
+	}{
+		{"legacy", "", 0, false, false, true},
+		{"scheduled", " 0  3 * * * ", 1, true, false, true},
+		{"update-only", "", 1, false, true, true},
+		{"missing-profile", "0 3 * * *", 0, true, false, false},
+		{"update-missing-profile", "", 0, false, true, false},
+		{"negative-profile", "", -1, false, false, false},
+		{"missing-cron", "", 1, true, false, false},
+		{"zero-step", "*/0 * * * *", 1, true, false, false},
+		{"six-fields", "0 0 3 * * *", 1, true, false, false},
+		{"timezone-prefix", "CRON_TZ=UTC 0 3 * * *", 1, true, false, false},
+		{"invalid-hour", "0 24 * * *", 1, true, false, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			group := SmartGroup{Name: tt.name, Countries: "GB", CheckProfileID: tt.profile, CronExpr: tt.cron, ScheduleEnabled: tt.schedule, CheckAfterAirportUpdate: tt.after}
+			err := group.Validate()
+			if (err == nil) != tt.valid {
+				t.Fatalf("Validate() = %v, want valid %v", err, tt.valid)
+			}
+			if tt.name == "scheduled" && group.CronExpr != "0 3 * * *" {
+				t.Fatalf("Cron not normalized: %q", group.CronExpr)
+			}
+		})
+	}
+}

@@ -1,17 +1,23 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"sort"
 	"strconv"
 	"sublink/database"
 	"sublink/models"
 	"sublink/services/scheduler"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 )
+
+// Serialize group/profile configuration mutations so reference validation and
+// database + Cron updates cannot be reordered by concurrent API requests.
+var smartGroupConfigMu sync.Mutex
 
 func smartGroupID(c *gin.Context) (int, bool) {
 	id, err := strconv.Atoi(c.Param("id"))
@@ -41,26 +47,43 @@ func ListSmartGroups(c *gin.Context) {
 		c.JSON(500, gin.H{"code": 500, "msg": "获取智能分组失败"})
 		return
 	}
+	for index := range groups {
+		groups[index] = scheduler.GetSchedulerManager().SmartGroupCheckInfo(groups[index])
+	}
 	c.JSON(200, gin.H{"code": 200, "data": groups})
 }
 
 func CreateSmartGroup(c *gin.Context) {
+	smartGroupConfigMu.Lock()
+	defer smartGroupConfigMu.Unlock()
 	var group models.SmartGroup
 	if err := c.ShouldBindBodyWith(&group, binding.JSON); err != nil {
 		c.JSON(400, gin.H{"code": 400, "msg": "无效的分组配置"})
 		return
 	}
 	group.ID = 0
+	group.LastCheckAt = nil
 	group.MaxAgeHours = maxAgeHoursFromRequest(c, group.MaxAgeHours)
 	if err := group.Validate(); err != nil {
 		c.JSON(400, gin.H{"code": 400, "msg": err.Error()})
 		return
 	}
+	if group.CheckProfileID > 0 {
+		if err := scheduler.ValidateSmartGroupCheckProfile(group, group.CheckProfileID); err != nil {
+			c.JSON(400, gin.H{"code": 400, "msg": err.Error()})
+			return
+		}
+	}
 	if err := database.DB.Create(&group).Error; err != nil {
 		c.JSON(400, gin.H{"code": 400, "msg": "名称已存在或保存失败"})
 		return
 	}
-	c.JSON(200, gin.H{"code": 200, "data": group})
+	if err := scheduler.GetSchedulerManager().UpdateSmartGroupJob(group); err != nil {
+		_ = database.DB.Delete(&group).Error
+		c.JSON(500, gin.H{"code": 500, "msg": "注册定时检测失败"})
+		return
+	}
+	c.JSON(200, gin.H{"code": 200, "data": scheduler.GetSchedulerManager().SmartGroupCheckInfo(group)})
 }
 
 // New groups default to 72 hours; explicitly passing zero disables expiration.
@@ -74,7 +97,11 @@ func maxAgeHoursFromRequest(c *gin.Context, current int) int {
 	return current
 }
 
+var smartGroupEditableFields = []string{"Name", "Countries", "Keyword", "SourceGroups", "MaxDelay", "MinSpeed", "MaxAgeHours", "CheckProfileID", "ScheduleEnabled", "CronExpr", "CheckAfterAirportUpdate"}
+
 func UpdateSmartGroup(c *gin.Context) {
+	smartGroupConfigMu.Lock()
+	defer smartGroupConfigMu.Unlock()
 	existing, ok := smartGroupByID(c)
 	if !ok {
 		return
@@ -85,12 +112,39 @@ func UpdateSmartGroup(c *gin.Context) {
 		return
 	}
 	group.ID = existing.ID
+	// Legacy clients omit the new fields; preserve their saved automation settings.
+	var fields map[string]any
+	if err := c.ShouldBindBodyWith(&fields, binding.JSON); err == nil {
+		if _, ok := fields["checkProfileId"]; !ok {
+			group.CheckProfileID = existing.CheckProfileID
+		}
+		if _, ok := fields["scheduleEnabled"]; !ok {
+			group.ScheduleEnabled = existing.ScheduleEnabled
+		}
+		if _, ok := fields["cronExpr"]; !ok {
+			group.CronExpr = existing.CronExpr
+		}
+		if _, ok := fields["checkAfterAirportUpdate"]; !ok {
+			group.CheckAfterAirportUpdate = existing.CheckAfterAirportUpdate
+		}
+	}
 	if err := group.Validate(); err != nil {
 		c.JSON(400, gin.H{"code": 400, "msg": err.Error()})
 		return
 	}
-	if err := database.DB.Model(&existing).Select("Name", "Countries", "Keyword", "SourceGroups", "MaxDelay", "MinSpeed", "MaxAgeHours").Updates(&group).Error; err != nil {
+	if group.CheckProfileID > 0 {
+		if err := scheduler.ValidateSmartGroupCheckProfile(group, group.CheckProfileID); err != nil {
+			c.JSON(400, gin.H{"code": 400, "msg": err.Error()})
+			return
+		}
+	}
+	if err := database.DB.Model(&models.SmartGroup{}).Where("id = ?", existing.ID).Select(smartGroupEditableFields).Updates(&group).Error; err != nil {
 		c.JSON(400, gin.H{"code": 400, "msg": "名称已存在或保存失败"})
+		return
+	}
+	if err := scheduler.GetSchedulerManager().UpdateSmartGroupJob(group); err != nil {
+		_ = database.DB.Model(&models.SmartGroup{}).Where("id = ?", existing.ID).Select(smartGroupEditableFields).Updates(&existing).Error
+		c.JSON(500, gin.H{"code": 500, "msg": "注册定时检测失败"})
 		return
 	}
 	updated, err := models.GetSmartGroup(existing.ID)
@@ -98,10 +152,12 @@ func UpdateSmartGroup(c *gin.Context) {
 		c.JSON(500, gin.H{"code": 500, "msg": "读取更新结果失败"})
 		return
 	}
-	c.JSON(200, gin.H{"code": 200, "data": updated})
+	c.JSON(200, gin.H{"code": 200, "data": scheduler.GetSchedulerManager().SmartGroupCheckInfo(updated)})
 }
 
 func DeleteSmartGroup(c *gin.Context) {
+	smartGroupConfigMu.Lock()
+	defer smartGroupConfigMu.Unlock()
 	group, ok := smartGroupByID(c)
 	if !ok {
 		return
@@ -124,6 +180,7 @@ func DeleteSmartGroup(c *gin.Context) {
 		c.JSON(500, gin.H{"code": 500, "msg": "删除失败"})
 		return
 	}
+	scheduler.GetSchedulerManager().RemoveSmartGroupJob(group.ID)
 	c.JSON(200, gin.H{"code": 200, "msg": "删除成功"})
 }
 
@@ -197,7 +254,7 @@ func SmartGroupMembers(c *gin.Context) {
 			details = append(details, gin.H{"id": node.ID, "name": node.EffectiveName(), "group": node.Group, "country": country, "countrySource": countrySource, "matchSource": group.MatchSource(node), "delay": node.DelayTime, "speed": node.Speed})
 		}
 	}
-	c.JSON(200, gin.H{"code": 200, "data": gin.H{"ids": ids, "count": len(ids), "candidateCount": stats.CandidateCount, "statusCounts": stats, "nodes": details, "candidateNodes": candidateNodes, "page": page, "pageSize": pageSize}})
+	c.JSON(200, gin.H{"code": 200, "data": gin.H{"ids": ids, "count": len(ids), "candidateCount": stats.CandidateCount, "statusCounts": stats, "nodes": details, "candidateNodes": candidateNodes, "page": page, "pageSize": pageSize, "checkInfo": scheduler.GetSchedulerManager().SmartGroupCheckInfo(group)}})
 }
 
 func CheckSmartGroupCandidates(c *gin.Context) {
@@ -213,33 +270,14 @@ func CheckSmartGroupCandidates(c *gin.Context) {
 		c.JSON(400, gin.H{"code": 400, "msg": "请选择节点检测策略"})
 		return
 	}
-	if _, err := models.GetNodeCheckProfileByID(req.ProfileID); err != nil {
-		c.JSON(400, gin.H{"code": 400, "msg": "检测策略不存在"})
-		return
-	}
-	ids, err := group.CandidateIDs()
+	count, err := scheduler.StartSmartGroupCheck(group.ID, req.ProfileID, req.NodeID, models.TaskTriggerManual)
 	if err != nil {
-		c.JSON(500, gin.H{"code": 500, "msg": "获取候选节点失败"})
+		status := http.StatusBadRequest
+		if errors.Is(err, scheduler.ErrSmartGroupCheckRunning) {
+			status = http.StatusConflict
+		}
+		c.JSON(status, gin.H{"code": status, "msg": err.Error()})
 		return
 	}
-	if len(ids) == 0 {
-		c.JSON(400, gin.H{"code": 400, "msg": "当前国家或名称条件没有匹配节点，或原分组限制排除了所有节点"})
-		return
-	}
-	if req.NodeID != 0 {
-		found := false
-		for _, id := range ids {
-			if id == req.NodeID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			c.JSON(400, gin.H{"code": 400, "msg": "节点不属于当前智能分组候选"})
-			return
-		}
-		ids = []int{req.NodeID}
-	}
-	go scheduler.ExecuteNodeCheckWithProfile(req.ProfileID, ids, models.TaskTriggerManual)
-	c.JSON(200, gin.H{"code": 200, "data": gin.H{"count": len(ids)}})
+	c.JSON(200, gin.H{"code": 200, "data": gin.H{"count": count}})
 }

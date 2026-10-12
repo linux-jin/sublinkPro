@@ -13,9 +13,10 @@ import (
 
 // SchedulerManager 定时任务管理器
 type SchedulerManager struct {
-	cron  *cron.Cron
-	jobs  map[int]cron.EntryID // 存储任务ID和cron EntryID的映射
-	mutex sync.RWMutex
+	cron           *cron.Cron
+	jobs           map[int]cron.EntryID // 存储任务ID和cron EntryID的映射
+	smartGroupJobs map[int]cron.EntryID // separate namespace; never collide with airport/profile IDs
+	mutex          sync.RWMutex
 }
 
 // 全局定时任务管理器实例
@@ -29,7 +30,8 @@ func GetSchedulerManager() *SchedulerManager {
 			cron: cron.New(cron.WithParser(cron.NewParser(
 				cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow,
 			))),
-			jobs: make(map[int]cron.EntryID),
+			jobs:           make(map[int]cron.EntryID),
+			smartGroupJobs: make(map[int]cron.EntryID),
 		}
 	})
 	return globalScheduler
@@ -53,6 +55,10 @@ func (sm *SchedulerManager) ReloadFromDatabase() error {
 	for jobID, entryID := range sm.jobs {
 		sm.cron.Remove(entryID)
 		delete(sm.jobs, jobID)
+	}
+	for id, entryID := range sm.smartGroupJobs {
+		sm.cron.Remove(entryID)
+		delete(sm.smartGroupJobs, id)
 	}
 	sm.mutex.Unlock()
 
@@ -97,6 +103,10 @@ func (sm *SchedulerManager) LoadFromDatabase() error {
 					profile.ID, profile.Name, profile.CronExpr)
 			}
 		}
+	}
+
+	if err := sm.LoadSmartGroupJobs(); err != nil {
+		utils.Error("加载智能分组定时检测失败: %v", err)
 	}
 
 	// 启动 Host 过期清理任务

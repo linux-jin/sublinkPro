@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import PropTypes from 'prop-types';
+import { validateCronExpression } from 'utils/cronValidation';
+export { validateCronExpression } from 'utils/cronValidation';
 
 // material-ui
 import Box from '@mui/material/Box';
@@ -85,52 +87,6 @@ const parseCronField = (field, min, max) => {
   }
 
   return [...new Set(values)].sort((a, b) => a - b);
-};
-
-/**
- * 验证 cron 表达式格式
- * @param {string} cron - Cron 表达式
- * @returns {boolean} - 是否有效
- */
-export const validateCronExpression = (cron) => {
-  if (!cron) return false;
-  const parts = cron.trim().split(/\s+/);
-  if (parts.length !== 5) return false;
-
-  const ranges = [
-    { min: 0, max: 59 }, // 分钟
-    { min: 0, max: 23 }, // 小时
-    { min: 1, max: 31 }, // 日
-    { min: 1, max: 12 }, // 月
-    { min: 0, max: 7 } // 星期 (0和7都表示周日)
-  ];
-
-  for (let i = 0; i < 5; i++) {
-    const part = parts[i];
-    const patterns = [
-      /^\*$/, // *
-      /^\*\/\d+$/, // */n
-      /^\d+$/, // n
-      /^\d+-\d+$/, // n-m
-      /^[\d,]+$/, // n,m,o
-      /^\d+-\d+\/\d+$/ // n-m/s
-    ];
-
-    if (!patterns.some((p) => p.test(part))) {
-      return false;
-    }
-
-    const numbers = part.match(/\d+/g);
-    if (numbers) {
-      for (const num of numbers) {
-        const n = parseInt(num, 10);
-        if (n < ranges[i].min || n > ranges[i].max) {
-          return false;
-        }
-      }
-    }
-  }
-  return true;
 };
 
 /**
