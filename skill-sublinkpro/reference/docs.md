@@ -68,6 +68,7 @@ suffix for Chinese.
 | Host management — domain mappings, DNS, CDN preferred IPs | `docs/features/host.md` |
 | Cloudflare Tunnel — create tunnel, token, public access | `docs/features/cloudflare-tunnel.md` |
 | System backup and WebDAV — configure, upload, list, restore, security boundaries | `docs/features/backup.md` |
+| SOCKS5 gateway — accounts, listeners, routing profiles, health and monitoring | `docs/features/socks5.md` |
 | Telegram Bot — command list, setup | `docs/features/telegram-bot.md` |
 | Multi-factor auth (MFA) — TOTP setup, recovery codes, emergency reset | `docs/features/mfa.md` |
 | Script support — node filtering, content post-processing, function reference | `docs/script_support.md` |
@@ -86,7 +87,6 @@ suffix for Chinese.
 | Contribution workflow, branch conventions, PR process, cross-layer sync requirements | `CONTRIBUTING.md` |
 | Code of Conduct | `CODE_OF_CONDUCT.md` |
 | Architectural guidance, tech stack, mihomo integration, cross-layer contracts | `AGENTS.md` |
-| SOCKS5 gateway — configure the local TCP CONNECT proxy listener | `docs/features/socks5.md` |
 
 ## Notes & guardrails
 

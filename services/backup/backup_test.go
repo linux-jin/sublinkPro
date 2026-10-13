@@ -210,6 +210,34 @@ func TestWebDAVEnsureDirectoryAcceptsCollectionRedirect(t *testing.T) {
 	}
 }
 
+func TestWebDAVMKCOLRejectsCrossOriginRedirect(t *testing.T) {
+	redirectCalled := false
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		redirectCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer redirect.Close()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "MKCOL" {
+			t.Fatalf("unexpected request: %s", r.Method)
+		}
+		w.Header().Set("Location", redirect.URL+"/stolen")
+		w.WriteHeader(http.StatusMovedPermanently)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{BaseURL: server.URL, Username: "user", Password: "secret", RemotePath: "backup", TimeoutSeconds: 5, AllowInsecureHTTP: true, AllowPrivateNetwork: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.EnsureDirectory(context.Background()); err == nil {
+		t.Fatal("expected cross-origin MKCOL redirect to be rejected")
+	}
+	if redirectCalled {
+		t.Fatal("redirect target should not receive credentials or requests")
+	}
+}
+
 func TestWriteArchiveRejectsSymlinks(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "source")

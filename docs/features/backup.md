@@ -55,7 +55,7 @@ A remote restore first downloads the selected ZIP to the server's temporary migr
 - current business data is overwritten;
 - the template directory in the ZIP is restored;
 - restoring access keys and subscription access logs is optional;
-- the current instance's JWT, Cloudflare Tunnel, and WebDAV connection settings are preserved;
+- the current instance's JWT, encryption key, Cloudflare Tunnel, WebDAV settings, and SOCKS5 gateway configuration (including accounts, listeners, and routing profiles) are preserved;
 - an instance restart may be required afterward.
 
 Back up the current instance before restoring. Progress and results are available in the task center.
@@ -67,7 +67,7 @@ Back up the current instance before restoring. Progress and results are availabl
 - Backups may contain account data, access keys, node credentials, OpenVPN private keys, and other sensitive information.
 - HTTPS is required by default. HTTP is accepted only after an explicit opt-in and should be used only on a trusted isolated network.
 - Loopback, private, and reserved addresses are rejected by default. Explicitly enable private-network access only for a trusted private NAS.
-- The client rejects redirects, and remote filenames must be a single `.zip` filename.
+- The client never follows redirects; same-origin `MKCOL` collection redirects are accepted without a follow-up request. Remote filenames must be a single `.zip` filename.
 - Remote uploads and downloads are limited to 1 GiB per backup. The UI lists at most the newest 200 ZIP files.
 
 ## Current scope

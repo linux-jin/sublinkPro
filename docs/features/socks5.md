@@ -19,8 +19,8 @@ SublinkPro can expose selected stored proxy nodes through a local SOCKS5 gateway
 - Mihomo outbound adapter pooling keyed by node ID and link hash, with an idle LRU cap
 - Configurable per-request retry (up to 5 candidate nodes), dial timeout, and failed-node cooldown
 - Optional fallback from a specific node; disabled by default to keep specific routing strict
-- Global active-connection limit (`maxConnections`, default `256`, range `1-10000`)
-- Per-client-IP active-connection limit (`maxConnectionsPerClient`, default `32`, range `1..maxConnections`)
+- Per-listener active-connection limit (`maxConnections`, default `256`, range `1-10000`)
+- Per-client-IP active-connection limit within each listener (`maxConnectionsPerClient`, default `32`, range `1..maxConnections`)
 - Idle timeout (`idleTimeoutSeconds`, default `600`, range `0-86400`; `0` disables it)
 - Maximum connection duration (`maxConnectionDurationSeconds`, default `0`, range `0-604800`; `0` disables it)
 - Administrator-only live monitoring with active/total/success/failure counters and upload/download byte counters
@@ -45,7 +45,7 @@ UDP `ASSOCIATE` and `BIND` are not included yet. Sticky leases and per-node rout
 4. Choose a port (default `1080`) and node selection strategy.
 5. Optionally restrict the candidate node pool by groups, sources, protocols, and countries/regions. Empty fields do not restrict the pool. Specific-node mode uses these filters only for fallback candidates.
 6. Configure maximum attempts, per-node dial timeout, and failed-node cooldown.
-7. Configure global and per-client connection limits.
+7. Configure per-listener and per-client connection limits.
 8. Configure idle timeout and maximum connection duration; set either value to `0` to disable that limit.
 9. Optionally enable sticky sessions and choose client IP or authenticated SOCKS5 username as the affinity key. Configure a 60-604800 second TTL; each successful connection refreshes it.
 10. For specific-node routing, enable fallback only if switching to another node is acceptable.
@@ -67,6 +67,12 @@ curl --proxy socks5h://127.0.0.1:1080 \
 ```
 
 If you bind to `0.0.0.0` or another non-loopback address, authentication is mandatory. Expose the port only behind a firewall or private network and use a strong password. The backend rejects unauthenticated non-loopback listeners to prevent accidental open proxies.
+
+## Backup and restore
+
+Database migration and WebDAV restore preserve the target instance's SOCKS5 configuration, accounts, listeners, and routing profiles. This avoids importing credentials encrypted with another instance's key or unexpectedly opening network listeners. Active connections are disconnected and gateway state is reloaded after restore; review node IDs and candidate pools against the restored nodes.
+
+Connection limits apply separately to each listener. Connection totals aggregate all listeners; the health/routing views currently show the first enabled listener's node runtime. SOCKS5 itself does not add TLS, so non-loopback listeners should remain behind a firewall or trusted private network.
 
 ## API
 

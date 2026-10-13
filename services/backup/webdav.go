@@ -189,8 +189,9 @@ func (c *Client) EnsureDirectory(ctx context.Context) error {
 			return err
 		}
 		status := resp.StatusCode
+		accepted := isSuccessfulMKCOL(resp, target)
 		_ = resp.Body.Close()
-		if isSuccessfulMKCOL(status) {
+		if accepted {
 			continue
 		}
 		if status == http.StatusConflict {
@@ -315,12 +316,24 @@ func (c *Client) statusError(resp *http.Response, action string) error {
 	}
 }
 
-func isSuccessfulMKCOL(status int) bool {
-	switch status {
-	case http.StatusCreated, http.StatusOK, http.StatusNoContent, http.StatusMethodNotAllowed,
-		http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
-		http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+func isSuccessfulMKCOL(resp *http.Response, target string) bool {
+	switch resp.StatusCode {
+	case http.StatusCreated, http.StatusOK, http.StatusNoContent, http.StatusMethodNotAllowed:
 		return true
+	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
+		http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+		// Some servers canonicalize collections with a redirect. Never follow it or
+		// treat a redirect to another origin as a successful directory creation.
+		location := resp.Header.Get("Location")
+		if location == "" {
+			return false
+		}
+		original, err := url.Parse(target)
+		if err != nil {
+			return false
+		}
+		redirected, err := original.Parse(location)
+		return err == nil && strings.EqualFold(original.Scheme, redirected.Scheme) && strings.EqualFold(original.Host, redirected.Host)
 	default:
 		return false
 	}

@@ -55,7 +55,7 @@ WebDAV 系统备份当前仅支持 SQLite。使用 MySQL 或 PostgreSQL 时，�
 - 覆盖当前业务数据；
 - 恢复 ZIP 中的模板目录；
 - 可选择是否恢复 AccessKey 和订阅访问日志；
-- 当前实例的 JWT、Cloudflare Tunnel 和 WebDAV 连接设置会保留；
+- 当前实例的 JWT、加密密钥、Cloudflare Tunnel、WebDAV 设置及 SOCKS5 网关配置（含账号、监听入口与路由 Profile）会保留；
 - 完成后可能需要重启实例。
 
 恢复前请先备份当前实例。任务进度和结果可在任务中心查看。
@@ -67,7 +67,7 @@ WebDAV 系统备份当前仅支持 SQLite。使用 MySQL 或 PostgreSQL 时，�
 - 备份可能包含账号数据、AccessKey、节点凭据、OpenVPN 私钥及其他敏感内容。
 - 默认要求 HTTPS。只有显式启用后才允许 HTTP；明文 HTTP 仅应在可信、隔离的内网中使用。
 - 默认拒绝回环、私网和保留地址。连接可信内网 NAS 时，需要显式启用“允许访问私有网络”。
-- 客户端拒绝跨地址重定向，远程文件名必须是单个 `.zip` 文件名。
+- 客户端不会跟随重定向；同源的 `MKCOL` 目录重定向可直接接受，但不会向新地址发送请求。远程文件名必须是单个 `.zip` 文件名。
 - 单个远程备份的上传和下载上限为 1 GiB，WebDAV 文件列表最多显示最近 200 个 ZIP。
 
 ## 当前范围
