@@ -8,6 +8,8 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ### Added
 
+- Added a manual dev build workflow trigger to retry image publication when a matching push build is missing.
+
 - Added opt-in smart-group five-field Cron candidate checks, saved default profiles, server-timezone hints, running status and last-trigger/next-run display.
 - Added airport-refresh linkage limited to matching candidates from the updated airport, including unchanged/failed nodes, with same-profile batch deduplication and queued follow-up updates.
 

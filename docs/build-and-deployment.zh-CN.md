@@ -197,6 +197,10 @@ docker-compose up -d
    - 上传二进制产物
    - 推送 Docker 镜像
 
+### 手动构建 dev 镜像
+
+构建工作流支持 `workflow_dispatch`。推送后没有对应构建记录时，管理员可先启用仓库 GitHub Actions，再用 `ref: dev` 触发 `.github/workflows/build-release.yml`。请选择 **dev**，不要选版本 tag：沿用全部校验与多平台构建，发布 `ghcr.io/linux-jin/sublink-pro:dev`，不创建正式版本、不更新 `latest`。须确认构建提交 SHA 正确且 `build-docker` 成功，才能认为镜像已发布；Git 推送成功不等于镜像更新。
+
 ### PR 检查
 
 `.github/workflows/pr-checks.yml` 在 PR 打开/重新打开/标记为 ready-for-review 时运行：

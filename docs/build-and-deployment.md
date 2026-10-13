@@ -197,6 +197,10 @@ The repository uses `.github/workflows/build-release.yml` for automated builds.
    - Upload binary artifacts
    - Push Docker images
 
+### Manual dev image build
+
+The build workflow also supports `workflow_dispatch`. If a push has no matching build run, an administrator can enable GitHub Actions for the repository and dispatch `.github/workflows/build-release.yml` with `ref: dev`. Select **dev**, not a version tag: the existing full validation/multi-platform build publishes `ghcr.io/linux-jin/sublink-pro:dev` without creating a release or changing `latest`. Verify the run's commit SHA and successful `build-docker` job before treating the image as published. A successful Git push alone is not evidence of an image update.
+
 ### PR Checks
 
 `.github/workflows/pr-checks.yml` runs on PR open/reopen/ready-for-review:
