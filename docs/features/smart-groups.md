@@ -4,6 +4,12 @@
 
 Smart groups are **independent dynamic views**, not replacements for source groups. A node keeps its original `Group`, and the same node can match multiple smart groups. A candidate matches when **any one** condition holds: its stored landing country (`LinkCountry`) is selected; its original/display name matches a selected country's configured rule or a standalone two-letter country code; or its name contains the optional case-insensitive keyword. These conditions are OR alternatives—even if the stored country differs from the name clue. A selected source-group restriction is still AND, and healthy membership still requires the configured successful checks. Name matching never rewrites the stored landing country or verifies the landing IP.
 
+## Country matching is separate from protocol
+
+Selecting a country/flag never selects a protocol. Exact flags (for example `🇹🇷`) and standalone ISO tokens (`TR`) match names even without a saved country rule. In smart-group name rules, plain two/three-letter alternatives are matched with ASCII-letter boundaries: `TR` no longer matches `trojan`, `ES` no longer matches `vmess`/`vless`, and `IN` no longer matches `Singapore`. Full country names, flags and explicit custom regex branches keep their behavior. This applies immediately to existing rule definitions without rewriting them; general country-rule testing/import behavior is unchanged.
+
+The existing OR relationship between stored country, name-country clues and an explicitly entered keyword is retained. A keyword such as `trojan` deliberately matches node names containing it; it is not a protocol-field filter. A genuine Turkish node can use any protocol. Already-saved `LinkCountry` values remain authoritative country alternatives and are not automatically corrected: if an earlier name-based fill incorrectly saved `TR`, verify the landing country and correct that node's metadata. New matching does not rewrite node data.
+
 ## Use
 
 1. In **Subscriptions → Smart Groups**, create a group, choose countries from the full searchable region catalog (including PH), optionally specify an alternative node-name keyword and a restricting set of source groups, and set a maximum latency, minimum speed, and freshness window (default: 72 hours). Leave source groups empty to search across all original groups; new groups default to no latency ceiling. Zero for a numeric threshold means no upper/lower threshold; zero freshness disables expiry.

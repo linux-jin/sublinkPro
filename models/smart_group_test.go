@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"sublink/database"
+
+	countryRegexp "github.com/dlclark/regexp2/v2/compat"
 )
 
 func TestSmartGroupDynamicMembersAcrossOriginalGroups(t *testing.T) {
@@ -231,5 +233,179 @@ func TestSmartGroupAutomaticCheckValidation(t *testing.T) {
 				t.Fatalf("Cron not normalized: %q", group.CronExpr)
 			}
 		})
+	}
+}
+
+func TestSmartGroupCountryRulesDoNotMatchProtocolNames(t *testing.T) {
+	setupSubcriptionCopyTestDB(t)
+	oldRules := countryRuleCache
+	t.Cleanup(func() { countryRuleCache = oldRules })
+	resetCountryRuleCacheForTest()
+	if err := database.DB.AutoMigrate(&CountryRule{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, rule := range []CountryRule{
+		{ID: 920001, CountryCode: "TR", CountryName: "土耳其", Pattern: "(?i)土耳其|TR|Turkey|🇹🇷", Enabled: true},
+		{ID: 920002, CountryCode: "ES", CountryName: "西班牙", Pattern: "(?i)西班牙|ES|Spain|🇪🇸", Enabled: true},
+		{ID: 920003, CountryCode: "RO", CountryName: "罗马尼亚", Pattern: "(?i)罗马尼亚|RO|Romania|🇷🇴", Enabled: true},
+		{ID: 920004, CountryCode: "IN", CountryName: "印度", Pattern: "(?i)印度|IN|India|🇮🇳", Enabled: true},
+	} {
+		if err := database.DB.Create(&rule).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := InitCountryRuleCache(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Format("2006-01-02 15:04:05")
+	add := func(name, protocol, country string) Node {
+		return createSubcriptionTestNode(t, Node{Name: name, LinkName: name, Protocol: protocol, LinkCountry: country, DelayStatus: "success", DelayTime: 100, LatencyCheckAt: now})
+	}
+	unrelated := []Node{
+		add("trojan Hong Kong", "trojan", "HK"),
+		add("vmess Singapore", "vmess", "SG"),
+		add("vless Japan", "vless", "JP"),
+		add("🇭🇰 Trojan 01", "trojan", ""),
+	}
+	trueTR := []Node{add("🇹🇷 Istanbul trojan", "trojan", ""), add("TR-01", "ss", ""), add("土耳其 02", "vless", ""), add("Turkey 03", "vmess", ""), add("Ankara", "trojan", "TR")}
+	for _, code := range []string{"TR", "ES", "RO", "IN"} {
+		group := SmartGroup{Name: code, Countries: code, MaxAgeHours: 72}
+		for _, n := range unrelated {
+			if got := group.MatchSource(n); got != "" {
+				t.Errorf("%s matched protocol/non-country name %q via %s", code, n.LinkName, got)
+			}
+		}
+	}
+	group := SmartGroup{Name: "Turkey", Countries: "TR", MaxAgeHours: 72}
+	ids, err := group.CandidateIDs()
+	want := make([]int, 0, len(trueTR))
+	for _, n := range trueTR {
+		want = append(want, n.ID)
+	}
+	if err != nil || !reflect.DeepEqual(ids, want) {
+		t.Fatalf("TR candidates=%v want=%v err=%v", ids, want, err)
+	}
+	members, err := group.Members()
+	if err != nil || len(members) != len(trueTR) {
+		t.Fatalf("TR members=%v err=%v", nodeNames(members), err)
+	}
+	for _, n := range unrelated {
+		n.LinkCountry = ""
+		if code, source := SmartGroupCountryForDisplay(n); code != "" || source != "unknown" {
+			t.Errorf("protocol name %q displayed as %s (%s)", n.Name, code, source)
+		}
+	}
+	if code, source := SmartGroupCountryForDisplay(trueTR[0]); code != "TR" || source != "name" {
+		t.Fatalf("flag country=%s source=%s", code, source)
+	}
+	// Explicit node-name keywords remain an intentional OR; they are not an
+	// implicit protocol filter and country selection alone cannot activate them.
+	group.Keyword = "trojan"
+	if group.MatchSource(unrelated[0]) != "keyword" {
+		t.Fatal("explicit keyword semantics changed")
+	}
+	if err := database.DB.Create(&group).Error; err != nil {
+		t.Fatal(err)
+	}
+	group.Keyword = ""
+	if err := database.DB.Model(&group).Update("keyword", "").Error; err != nil {
+		t.Fatal(err)
+	}
+	sub := &Subcription{Name: "Turkey-only", SmartGroupIDs: strconv.Itoa(group.ID), RefreshUsageOnRequest: true}
+	if err := sub.Add(); err != nil {
+		t.Fatal(err)
+	}
+	if err := sub.GetSub("clash"); err != nil || len(sub.Nodes) != len(trueTR) {
+		t.Fatalf("subscription country leaked: %v err=%v", nodeNames(sub.Nodes), err)
+	}
+}
+
+func TestSmartGroupBoundCountryAbbreviationsKeepsExplicitRegex(t *testing.T) {
+	for _, tt := range []struct{ pattern, want string }{
+		{"(?i)TR|Turkey|🇹🇷", "(?i)(?<![A-Za-z])TR(?![A-Za-z])|Turkey|🇹🇷"},
+		{"(?i)英国|GB|UK|United Kingdom|🇬🇧", "(?i)英国|(?<![A-Za-z])GB(?![A-Za-z])|(?<![A-Za-z])UK(?![A-Za-z])|United Kingdom|🇬🇧"},
+		{"(?i)(?<![A-Za-z])TR(?![A-Za-z])|Turkey", "(?i)(?<![A-Za-z])TR(?![A-Za-z])|Turkey"},
+		{"(?i)custom-TR.*|[A-Z]{2}", "(?i)custom-TR.*|[A-Z]{2}"},
+		{"(?i)(TR|RO)|Turkey", "(?i)(TR|RO)|Turkey"},
+		{"[A|TR|B]|Turkey", "[A|TR|B]|Turkey"},
+		{"[]|TR|B]|Turkey", "[]|TR|B]|Turkey"},
+		{"[^]|TR|B]|Turkey", "[^]|TR|B]|Turkey"},
+		{`\Qfoo|TR|bar\E`, `\Qfoo|TR|bar\E`},
+		{"(?#ignore|TR|B)Turkey|TR", "(?#ignore|TR|B)Turkey|(?<![A-Za-z])TR(?![A-Za-z])"},
+		{"(?ix)Turkey # ignore|TR|B\n|TR", "(?ix)Turkey # ignore|TR|B\n|TR"},
+		{`foo\|TR|Turkey`, `foo\|TR|Turkey`},
+		{`[A\]|TR|B]|TR`, `[A\]|TR|B]|(?<![A-Za-z])TR(?![A-Za-z])`},
+	} {
+		got := smartGroupBoundCountryAbbreviations(tt.pattern)
+		if got != tt.want {
+			t.Errorf("%q => %q want %q", tt.pattern, got, tt.want)
+		}
+		if _, err := countryRegexp.Compile(got); err != nil {
+			t.Errorf("transformed regex %q no longer compiles: %v", got, err)
+		}
+	}
+}
+
+func TestSmartGroupExactFlagAndCountryCodeWithoutRules(t *testing.T) {
+	oldRules := countryRuleCache
+	t.Cleanup(func() { countryRuleCache = oldRules })
+	resetCountryRuleCacheForTest()
+	group := SmartGroup{Name: "Turkey", Countries: "TR"}
+	for _, tt := range []struct {
+		name, protocol string
+		want           bool
+	}{
+		{"🇹🇷 node", "trojan", true},
+		{"🇹🇷 node", "vmess", true},
+		{"TR / 01", "vless", true},
+		{"tr-02", "ss", true},
+		{"trojan 01", "trojan", false},
+		{"🇭🇰 trojan 01", "trojan", false},
+		{"transit node", "ss", false},
+		{"countryless", "trojan", false},
+	} {
+		node := Node{Name: tt.name, LinkName: tt.name, Protocol: tt.protocol}
+		if got := group.MatchSource(node); (got != "") != tt.want {
+			t.Errorf("name=%q protocol=%s match=%s want=%v", tt.name, tt.protocol, got, tt.want)
+		}
+	}
+}
+
+func TestSmartGroupCountryPatternCacheTracksRuleUpdates(t *testing.T) {
+	rule := CountryRule{ID: 930001, CountryCode: "TR", Pattern: "(?i)TR|Turkey", Enabled: true}
+	first := smartGroupCachedCountryRegex(rule)
+	if first == nil || first.MatchString("trojan") || !first.MatchString("tr-01") {
+		t.Fatal("guarded country pattern did not enforce boundaries")
+	}
+	if smartGroupCachedCountryRegex(rule) != first {
+		t.Fatal("unchanged country pattern was recompiled")
+	}
+	rule.Pattern = "Istanbul"
+	updated := smartGroupCachedCountryRegex(rule)
+	if updated == nil || updated == first || !updated.MatchString("Istanbul") || updated.MatchString("Turkey") {
+		t.Fatal("country pattern update retained stale matching")
+	}
+	rule.Enabled = false
+	if len(smartGroupCountryRulePatterns([]CountryRule{rule})) != 0 {
+		t.Fatal("disabled country rule used cached regex")
+	}
+}
+
+func TestSmartGroupCountryAliasBoundaries(t *testing.T) {
+	for _, alias := range []string{"TR", "ES", "IN", "UK", "USA", "UAE", "LA"} {
+		pattern, err := countryRegexp.Compile(smartGroupBoundCountryAbbreviations("(?i)" + alias))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{alias, alias + "-01", "01 " + alias, "🇹🇷" + alias + "节点"} {
+			if !pattern.MatchString(name) {
+				t.Errorf("alias %s missed standalone name %q", alias, name)
+			}
+		}
+		for _, name := range []string{"prefix" + alias, alias + "suffix", "pre" + alias + "post"} {
+			if pattern.MatchString(name) {
+				t.Errorf("alias %s matched inside word %q", alias, name)
+			}
+		}
 	}
 }

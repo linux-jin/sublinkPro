@@ -7,8 +7,10 @@ import (
 	"strconv"
 	"strings"
 	"sublink/database"
+	"sync"
 	"time"
 
+	countryRegexp "github.com/dlclark/regexp2/v2/compat"
 	"github.com/robfig/cron/v3"
 )
 
@@ -135,56 +137,203 @@ func inferSmartGroupCountry(node Node, rules []CountryRule) string {
 	if code := strings.ToUpper(strings.TrimSpace(node.LinkCountry)); code != "" {
 		return code
 	}
+	patterns := smartGroupCountryRulePatterns(rules)
 	for _, name := range []string{node.LinkName, node.Name} {
 		if name == "" {
 			continue
 		}
-		for _, rule := range rules {
-			if rule.MatchesNodeName(name) {
-				return strings.ToUpper(rule.CountryCode)
+		for _, rule := range patterns {
+			if rule.pattern.MatchString(name) {
+				return strings.ToUpper(rule.code)
 			}
 		}
 	}
 	return ""
 }
 
-// smartGroupCountryPatterns recognizes country codes as standalone tokens.
+// smartGroupCountryPatterns recognizes exact regional flags and standalone ISO tokens.
 func smartGroupCountryPatterns(countries map[string]bool) []*regexp.Regexp {
 	patterns := make([]*regexp.Regexp, 0, len(countries))
 	for code := range countries {
 		if len(code) != 2 || code[0] < 'A' || code[0] > 'Z' || code[1] < 'A' || code[1] > 'Z' {
 			continue
 		}
-		patterns = append(patterns, regexp.MustCompile(`(?i)(?:^|[^A-Za-z])`+code+`(?:$|[^A-Za-z])`))
+		flag := string([]rune{rune(0x1F1E6 + int(code[0]-'A')), rune(0x1F1E6 + int(code[1]-'A'))})
+		patterns = append(patterns, regexp.MustCompile(regexp.QuoteMeta(flag)+`|(?i)(?:^|[^A-Za-z])`+code+`(?:$|[^A-Za-z])`))
 	}
 	return patterns
 }
 
-func smartGroupSelectedCountryRules(countries map[string]bool) []CountryRule {
+// Smart-group matching must not reuse the unrestricted country-rule cache:
+// legacy defaults contain bare TR/ES/RO alternatives matching trojan/vmess.
+// Cache guarded copies separately by rule ID and pattern; never rewrite saved rules.
+type smartGroupCountryRule struct {
+	code    string
+	pattern *countryRegexp.Regexp
+}
+
+type smartGroupCachedCountryPattern struct {
+	source  string
+	pattern *countryRegexp.Regexp
+}
+
+var smartGroupCountryPatternCache = struct {
+	sync.Mutex
+	entries map[int]smartGroupCachedCountryPattern
+}{entries: make(map[int]smartGroupCachedCountryPattern)}
+
+func smartGroupCachedCountryRegex(rule CountryRule) *countryRegexp.Regexp {
+	smartGroupCountryPatternCache.Lock()
+	defer smartGroupCountryPatternCache.Unlock()
+	if cached, ok := smartGroupCountryPatternCache.entries[rule.ID]; ok && cached.source == rule.Pattern {
+		return cached.pattern
+	}
+	pattern, _ := countryRegexp.Compile(smartGroupBoundCountryAbbreviations(rule.Pattern))
+	// Bound growth even if custom rules are repeatedly deleted and recreated.
+	if len(smartGroupCountryPatternCache.entries) >= 512 {
+		clear(smartGroupCountryPatternCache.entries)
+	}
+	smartGroupCountryPatternCache.entries[rule.ID] = smartGroupCachedCountryPattern{source: rule.Pattern, pattern: pattern}
+	return pattern
+}
+
+func smartGroupCountryRulePatterns(rules []CountryRule) []smartGroupCountryRule {
+	result := make([]smartGroupCountryRule, 0, len(rules))
+	for _, rule := range rules {
+		if !rule.Enabled {
+			continue
+		}
+		if pattern := smartGroupCachedCountryRegex(rule); pattern != nil {
+			result = append(result, smartGroupCountryRule{code: rule.CountryCode, pattern: pattern})
+		}
+	}
+	return result
+}
+
+// Only plain two/three-letter alternatives are guarded (ISO codes and aliases
+// such as UK/USA/UAE/LA). Explicit regex branches, flags and country/flag names
+// keep their semantics. Lookarounds don't consume separators between tokens.
+func smartGroupBoundCountryAbbreviations(pattern string) string {
+	// Split only top-level alternatives. Pipes inside escaped literals, character
+	// classes or groups belong to explicit custom regex and must stay untouched.
+	parts := make([]string, 0)
+	start, depth := 0, 0
+	inClass, firstClassChar, quoted := false, false, false
+	for i := 0; i < len(pattern); i++ {
+		if quoted {
+			if strings.HasPrefix(pattern[i:], `\E`) {
+				quoted = false
+				i++
+			}
+			continue
+		}
+		if pattern[i] == '\\' {
+			if !inClass && strings.HasPrefix(pattern[i:], `\Q`) {
+				quoted = true
+			}
+			firstClassChar = false
+			i++ // Skip the escaped byte, including an escaped pipe or bracket.
+			continue
+		}
+		if inClass {
+			// A leading ] (also after ^) is a literal class member.
+			if pattern[i] == ']' && !firstClassChar {
+				inClass = false
+			}
+			if pattern[i] != '^' || !firstClassChar {
+				firstClassChar = false
+			}
+			continue
+		}
+		switch pattern[i] {
+		case '[':
+			inClass, firstClassChar = true, true
+		case '(':
+			if strings.HasPrefix(pattern[i:], "(?#") {
+				if end := strings.IndexByte(pattern[i:], ')'); end >= 0 {
+					i += end
+					continue
+				}
+			}
+			// Extended-mode comments can contain arbitrary pipes and brackets.
+			// Leave such explicitly customized expressions wholly untouched.
+			if strings.HasPrefix(pattern[i:], "(?") {
+				for j := i + 2; j < len(pattern) && strings.ContainsRune("imsxU-", rune(pattern[j])); j++ {
+					if pattern[j] == 'x' {
+						return pattern
+					}
+				}
+			}
+			depth++
+		case ')':
+			if depth > 0 {
+				depth--
+			}
+		case '|':
+			if depth == 0 {
+				parts = append(parts, pattern[start:i])
+				start = i + 1
+			}
+		}
+	}
+	parts = append(parts, pattern[start:])
+	for index, part := range parts {
+		prefix := ""
+		// Preserve leading global inline flags before a plain abbreviation.
+		for strings.HasPrefix(part, "(?") {
+			end := strings.IndexByte(part, ')')
+			if end < 0 {
+				break
+			}
+			flags := part[2:end]
+			if flags == "" || strings.Trim(flags, "imsxU-") != "" {
+				break
+			}
+			prefix += part[:end+1]
+			part = part[end+1:]
+		}
+		if len(part) < 2 || len(part) > 3 {
+			continue
+		}
+		ascii := true
+		for _, letter := range part {
+			if (letter < 'A' || letter > 'Z') && (letter < 'a' || letter > 'z') {
+				ascii = false
+				break
+			}
+		}
+		if ascii {
+			parts[index] = prefix + "(?<![A-Za-z])" + part + "(?![A-Za-z])"
+		}
+	}
+	return strings.Join(parts, "|")
+}
+
+func smartGroupSelectedCountryRules(countries map[string]bool) []smartGroupCountryRule {
 	selected := make([]CountryRule, 0)
 	for _, rule := range GetEnabledCountryRules() {
 		if countries[strings.ToUpper(rule.CountryCode)] {
 			selected = append(selected, rule)
 		}
 	}
-	return selected
+	return smartGroupCountryRulePatterns(selected)
 }
 
 // smartGroupMatchSource defines the OR relation between stored country, country
 // clues in the node name, and the optional node-name keyword.
-func smartGroupMatchSource(node Node, countries map[string]bool, codePatterns []*regexp.Regexp, rules []CountryRule, keyword string) string {
+func smartGroupMatchSource(node Node, countries map[string]bool, codePatterns []*regexp.Regexp, rules []smartGroupCountryRule, keyword string) string {
 	if countries[strings.ToUpper(strings.TrimSpace(node.LinkCountry))] {
 		return "landingCountry"
 	}
 	names := []string{node.EffectiveName(), node.LinkName, node.Name}
 	for _, rule := range rules {
 		for _, name := range names {
-			if name != "" && rule.MatchesNodeName(name) {
+			if name != "" && rule.pattern.MatchString(name) {
 				return "countryName"
 			}
 		}
 	}
-	// A selected ISO code still works as a distinct name token without a configured rule.
+	// An exact flag or selected ISO token also works without a configured country rule.
 	for _, pattern := range codePatterns {
 		for _, name := range names {
 			if pattern.MatchString(name) {

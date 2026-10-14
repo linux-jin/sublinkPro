@@ -6,13 +6,17 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### Country-matching fixes
+
+- Fixed smart-group country abbreviations matching protocol names (`TR` → `trojan`, `ES` → `vmess`/`vless`, `RO` → `trojan`), including existing default rules and name-inferred country display.
+- Recognize exact selected flag emoji without requiring saved country rules; keep country/keyword OR behavior and do not alter protocol or persisted node country fields.
+
 ### Upstream sync
 
 - Merged upstream through `fc37921` (2026-10-12), including the previously contributed OpenVPN, WebDAV and SOCKS5 features, without replacing fork-specific smart groups, Loon output, large-node-list optimizations or GHCR publishing.
 - Preserved complete Hysteria2 userpass credentials and standardized TUIC exports on `allow_insecure`, while accepting legacy `insecure` links.
 - Hardened WebDAV collection redirects to accept only same-origin locations without following them. Database restore now preserves target SOCKS5 settings/accounts/listeners/profiles and stops/reloads the gateway against restored nodes.
 - Updated mihomo to `1.19.32`, regexp2 to `2.8.4`, Vite to `8.3.4`, and related Go/frontend dependencies. Corrected SOCKS5 limit descriptions to per-listener limits and retained a single gateway menu entry.
-
 
 ### Added
 
