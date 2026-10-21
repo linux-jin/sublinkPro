@@ -6,6 +6,12 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### Upstream sync
+
+- Merged upstream through `f361753` (2026-10-21): preserve VMess/VLESS WebSocket headers beyond Host during Clash/Mihomo round trips, and recognize Gemini availability markers in both escaped inline JavaScript and unescaped JSON.
+- Kept VMess links with object-shaped `headers` compatible alongside the new JSON-string extension; unknown extension types do not reject the entire node.
+- Updated regexp2 to `2.9.0`, GeoIP2 to `2.5.0`, React/React DOM to `19.3.1`, and related Go, i18n and development dependencies. Fork smart groups, native Loon behavior and GHCR workflows remain intact.
+
 ## [1.14.0] - 2026-10-21
 
 ### Country-matching fixes

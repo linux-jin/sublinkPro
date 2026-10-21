@@ -131,6 +131,7 @@ Common current statuses:
 >
 > `available` means the Provider specific unlock marker or API availability result was detected. `reachable` only means the entry point is reachable and should not be treated as full unlock.
 > Gemini checks additionally read page level feature availability markers. Only explicit availability markers are treated as `available`. If the marker is absent, the result is treated as `restricted`, preventing region limited pages that still return HTTP success from being misclassified as “available”.
+> Gemini recognizes the explicit `"45631641":true` marker in either unescaped JSON or escaped inline JavaScript. Marker changes take effect on the next check; previously saved results are not rewritten automatically.
 > OpenAI `partial` means “Only Available with Web Browser” or “Only Available with Mobile APP” in upstream check semantics. Disney+ `partial` means that region is `Available Soon`. Netflix `partial` means Originals Only.
 
 ---

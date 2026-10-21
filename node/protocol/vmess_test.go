@@ -1,8 +1,12 @@
 package protocol
 
 import (
+	"encoding/json"
 	"strings"
+	"sublink/utils"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // TestVmessEncodeDecode 测试 VMess 编解码完整性
@@ -135,6 +139,88 @@ func TestVmessSpecialCharacters(t *testing.T) {
 
 			assertEqualString(t, "特殊字符名称", name, decoded.Ps)
 			t.Logf("✓ 特殊字符测试通过: %s", name)
+		})
+	}
+}
+
+// TestVmessClashWSHeadersRoundTrip 验证 Clash ws-opts.headers 中 Host 以外的请求头（如 User-Agent）经链接往返后不丢失
+func TestVmessClashWSHeadersRoundTrip(t *testing.T) {
+	const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+	const doc = `
+name: vmess-ws-ua
+type: vmess
+server: example.com
+port: 443
+uuid: 12345678-1234-1234-1234-123456789abc
+alterId: 0
+cipher: auto
+network: ws
+ws-opts:
+  path: /1234
+  headers:
+    Host: abc.com
+    User-Agent: ` + ua + `
+`
+	var proxy Proxy
+	if err := yaml.Unmarshal([]byte(doc), &proxy); err != nil {
+		t.Fatalf("yaml.Unmarshal failed: %v", err)
+	}
+
+	link := EncodeVmessURL(ConvertProxyToVmess(proxy))
+	decoded, err := DecodeVMESSURL(link)
+	if err != nil {
+		t.Fatalf("DecodeVMESSURL failed: %v", err)
+	}
+	assertEqualString(t, "Host", "abc.com", decoded.Host)
+
+	out, err := LinkToProxy(Urls{Url: link}, OutputConfig{})
+	if err != nil {
+		t.Fatalf("LinkToProxy failed: %v", err)
+	}
+	assertEqualString(t, "Path", "/1234", mustString(t, "Path", out.Ws_opts["path"]))
+	headers := mustMap(t, "Ws_opts headers", out.Ws_opts["headers"])
+	assertEqualString(t, "Host", "abc.com", mustString(t, "Host", headers["Host"]))
+	assertEqualString(t, "User-Agent", ua, mustString(t, "User-Agent", headers["User-Agent"]))
+}
+
+// Links carrying an object-valued extension were accepted before headers became
+// a modeled string field. Keep accepting them and preserve usable WS headers.
+func TestVmessHeadersInputCompatibility(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		headers any
+		wantUA  string
+	}{
+		{"object", map[string]any{"User-Agent": "compat-client", "X-Test": "1"}, "compat-client"},
+		{"string", `{"User-Agent":"compat-client"}`, "compat-client"},
+		{"null", nil, ""},
+		{"unrecognized numeric extension", 42, ""},
+		{"unrecognized array extension", []string{"ignored"}, ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := json.Marshal(map[string]any{
+				"add": "example.com", "port": 443, "id": "12345678-1234-1234-1234-123456789abc",
+				"net": "ws", "host": "cdn.example.com", "headers": tt.headers,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			link := "vmess://" + utils.Base64Encode(string(body))
+			decoded, err := DecodeVMESSURL(link)
+			if err != nil {
+				t.Fatalf("previously accepted link rejected: %v", err)
+			}
+			out, err := LinkToProxy(Urls{Url: EncodeVmessURL(decoded)}, OutputConfig{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			headers := mustMap(t, "WS headers", out.Ws_opts["headers"])
+			assertEqualString(t, "Host", "cdn.example.com", mustString(t, "Host", headers["Host"]))
+			if tt.wantUA != "" {
+				assertEqualString(t, "User-Agent", tt.wantUA, mustString(t, "User-Agent", headers["User-Agent"]))
+			} else if headers["User-Agent"] != nil {
+				t.Fatalf("unexpected header from ignored extension: %v", headers)
+			}
 		})
 	}
 }

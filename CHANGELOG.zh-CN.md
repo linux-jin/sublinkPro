@@ -6,6 +6,12 @@
 
 ## [未发布]
 
+### 上游同步
+
+- 合并上游截至 `f361753`（2026-10-21）的更新：VMess/VLESS 经 Clash/Mihomo 往返保留 Host 以外的 WebSocket 请求头；Gemini 可用标记同时识别转义内联 JavaScript 和未转义 JSON。
+- VMess 兼容已有对象型 `headers` 与新增的 JSON 字符串扩展；未知扩展类型不会导致整条节点解析失败。
+- 更新 regexp2 至 `2.9.0`、GeoIP2 至 `2.5.0`、React/React DOM 至 `19.3.1` 及相关 Go、i18n 和开发依赖；保留 fork 智能分组、原生 Loon 行为及 GHCR 发布流程。
+
 ## [1.14.0] - 2026 年 10 月 21 日
 
 ### 国家匹配修复

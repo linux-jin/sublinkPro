@@ -47,6 +47,12 @@ SublinkPro 支持多种配置方式，优先级从高到低为：
 
 ---
 
+## VMess / VLESS WebSocket 请求头
+
+Clash/Mihomo 导入中的 `ws-opts.headers`（如 `User-Agent`）经过 VMess/VLESS 链接转换再导出 Clash/Mihomo 时会保留。协议编辑器提供高级 **WS Headers** JSON 字符串字段（VMess 为 `Headers`，VLESS 为 `Query.Headers`）。独立 Host 字段优先于额外请求头中不区分大小写的 Host 键。VMess 导入也兼容对象型 `headers` 扩展，导出统一使用 JSON 字符串形式。本次不扩展原生 Loon 或 Surge 的额外请求头导出能力。
+
+---
+
 ## Sub-Store Sidecar 转换
 
 SublinkPro 可以使用外部 Sub-Store 后端作为可选 sidecar，为订阅分享提供更多客户端输出格式。原生 `clash`/`mihomo`、`surge`、`v2ray` 由 SublinkPro 自己生成；订阅选择 Loon `.lcf` 模板后，Loon 也走原生完整配置输出，未选择模板时仍可使用 Sub-Store 兼容路径。`egern`、`stash`、`surfboard`、`shadowrocket`、`quanx`、`sing-box`、`uri`、`json` 等其他扩展目标会先生成 SublinkPro 的 mihomo/Clash 桥接 YAML，再把代理节点列表发送到 Sub-Store 的 `/api/proxy/parse` 接口转换。

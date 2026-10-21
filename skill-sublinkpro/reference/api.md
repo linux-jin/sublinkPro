@@ -145,6 +145,8 @@ Base: `/api/v1/nodes`
 - **Required:** `link` (proxy URI, WireGuard config text, or Clash YAML containing `proxies:`)
 - Optional: `name`, `nameMode` (`link` = use upstream name, `remark` = use custom `name`; `custom` is accepted as an alias of `remark`), `dialerProxyName`, `group`
 
+VMess/VLESS Clash imports preserve extra WebSocket headers (for example `User-Agent`) on Clash/Mihomo export. Advanced protocol metadata exposes `Headers` (VMess) / `Query.Headers` (VLESS) as a JSON string; VMess link imports also accept object-shaped `headers`. A separate Host value overrides case-insensitive Host keys in the extra headers. This does not add a new endpoint or expand native Loon/Surge extra-header export.
+
 ### Update Node
 **POST** `/nodes/update` — **form**
 - Located by `oldlink` (and/or `oldname`), NOT by id.

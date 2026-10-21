@@ -47,6 +47,12 @@ SublinkPro supports several configuration methods. Priority from highest to lowe
 
 ---
 
+## VMess / VLESS WebSocket headers
+
+Clash/Mihomo imports retain `ws-opts.headers` such as `User-Agent` across conversion to VMess/VLESS links and back to Clash/Mihomo. The protocol editor exposes an advanced **WS Headers** JSON-string field (`Headers` for VMess; `Query.Headers` for VLESS). The separate Host field takes precedence over case-insensitive Host keys in extra headers. VMess imports also accept an object-valued `headers` extension for compatibility; exports use the JSON-string form. This does not expand native Loon or Surge extra-header export support.
+
+---
+
 ## Sub-Store Sidecar Conversion
 
 SublinkPro can use an external Sub-Store backend as an optional sidecar for additional subscription output formats. Native `clash`/`mihomo`, `surge`, and `v2ray` links stay handled by SublinkPro. Loon is also native when the subscription selects a Loon `.lcf` template; without one, Loon can still use the Sub-Store compatibility path. Other expanded targets such as `egern`, `stash`, `surfboard`, `shadowrocket`, `quanx`, `sing-box`, `uri`, and `json` generate SublinkPro's mihomo/Clash bridge YAML and send the proxy list to Sub-Store's `/api/proxy/parse` endpoint.

@@ -131,6 +131,7 @@ SublinkPro 现在支持在节点检测流程中附带执行 **流媒体 / AI 服
 > 
 > Provider 返回 `available` 时表示检测到了该服务对应的解锁标记或 API 可用性结果；`reachable` 仅表示入口可达，不应视为完整解锁。
 > Gemini 检测会进一步读取页面内的功能可用性标记；只有出现明确可用标记时才判定为 `available`，未找到该标记时按 `restricted` 处理，避免把地域受限但仍返回 HTTP 成功的页面误判为“解锁”。
+> Gemini 同时识别未转义 JSON 与转义内联 JavaScript 中的明确 `"45631641":true` 标记；判据更新在下次检测时生效，不会自动重写历史检测结果。
 > OpenAI 的 `partial` 表示上游检测语义中的“Only Available with Web Browser”或“Only Available with Mobile APP”；Disney+ 的 `partial` 表示该地区处于 `Available Soon` 状态；Netflix 的 `partial` 表示 Originals Only。
 
 ---
