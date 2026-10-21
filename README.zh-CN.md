@@ -86,6 +86,7 @@
 | 🧦 **SOCKS5 网关与路由配置** | 健康感知 TCP CONNECT 网关，支持独立账号、多监听入口、P2C/轮询选路、粘性会话、路由 Profile、节点过滤、重试、冷却、连接治理和实时负载监控 | [📖](docs/features/socks5.zh-CN.md) |
 | 💾 **WebDAV 备份与定时任务** | 加密保存 WebDAV 凭据，支持手动或 Cron 定时上传、浏览远程 ZIP、页面恢复，并兼容 TeraCLOUD 等服务的集合重定向 | [📖](docs/features/backup.zh-CN.md) |
 | 🔐 **OpenVPN YAML 往返转换** | 支持导入和导出 Mihomo/Clash `type: openvpn` 节点，并保留证书、密钥、传输选项及其他已支持字段 | [📖](#-多协议支持) |
+| 🧪 **检测中心** | 可复用检测方案、独立定时/机场更新任务、可选机场前置更新、分页运行记录与最新节点结果，展示原机场及入组原因；保留单节点检测 | [📖](docs/features/unlock-check.zh-CN.md) |
 | 🚀 **大规模节点管理优化** | 精简服务端列表数据、降低前端渲染开销，支持服务端分页、搜索与筛选，并改进大量节点下的分组选择体验 | — |
 | 📦 **GHCR 多架构镜像** | 自动构建 `amd64`、`arm64`、`arm/v7` 和 `386` 镜像；稳定版使用 `latest`，开发测试版使用 `dev` | [📖](docs/installation.zh-CN.md) |
 

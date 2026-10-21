@@ -160,6 +160,15 @@ func DeleteSmartGroup(c *gin.Context) {
 	if !ok {
 		return
 	}
+	var jobs int64
+	if err := database.DB.Model(&models.NodeCheckJob{}).Where("scope = ? AND smart_group_id = ?", "smart_group", group.ID).Count(&jobs).Error; err != nil {
+		c.JSON(500, gin.H{"code": 500, "msg": "检查自动任务引用失败"})
+		return
+	}
+	if jobs > 0 {
+		c.JSON(http.StatusConflict, gin.H{"code": 409, "msg": "该智能分组已被自动检测任务引用，请先更换任务范围"})
+		return
+	}
 	// Do not silently change the output of subscriptions referencing this view.
 	var subscriptions []models.Subcription
 	if err := database.DB.Select("id", "smart_group_ids").Where("smart_group_ids LIKE ?", "%"+strconv.Itoa(group.ID)+"%").Find(&subscriptions).Error; err != nil {

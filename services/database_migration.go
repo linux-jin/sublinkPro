@@ -686,6 +686,8 @@ func clearTargetBusinessData(tx *gorm.DB) error {
 		&models.SubcriptionGroup{},
 		&models.TagRule{},
 		&models.AccessKey{},
+		&models.NodeCheckJob{},
+		&models.SmartGroup{},
 		&models.NodeCheckProfile{},
 		&models.Host{},
 		&models.Template{},
@@ -1272,6 +1274,27 @@ func importNodeCheckProfiles(state *databaseMigrationState) error {
 		return fmt.Errorf("导入节点检测策略失败: %w", err)
 	}
 	state.result.Imported["node_check_profiles"] = len(profiles)
+	// 自动任务可引用智能分组，恢复时必须保留同一份 ID 关系。
+	if state.source.Migrator().HasTable(&models.SmartGroup{}) {
+		var groups []models.SmartGroup
+		if err := state.source.Find(&groups).Error; err != nil {
+			return err
+		}
+		if err := insertRecords(state.tx, groups); err != nil {
+			return err
+		}
+		state.result.Imported["smart_groups"] = len(groups)
+	}
+	if state.source.Migrator().HasTable(&models.NodeCheckJob{}) {
+		var jobs []models.NodeCheckJob
+		if err := state.source.Find(&jobs).Error; err != nil {
+			return err
+		}
+		if err := insertRecords(state.tx, jobs); err != nil {
+			return err
+		}
+		state.result.Imported["node_check_jobs"] = len(jobs)
+	}
 	return nil
 }
 
@@ -1615,6 +1638,8 @@ func sequenceTables(tx *gorm.DB) []string {
 		&models.SubscriptionChainRule{},
 		&models.Airport{},
 		&models.GroupAirportSort{},
+		&models.NodeCheckJob{},
+		&models.SmartGroup{},
 		&models.NodeCheckProfile{},
 		&models.Webhook{},
 	}

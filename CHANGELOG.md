@@ -6,6 +6,14 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### Detection center
+
+- Split detection plans, independent automatic jobs, run history and latest node results into separate tabs. Plans expose latency, optional download speed, exit IP/location, IP quality and metadata-driven AI/streaming modules, while retaining detailed request and traffic options.
+- Add reusable-plan scheduled/airport-update jobs with explicit airport/group/tag or smart-group candidate scopes, server-timezone Cron, optional synchronous airport pre-updates, per-job overlap protection and coalesced airport follow-ups. Empty scopes never expand to all nodes; failed pre-updates stop detection.
+- Map existing profile schedules as compatibility jobs without copying schedules or changing profile IDs. Preserve single/selected-node detection, airport and smart-group references, legacy APIs and Telegram scheduling. Protect referenced plans from deletion and preserve schedules during plan-only edits.
+- Add paginated current results with source airports, provider evidence/times and dynamic membership reasons; distinguish these from historical run summaries and from final subscription inclusion. AI probe results do not automatically become smart-group eligibility rules or account/model verification.
+- Include independent jobs and referenced candidate groups in database restore, including legacy-backup cleanup. Validate new job/configuration paths and add scope, queue, pre-update, compatibility, paging, reference and restore regression coverage.
+
 ## [1.14.1] - 2026-10-21
 
 ### Large-node performance

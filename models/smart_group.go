@@ -366,6 +366,29 @@ func (g SmartGroup) MatchSource(node Node) string {
 	return smartGroupMatchSource(node, countries, smartGroupCountryPatterns(countries), smartGroupSelectedCountryRules(countries), strings.ToLower(strings.TrimSpace(g.Keyword)))
 }
 
+// CandidateMatcher 为当前页/请求预编译匹配条件，并包含原分组限制。
+// 返回空字符串表示非候选，不能再将健康检查的空排除原因误解为入组。
+func (g SmartGroup) CandidateMatcher() func(Node) string {
+	countries := make(map[string]bool)
+	for _, part := range strings.Split(g.Countries, ",") {
+		if code := strings.ToUpper(strings.TrimSpace(part)); code != "" {
+			countries[code] = true
+		}
+	}
+	groups := make(map[string]bool, len(g.SourceGroups))
+	for _, source := range g.SourceGroups {
+		groups[strings.ToLower(source)] = true
+	}
+	patterns, rules := smartGroupCountryPatterns(countries), smartGroupSelectedCountryRules(countries)
+	keyword := strings.ToLower(strings.TrimSpace(g.Keyword))
+	return func(node Node) string {
+		if len(countries) == 0 || (len(groups) > 0 && !groups[strings.ToLower(node.Group)]) {
+			return ""
+		}
+		return smartGroupMatchSource(node, countries, patterns, rules, keyword)
+	}
+}
+
 // Candidates intentionally ignores current health so failed nodes can be retested.
 // Country, name-country clues and an optional keyword are alternatives; source groups remain an AND filter.
 func (g SmartGroup) Candidates() ([]Node, error) {

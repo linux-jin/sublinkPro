@@ -70,7 +70,8 @@
     "keywordAlternative": "或名称关键词",
     "matchSources": {
       "countryName": "按名称中的国家匹配（非落地确认）",
-      "keyword": "按名称关键词匹配"
+      "keyword": "按名称关键词匹配",
+      "landingCountry": "按已保存的落地国家匹配"
     },
     "sourceAirport": "来源机场",
     "manualNode": "手动节点",
@@ -209,7 +210,7 @@
       "nodeMap": "节点地图",
       "airports": "机场管理",
       "nodes": "节点管理",
-      "nodeCheck": "节点检测",
+      "nodeCheck": "检测中心",
       "smartGroups": "智能分组",
       "subscriptions": "订阅列表",
       "templates": "模板管理",
@@ -2206,10 +2207,10 @@
     },
     "nodeCheckProfiles": {
       "neverRun": "从未执行",
-      "title": "检测策略管理",
+      "title": "检测方案管理",
       "new": "新建",
-      "empty": "暂无检测策略",
-      "description": "创建检测策略来自动或手动检测节点延迟和速度",
+      "empty": "暂无检测方案",
+      "description": "创建检测方案来自动或手动检测节点延迟和速度",
       "createFirst": "创建第一个策略",
       "confirmDelete": "确定要删除策略 \"{{name}}\" 吗？",
       "runNow": "立即执行",
@@ -2248,8 +2249,8 @@
         "createSuccess": "创建成功"
       },
       "form": {
-        "editTitle": "编辑检测策略",
-        "createTitle": "新建检测策略",
+        "editTitle": "编辑检测方案",
+        "createTitle": "新建检测方案",
         "name": "策略名称",
         "namePlaceholder": "例如：每日全量检测",
         "scheduleTitle": "定时检测",
@@ -2428,12 +2429,12 @@
       "delete": "删除"
     },
     "profileSelect": {
-      "title": "选择检测策略",
+      "title": "选择检测方案",
       "selectedCount": "已选择 {{count}} 个节点",
       "empty": "暂无检测策略",
       "create": "创建策略",
       "scheduled": "定时启用",
-      "manage": "管理策略",
+      "manage": "检测中心",
       "start": "开始检测",
       "mode": {
         "full": "延迟+速度",
@@ -3710,21 +3711,34 @@
       "bandwagonhost": {
         "title": "BandwagonHost",
         "description": "优质线路，提供多个数据中心和 CN2 GIA 选项。",
-        "highlights": ["多个 VPS 机房", "CN2 GIA 线路选项", "高质量线路服务器"],
+        "highlights": [
+          "多个 VPS 机房",
+          "CN2 GIA 线路选项",
+          "高质量线路服务器"
+        ],
         "ctaLabel": "查看套餐",
         "tag": "VPS 推荐"
       },
       "vultr": {
         "title": "Vultr",
         "description": "多地区可选，支持小时计费，并可灵活更换 IP 或区域。",
-        "highlights": ["多地区", "小时计费", "低成本稳定套餐", "IPv6-only 选项"],
+        "highlights": [
+          "多地区",
+          "小时计费",
+          "低成本稳定套餐",
+          "IPv6-only 选项"
+        ],
         "ctaLabel": "查看套餐",
         "tag": "VPS"
       },
       "aliyun": {
         "title": "阿里云",
         "description": "新购与续费同价的 99 元/年服务器优惠。",
-        "highlights": ["适合国内部署和测试", "新购续费 99 元/年", "可用优惠券"],
+        "highlights": [
+          "适合国内部署和测试",
+          "新购续费 99 元/年",
+          "可用优惠券"
+        ],
         "ctaLabel": "查看优惠",
         "tag": "云服务"
       }
@@ -4413,5 +4427,107 @@
   },
   "pagination": {
     "rowsPerPage": "每页行数"
+  },
+  "detectionCenter": {
+    "title": "检测中心",
+    "description": "定义检测方案，安排自动任务，查看运行记录与节点最新结果。",
+    "tabs": {
+      "plans": "检测方案",
+      "jobs": "自动任务",
+      "runs": "运行记录",
+      "results": "节点结果"
+    },
+    "newPlan": "新建方案",
+    "newJob": "新建任务",
+    "editJob": "编辑自动任务",
+    "plan": "检测方案",
+    "planHelp": "方案只定义“测什么、怎么测”；节点范围与执行时间在自动任务中配置。",
+    "modules": "检测项目",
+    "module": {
+      "latency": "连通性与延迟",
+      "speed": "下载速度",
+      "exit": "出口 IP 与地区",
+      "quality": "IP 质量",
+      "ai": "AI 服务探测",
+      "streaming": "流媒体解锁"
+    },
+    "moduleHelp": {
+      "latency": "基础检测，始终执行",
+      "speed": "平均 / 峰值，消耗下载流量",
+      "exit": "落地 IP 与国家",
+      "quality": "第三方风险参考，不是平台官方评分",
+      "ai": "由已注册的 AI 检测器提供",
+      "streaming": "由已注册的流媒体检测器提供"
+    },
+    "probeWarning": "平台探测状态不等于账号可登录或模型可调用；IP 风险仅供参考。具体结果以检测器返回的状态和依据为准。",
+    "requestSettings": "请求与检测详细设置",
+    "planScheduleHint": "方案没有定时启用开关；请在“自动任务”控制执行计划。已有智能分组与机场的方案引用保持不变。",
+    "jobCount": "{{count}} 个自动任务",
+    "configure": "配置",
+    "run": "运行",
+    "runPlan": "手动运行 · {{name}}",
+    "jobName": "任务名称",
+    "autoEnabled": "自动执行",
+    "trigger": "触发方式",
+    "triggers": {
+      "scheduled": "定时执行",
+      "airport_update": "机场更新完成后"
+    },
+    "cron": "Cron 表达式",
+    "timezone": "调度时区：{{timezone}}（服务器时区）",
+    "scope": "节点范围",
+    "scopes": {
+      "all": "全部节点",
+      "filtered": "指定机场 / 分组 / 标签",
+      "smart_group": "智能分组候选节点"
+    },
+    "groups": "原分组",
+    "tags": "标签",
+    "airports": "限定机场",
+    "smartGroup": "智能分组",
+    "scopeAnd": "机场、原分组、标签与候选范围取交集；机场事件仅检测该机场内的候选节点。",
+    "updateFirst": "检测前先更新选中的机场（全部成功后再检测）",
+    "dynamicMembership": "检测结果保存后，智能分组和订阅按最新结果动态筛选。是否入组仍取决于分组规则，不会修改节点原分组，也不会另发一次检测。",
+    "openClashHelp": "OpenClash 独立运行：这里只提前检测与筛选，请为路由器自己的订阅更新时间预留足够耗时。",
+    "flow": "机场更新完成 → 按方案检测 → 最新结果参与智能分组筛选 → 客户端按自己的计划拉取订阅",
+    "legacy": "兼容任务",
+    "legacyHelp": "此项直接映射原策略的定时配置，没有复制调度。可调整定时、分组和标签；如需更换方案、机场前置更新或智能分组范围，请新建独立任务。",
+    "missingAirport": "机场已删除（{{id}}）",
+    "missingPlan": "方案不存在",
+    "noJobs": "暂无自动任务。可复用已有方案新建任务，也可继续在节点列表手动检测。",
+    "runTimes": "上次执行：{{last}} · 下次执行：{{next}}",
+    "confirmDelete": "确认删除“{{name}}”？",
+    "deleted": "已删除",
+    "saveFailed": "保存失败",
+    "loadFailed": "加载失败，请重试",
+    "operationFailed": "操作失败",
+    "loading": "加载中",
+    "historyHelp": "这里复用节点检测任务记录；任务名称和触发来源帮助定位执行。旧记录未保存方案 ID，不能据名称反推。",
+    "resultsHelp": "以下是节点各检测项目的最新状态，不是某次运行的历史快照。点节点查看依据及当前入组原因。",
+    "search": "搜索节点 / 检测依据",
+    "provider": "检测服务",
+    "status": "状态",
+    "runTime": "执行时间",
+    "progress": "处理进度",
+    "actions": "操作",
+    "node": "节点 / 原机场",
+    "latencySpeed": "延迟 / 下载速度",
+    "exit": "出口信息",
+    "quality": "IP 质量参考",
+    "services": "服务探测",
+    "membership": "智能分组状态",
+    "details": "详情",
+    "untested": "未检测",
+    "noCandidate": "未匹配智能分组候选规则",
+    "noEvidence": "检测器未返回额外依据",
+    "checkedAt": "服务检测时间：{{time}}",
+    "latencyCheckedAt": "延迟检测时间：{{time}}",
+    "speedCheckedAt": "下载测速时间：{{time}}",
+    "notSnapshot": "此记录保存执行摘要，不保存每个节点当时的结果快照。节点结果页展示最新状态，可能已经被后续检测更新。",
+    "membershipNotSubscription": "这里展示当前智能分组的入组状态，不代表该分组已被某个订阅选用。订阅还会应用自己的筛选规则。",
+    "taskCenter": "打开任务中心",
+    "stop": "停止任务",
+    "recheckNode": "按方案重测此节点",
+    "moreProviders": "另有 {{count}} 个服务（点节点查看）"
   }
 }

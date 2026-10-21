@@ -41,3 +41,8 @@ Results update dynamic membership through the existing node-check pipeline; no n
 ### Preparing before an external subscription refresh
 
 For example, if OpenClash refreshes at 04:00, schedule airport updates at 02:30 with airport-update linkage, and optionally a full-group check at 03:00. Allow enough time for node count, concurrency and timeouts; these sample times do not guarantee completion. Set freshness longer than the check interval plus your refresh buffer. OpenClash stays independent on OpenWrt: SublinkPro **does not control or wait for it**. Subscription requests read current passing members without starting a check or waiting for an active one.
+
+
+## Detection-center jobs
+
+You can also create independent jobs in the [Detection center](unlock-check.md#detection-center-plans-jobs-history-and-results), reuse a plan, target this group's candidates and optionally update selected airports first. Avoid enabling duplicate automation paths for the same nodes. AI service results remain independent check results; existing smart-group membership does not automatically acquire AI eligibility rules.
