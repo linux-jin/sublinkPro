@@ -436,7 +436,14 @@ func MatchUnlockSummaryRulesWithMode(summary UnlockSummary, rules []UnlockFilter
 	if len(normalized) == 0 {
 		return true
 	}
-	mode = NormalizeUnlockRuleMode(mode)
+	return matchNormalizedUnlockSummaryRules(summary, normalized, NormalizeUnlockRuleMode(mode))
+}
+
+// 仅供已在请求入口规范化的规则使用，避免每个节点重复分配规则切片。
+func matchNormalizedUnlockSummaryRules(summary UnlockSummary, normalized []UnlockFilterRule, mode string) bool {
+	if len(normalized) == 0 {
+		return true
+	}
 	if mode == UnlockRuleModeAll {
 		for _, rule := range normalized {
 			if !MatchUnlockSummary(summary, rule.Provider, rule.Status, rule.Keyword) {

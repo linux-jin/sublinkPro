@@ -421,14 +421,21 @@ func (g SmartGroup) Members() ([]Node, error) {
 }
 
 func (g SmartGroup) MembersWithStats() ([]Node, SmartGroupMemberStats, error) {
-	nodes, err := g.Candidates()
+	_, members, stats, _, err := g.EvaluateMembers()
+	return members, stats, err
+}
+
+// EvaluateMembers 在同一候选快照和有效期边界下计算成员及统计，供分页 API 复用。
+// Candidates 已按 ID 排序，成员为其有序子序列，无需再次排序。
+func (g SmartGroup) EvaluateMembers() (candidates, members []Node, stats SmartGroupMemberStats, cutoff time.Time, err error) {
+	candidates, err = g.Candidates()
 	if err != nil {
-		return nil, SmartGroupMemberStats{}, err
+		return
 	}
-	stats := SmartGroupMemberStats{CandidateCount: len(nodes)}
-	cutoff := time.Now().Add(-time.Duration(g.MaxAgeHours) * time.Hour)
-	members := make([]Node, 0, len(nodes))
-	for _, node := range nodes {
+	stats.CandidateCount = len(candidates)
+	cutoff = time.Now().Add(-time.Duration(g.MaxAgeHours) * time.Hour)
+	members = make([]Node, 0, len(candidates))
+	for _, node := range candidates {
 		switch g.CandidateExclusionReason(node, cutoff) {
 		case "delayUnusable":
 			stats.DelayUnusable++
@@ -446,8 +453,7 @@ func (g SmartGroup) MembersWithStats() ([]Node, SmartGroupMemberStats, error) {
 			members = append(members, node)
 		}
 	}
-	sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
-	return members, stats, nil
+	return
 }
 
 // CandidateExclusionReason returns an empty string for a usable node.

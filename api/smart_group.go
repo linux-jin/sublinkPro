@@ -3,13 +3,11 @@ package api
 import (
 	"errors"
 	"net/http"
-	"sort"
 	"strconv"
 	"sublink/database"
 	"sublink/models"
 	"sublink/services/scheduler"
 	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -189,11 +187,6 @@ func SmartGroupMembers(c *gin.Context) {
 	if !ok {
 		return
 	}
-	members, stats, err := group.MembersWithStats()
-	if err != nil {
-		c.JSON(500, gin.H{"code": 500, "msg": "查询节点失败"})
-		return
-	}
 	page := 1
 	if value := c.Query("page"); value != "" {
 		parsed, parseErr := strconv.Atoi(value)
@@ -212,12 +205,11 @@ func SmartGroupMembers(c *gin.Context) {
 		}
 		pageSize = parsed
 	}
-	candidates, err := group.Candidates()
+	candidates, members, stats, cutoff, err := group.EvaluateMembers()
 	if err != nil {
 		c.JSON(500, gin.H{"code": 500, "msg": "查询候选节点失败"})
 		return
 	}
-	sort.Slice(candidates, func(i, j int) bool { return candidates[i].ID < candidates[j].ID })
 	airports, err := (&models.Airport{}).List()
 	if err != nil {
 		c.JSON(500, gin.H{"code": 500, "msg": "查询来源机场失败"})
@@ -231,7 +223,6 @@ func SmartGroupMembers(c *gin.Context) {
 	if page <= (len(candidates)+pageSize-1)/pageSize {
 		start := (page - 1) * pageSize
 		end := min(start+pageSize, len(candidates))
-		cutoff := time.Now().Add(-time.Duration(group.MaxAgeHours) * time.Hour)
 		for _, node := range candidates[start:end] {
 			country, countrySource := models.SmartGroupCountryForDisplay(node)
 			reason := group.CandidateExclusionReason(node, cutoff)

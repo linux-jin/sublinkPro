@@ -23,7 +23,7 @@ import SpeedIcon from '@mui/icons-material/Speed';
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
 import TaskProgressPanel from 'components/TaskProgressPanel';
-import { useTaskProgress } from 'contexts/TaskProgressContext';
+import { useTaskCompletion } from 'contexts/TaskProgressContext';
 import ConfirmDialog from 'components/ConfirmDialog';
 import Pagination from 'components/Pagination';
 import IPDetailsDialog from 'components/IPDetailsDialog';
@@ -138,7 +138,7 @@ export default function NodeList() {
   );
 
   // Task progress for auto-refresh
-  const { registerOnComplete, unregisterOnComplete } = useTaskProgress();
+  const { registerOnComplete, unregisterOnComplete } = useTaskCompletion();
 
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -152,10 +152,10 @@ export default function NodeList() {
     action: null
   });
 
-  const openConfirm = (title, content, action) => {
+  const openConfirm = useCallback((title, content, action) => {
     setConfirmInfo({ title, content, action });
     setConfirmOpen(true);
-  };
+  }, []);
 
   const handleConfirmClose = () => {
     setConfirmOpen(false);
@@ -309,6 +309,10 @@ export default function NodeList() {
 
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
+  const showMessage = useCallback((message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  }, []);
+
   // 后端已完成过滤和排序，直接使用 nodes 数组
   const filteredNodes = nodes;
   const selectedNodeIds = useMemo(() => new Set(selectedNodes.map((node) => node.ID)), [selectedNodes]);
@@ -316,6 +320,8 @@ export default function NodeList() {
   // 防抖定时器引用
   const debounceTimerRef = useRef(null);
   const requestSequenceRef = useRef(0);
+  const listAbortRef = useRef(null);
+  const filterOptionsSequenceRef = useRef(0);
   const filterInitializedRef = useRef(false);
 
   // 获取节点列表（支持过滤和分页参数）
@@ -323,6 +329,9 @@ export default function NodeList() {
   const fetchNodes = useCallback(
     async (filterParams = {}) => {
       const requestSequence = ++requestSequenceRef.current;
+      listAbortRef.current?.abort();
+      const controller = new AbortController();
+      listAbortRef.current = controller;
       setLoading(true);
       try {
         // 构建过滤参数
@@ -357,7 +366,7 @@ export default function NodeList() {
         params.pageSize = filterParams.pageSize ?? 20;
         params.compact = true;
 
-        const response = await getNodes(params);
+        const response = await getNodes(params, { signal: controller.signal });
         if (requestSequence !== requestSequenceRef.current) return;
         // 处理分页响应
         if (response.data && response.data.items !== undefined) {
@@ -376,7 +385,16 @@ export default function NodeList() {
         if (requestSequence === requestSequenceRef.current) setLoading(false);
       }
     },
-    [t]
+    [showMessage, t]
+  );
+
+  useEffect(
+    () => () => {
+      requestSequenceRef.current += 1;
+      filterOptionsSequenceRef.current += 1;
+      listAbortRef.current?.abort();
+    },
+    []
   );
 
   // 获取代理节点选项（用于订阅下载代理选择）
@@ -396,47 +414,11 @@ export default function NodeList() {
   // 初始化加载
   useEffect(() => {
     fetchNodes({ page: 0, pageSize: rowsPerPage, source: getSourceFilterFromQuery(location.search) });
-    // 请求国家代码列表
-    getNodeCountries()
-      .then((res) => {
-        setCountryOptions(res.data || []);
-      })
-      .catch(console.error);
-    // 请求分组列表
-    getNodeGroups()
-      .then((res) => {
-        setGroupOptions((res.data || []).sort());
-      })
-      .catch(console.error);
-    // 请求来源列表
-    getNodeSources()
-      .then((res) => {
-        setSourceOptions((res.data || []).sort());
-      })
-      .catch(console.error);
-    // 请求标签列表
-    getTags()
-      .then((res) => {
-        const tags = res.data || [];
-        setTagOptions(tags);
-        // 构建标签颜色映射
-        const colorMap = {};
-        tags.forEach((tag) => {
-          colorMap[tag.name] = tag.color || '#1976d2';
-        });
-        setTagColorMap(colorMap);
-      })
-      .catch(console.error);
+    refreshFilterOptions();
     // 请求协议 UI 元数据
     getProtocolUIMeta()
       .then((res) => {
         setProtocolMeta(res.data || []);
-      })
-      .catch(console.error);
-    // 请求协议列表
-    getNodeProtocols()
-      .then((res) => {
-        setProtocolOptions(res.data || []);
       })
       .catch(console.error);
     getNodeCheckMeta()
@@ -524,10 +506,6 @@ export default function NodeList() {
     rowsPerPage
   ]);
 
-  const showMessage = useCallback((message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity });
-  }, []);
-
   const copyToClipboard = useCallback(
     (text) => {
       navigator.clipboard.writeText(text);
@@ -562,28 +540,52 @@ export default function NodeList() {
     setSortOrder('asc');
   };
 
-  const getCurrentFilters = () => ({
-    search: searchQuery,
-    group: groupFilter,
-    source: sourceFilter,
-    maxDelay: maxDelay,
-    minSpeed: minSpeed,
-    maxFraudScore: maxFraudScore,
-    speedStatus: speedStatusFilter,
-    delayStatus: delayStatusFilter,
-    protocol: protocolFilter,
-    residentialType: residentialType,
-    ipType: ipType,
-    qualityStatus: qualityStatus,
-    unlockRules: unlockRules,
-    unlockRuleMode: unlockRuleMode,
-    countries: countryFilter,
-    tags: tagFilter,
-    sortBy: sortBy,
-    sortOrder: sortOrder,
-    page: page,
-    pageSize: rowsPerPage
-  });
+  const getCurrentFilters = useCallback(
+    () => ({
+      search: searchQuery,
+      group: groupFilter,
+      source: sourceFilter,
+      maxDelay: maxDelay,
+      minSpeed: minSpeed,
+      maxFraudScore: maxFraudScore,
+      speedStatus: speedStatusFilter,
+      delayStatus: delayStatusFilter,
+      protocol: protocolFilter,
+      residentialType: residentialType,
+      ipType: ipType,
+      qualityStatus: qualityStatus,
+      unlockRules: unlockRules,
+      unlockRuleMode: unlockRuleMode,
+      countries: countryFilter,
+      tags: tagFilter,
+      sortBy: sortBy,
+      sortOrder: sortOrder,
+      page: page,
+      pageSize: rowsPerPage
+    }),
+    [
+      searchQuery,
+      groupFilter,
+      sourceFilter,
+      maxDelay,
+      minSpeed,
+      maxFraudScore,
+      speedStatusFilter,
+      delayStatusFilter,
+      protocolFilter,
+      residentialType,
+      ipType,
+      qualityStatus,
+      unlockRules,
+      unlockRuleMode,
+      countryFilter,
+      tagFilter,
+      sortBy,
+      sortOrder,
+      page,
+      rowsPerPage
+    ]
+  );
 
   const buildNodeListParams = (filters, pagination = {}) => {
     const params = {};
@@ -618,27 +620,32 @@ export default function NodeList() {
 
   // 刷新下拉框选项数据
   const refreshFilterOptions = useCallback(() => {
+    const sequence = ++filterOptionsSequenceRef.current;
     // 刷新国家选项
     getNodeCountries()
       .then((res) => {
+        if (sequence !== filterOptionsSequenceRef.current) return;
         setCountryOptions(res.data || []);
       })
       .catch(console.error);
     // 刷新分组选项
     getNodeGroups()
       .then((res) => {
+        if (sequence !== filterOptionsSequenceRef.current) return;
         setGroupOptions((res.data || []).sort());
       })
       .catch(console.error);
     // 刷新来源选项
     getNodeSources()
       .then((res) => {
+        if (sequence !== filterOptionsSequenceRef.current) return;
         setSourceOptions((res.data || []).sort());
       })
       .catch(console.error);
     // 刷新标签选项
     getTags()
       .then((res) => {
+        if (sequence !== filterOptionsSequenceRef.current) return;
         const tags = res.data || [];
         setTagOptions(tags);
         const colorMap = {};
@@ -651,6 +658,7 @@ export default function NodeList() {
     // 刷新协议选项
     getNodeProtocols()
       .then((res) => {
+        if (sequence !== filterOptionsSequenceRef.current) return;
         setProtocolOptions(res.data || []);
       })
       .catch(console.error);
@@ -659,45 +667,27 @@ export default function NodeList() {
   const handleRefresh = useCallback(() => {
     fetchNodes(getCurrentFilters());
     refreshFilterOptions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    fetchNodes,
-    refreshFilterOptions,
-    searchQuery,
-    groupFilter,
-    sourceFilter,
-    maxDelay,
-    minSpeed,
-    maxFraudScore,
-    speedStatusFilter,
-    delayStatusFilter,
-    protocolFilter,
-    countryFilter,
-    tagFilter,
-    residentialType,
-    ipType,
-    qualityStatus,
-    unlockRules,
-    unlockRuleMode,
-    sortBy,
-    sortOrder,
-    page,
-    rowsPerPage
-  ]);
+  }, [fetchNodes, getCurrentFilters, refreshFilterOptions]);
 
-  // 监听任务完成，自动刷新节点列表
+  // 完成事件只订阅一次；使用最新筛选值，同一批完成事件合并刷新。
+  const refreshRef = useRef(handleRefresh);
   useEffect(() => {
+    refreshRef.current = handleRefresh;
+  }, [handleRefresh]);
+  useEffect(() => {
+    let timer;
     const onTaskComplete = ({ taskType, status }) => {
-      // 当测速或订阅更新任务完成时，自动刷新列表
       if (status === 'completed' && (taskType === 'speed_test' || taskType === 'sub_update')) {
-        handleRefresh();
+        clearTimeout(timer);
+        timer = setTimeout(() => refreshRef.current(), 250);
       }
     };
     registerOnComplete(onTaskComplete);
     return () => {
+      clearTimeout(timer);
       unregisterOnComplete(onTaskComplete);
     };
-  }, [registerOnComplete, unregisterOnComplete, handleRefresh]);
+  }, [registerOnComplete, unregisterOnComplete]);
 
   // === 节点操作 ===
   const handleAddNode = () => {
@@ -707,31 +697,34 @@ export default function NodeList() {
     setNodeDialogOpen(true);
   };
 
-  const handleEditNode = (node) => {
-    setIsEditNode(true);
-    setCurrentNode(node);
-    // 解析节点的标签，将字符串转换为标签对象数组
-    let nodeTags = [];
-    if (node.Tags) {
-      const tagNames = node.Tags.split(',')
-        .map((t) => t.trim())
-        .filter((t) => t);
-      nodeTags = tagNames.map((name) => {
-        const found = tagOptions.find((t) => t.name === name);
-        return found || { name, color: '#1976d2' };
+  const handleEditNode = useCallback(
+    (node) => {
+      setIsEditNode(true);
+      setCurrentNode(node);
+      // 解析节点的标签，将字符串转换为标签对象数组
+      let nodeTags = [];
+      if (node.Tags) {
+        const tagNames = node.Tags.split(',')
+          .map((t) => t.trim())
+          .filter((t) => t);
+        nodeTags = tagNames.map((name) => {
+          const found = tagOptions.find((t) => t.name === name);
+          return found || { name, color: '#1976d2' };
+        });
+      }
+      setNodeForm({
+        name: node.Name,
+        nameMode: node.NameMode || 'link',
+        link: node.Link?.split(',').join('\n') || '',
+        dialerProxyName: node.DialerProxyName || '',
+        group: node.Group || '',
+        mergeMode: '1',
+        tags: nodeTags
       });
-    }
-    setNodeForm({
-      name: node.Name,
-      nameMode: node.NameMode || 'link',
-      link: node.Link?.split(',').join('\n') || '',
-      dialerProxyName: node.DialerProxyName || '',
-      group: node.Group || '',
-      mergeMode: '1',
-      tags: nodeTags
-    });
-    setNodeDialogOpen(true);
-  };
+      setNodeDialogOpen(true);
+    },
+    [tagOptions]
+  );
 
   const handleOpenRawProtocol = useCallback((node) => {
     setRawProtocolNode(node);
@@ -747,19 +740,22 @@ export default function NodeList() {
     handleRefresh();
   };
 
-  const handleDeleteNode = async (node) => {
-    const displayName = node.EffectiveName || node.Name || node.LinkName;
-    openConfirm(t('nodes.page.confirm.deleteTitle'), t('nodes.page.confirm.deleteOne', { name: displayName }), async () => {
-      try {
-        await deleteNode({ id: node.ID });
-        showMessage(t('nodes.page.messages.deleteSuccess'));
-        handleRefresh();
-      } catch (error) {
-        console.error(error);
-        showMessage(error.message || t('nodes.page.messages.deleteFailed'), 'error');
-      }
-    });
-  };
+  const handleDeleteNode = useCallback(
+    async (node) => {
+      const displayName = node.EffectiveName || node.Name || node.LinkName;
+      openConfirm(t('nodes.page.confirm.deleteTitle'), t('nodes.page.confirm.deleteOne', { name: displayName }), async () => {
+        try {
+          await deleteNode({ id: node.ID });
+          showMessage(t('nodes.page.messages.deleteSuccess'));
+          refreshRef.current();
+        } catch (error) {
+          console.error(error);
+          showMessage(error.message || t('nodes.page.messages.deleteFailed'), 'error');
+        }
+      });
+    },
+    [openConfirm, showMessage, t]
+  );
 
   const handleBatchDelete = async () => {
     if (selectedNodes.length === 0) {
@@ -1157,31 +1153,31 @@ export default function NodeList() {
     }
   };
 
-  const handleSelectNode = (node) => {
-    const isSelected = selectedNodeIds.has(node.ID);
-    if (isSelected) {
-      setSelectedNodes((previous) => previous.filter((selectedNode) => selectedNode.ID !== node.ID));
-    } else {
-      setSelectedNodes((previous) => [...previous, node]);
-    }
-  };
+  const handleSelectNode = useCallback((node) => {
+    setSelectedNodes((previous) =>
+      previous.some((selected) => selected.ID === node.ID) ? previous.filter((selected) => selected.ID !== node.ID) : [...previous, node]
+    );
+  }, []);
 
   // 排序处理
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      // 如果点击同一列，切换排序顺序或清除排序
-      if (sortOrder === 'asc') {
-        setSortOrder('desc');
+  const handleSort = useCallback(
+    (field) => {
+      if (sortBy === field) {
+        // 如果点击同一列，切换排序顺序或清除排序
+        if (sortOrder === 'asc') {
+          setSortOrder('desc');
+        } else {
+          setSortBy('');
+          setSortOrder('asc');
+        }
       } else {
-        setSortBy('');
+        // 如果点击不同列，设置新的排序
+        setSortBy(field);
         setSortOrder('asc');
       }
-    } else {
-      // 如果点击不同列，设置新的排序
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-  };
+    },
+    [sortBy, sortOrder]
+  );
 
   // 列宽调整处理
   const handleColumnResize = useCallback((columnKey, newWidth) => {
@@ -1373,15 +1369,12 @@ export default function NodeList() {
       ) : (
         <NodeTable
           nodes={filteredNodes}
-          page={page}
-          rowsPerPage={rowsPerPage}
           selectedNodeIds={selectedNodeIds}
           sortBy={sortBy}
           sortOrder={sortOrder}
           tagColorMap={tagColorMap}
           protocolMeta={protocolMeta}
           columnWidths={columnWidths}
-          onSelectAll={handleSelectAll}
           onSelect={handleSelectNode}
           onSort={handleSort}
           onSpeedTest={handleSingleSpeedTest}

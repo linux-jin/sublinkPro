@@ -81,8 +81,7 @@ function NodeTable({
 
   // 列宽调整状态
   const [resizing, setResizing] = useState(null);
-  const [ghostLine, setGhostLine] = useState(null); // { x: number, columnKey: string }
-  const ghostLineRef = useRef(null);
+  const resizePreviewRef = useRef(null);
   const tableContainerRef = useRef(null);
   const rafRef = useRef(null);
 
@@ -103,9 +102,6 @@ function NodeTable({
         tableTop: tableRect?.top || 0,
         tableBottom: tableRect?.bottom || window.innerHeight
       });
-      const nextGhostLine = { x: e.clientX, columnKey };
-      ghostLineRef.current = nextGhostLine;
-      setGhostLine(nextGhostLine);
     },
     [columnWidths]
   );
@@ -122,31 +118,24 @@ function NodeTable({
 
       rafRef.current = requestAnimationFrame(() => {
         const delta = e.clientX - resizing.startX;
-        const newWidth = Math.max(60, resizing.startWidth + delta);
 
         // 如果达到最小宽度限制，ghost line 停在最小位置
         const ghostX = resizing.startX + Math.max(60 - resizing.startWidth, delta);
 
-        const nextGhostLine = { x: ghostX, columnKey: resizing.columnKey, newWidth };
-        ghostLineRef.current = nextGhostLine;
-        setGhostLine(nextGhostLine);
+        // 只移动预览线，不让整张节点表随每个鼠标帧重渲染。
+        if (resizePreviewRef.current) resizePreviewRef.current.style.left = `${ghostX}px`;
       });
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (event) => {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
 
-      const latestGhostLine = ghostLineRef.current;
-      if (latestGhostLine?.newWidth && latestGhostLine.newWidth !== resizing.startWidth) {
-        onColumnResize(resizing.columnKey, latestGhostLine.newWidth);
-      }
-
+      const newWidth = Math.max(60, resizing.startWidth + event.clientX - resizing.startX);
+      if (newWidth !== resizing.startWidth) onColumnResize(resizing.columnKey, newWidth);
       setResizing(null);
-      ghostLineRef.current = null;
-      setGhostLine(null);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -229,11 +218,12 @@ function NodeTable({
   return (
     <>
       {/* Ghost line - 跟随鼠标的幽灵线 */}
-      {ghostLine && (
+      {resizing && (
         <Box
+          ref={resizePreviewRef}
           sx={{
             position: 'fixed',
-            left: ghostLine.x,
+            left: resizing.startX,
             top: resizing?.tableTop || 0,
             bottom: `calc(100vh - ${resizing?.tableBottom || window.innerHeight}px)`,
             width: '2px',

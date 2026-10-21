@@ -6,6 +6,13 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### Large-node performance
+
+- Use bounded top-K selection for shallow node pages instead of copying and sorting every matching node. Totals remain exact; equal sort values now use ascending ID for deterministic pagination. Unpaginated consumers remain supported.
+- Defer unlock-summary JSON parsing until cheap filters and name/link search need it; reuse normalized filter rules. Country/group/source counts read maintained index counts instead of copying all nodes.
+- Isolate node-list rendering from task progress, stabilize list callbacks, cancel superseded list requests, and coalesce bursts of completion-triggered refreshes. Column-resize previews no longer rerender the entire table on every mouse frame.
+- Smart-group member previews reuse one candidate snapshot and freshness cutoff rather than scanning candidates twice; response fields and eligibility rules remain unchanged.
+
 ### Upstream sync
 
 - Merged upstream through `f361753` (2026-10-21): preserve VMess/VLESS WebSocket headers beyond Host during Clash/Mihomo round trips, and recognize Gemini availability markers in both escaped inline JavaScript and unescaped JSON.

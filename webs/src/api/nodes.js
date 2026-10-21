@@ -4,10 +4,11 @@ import request from './request';
 // params: { search, group, source, maxDelay, minSpeed, countries[], sortBy, sortOrder, page, pageSize, compact }
 // 带page/pageSize时返回 { items, total, page, pageSize, totalPages }
 // 不带分页参数时返回节点数组（向后兼容）
-export function getNodes(params = {}) {
+export function getNodes(params = {}, { signal } = {}) {
   return request({
     url: '/v1/nodes/get',
     method: 'get',
+    signal,
     params
   });
 }

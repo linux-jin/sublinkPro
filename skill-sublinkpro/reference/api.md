@@ -168,6 +168,8 @@ VMess/VLESS Clash imports preserve extra WebSocket headers (for example `User-Ag
 ### List / Get Nodes
 **GET** `/nodes/get` — query filters (all lowerCamel): `search`, `group`, `source`, `protocol`, `maxDelay`, `minSpeed`, `sortBy`, `sortOrder`, `page`, `pageSize`, array filters `countries[]`, `tags[]`. Returns `{items, total, page, pageSize, totalPages}` when paginated. Add `compact=true` for the node-management projection, which omits internal persistence fields while preserving fields needed by the list/details/edit flows.
 
+Paginated node totals remain exact. Equal primary sort values use ascending node ID for stable page boundaries; invalid delay/speed values remain last. Shallow pages use bounded selection; unpaginated calls retain full results. Country/group/source counts are read from maintained indexes, not stale result caches.
+
 ### Node Selector (compact picker list)
 **GET** `/nodes/selector` — same query filters as `/nodes/get`; returns `{items:[{ID, Name, Group, Source, LinkCountry, ...}], total, ...}`. Use this to present nodes as a numbered pick list.
 
@@ -649,6 +651,8 @@ Base: `/api/v1/smart-groups`. Auth required. Mutating routes are demo-restricted
 - **POST** `/smart-groups/{id}/check` — **JSON** `{"profileId":1}` starts asynchronous checks for all candidates; `{"profileId":1,"nodeId":42}` tests one candidate only (non-candidates are rejected). All-node checks cover every candidate matching selected stored `LinkCountry` OR a selected-country name rule / standalone ISO code in the node name OR the optional name keyword; optional source groups still restrict candidates. Name matching can include nodes with a different stored landing country, does not alter that country, and is not verified landing geography. The profile’s own group/tag scope does not restrict this explicit node list. Returns candidate `count`. HTTP 409 means this group is running; HTTP 400 covers empty candidates, invalid profiles/non-candidate IDs and TCP with a positive download-speed requirement.
 
 Country/flag matching is independent of `Node.Protocol`. Exact selected flag emoji and standalone ISO name tokens match without country rules. Smart groups guard plain two/three-letter alternatives in country-name rules with ASCII-letter boundaries (`TR` must not match `trojan`; `ES` must not match `vmess`/`vless`). Explicit custom regex branches and the optional node-name keyword retain their semantics. Existing saved `LinkCountry` is not rewritten; previously misfilled countries require verified metadata correction. No new protocol selector or API field is introduced, and general country-rule testing/import is unchanged.
+
+Member previews evaluate candidates once per request and share one freshness cutoff across counts, membership and candidate reasons. Existing `ids`, `nodes` and `candidateNodes` fields remain unchanged.
 
 Automation fields on create/update:
 

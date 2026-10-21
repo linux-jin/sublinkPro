@@ -624,6 +624,24 @@ Common examples:
 
 ---
 
+## Large-node list performance
+
+Paginated node queries keep exact totals while using bounded top-K selection for shallow pages. Deep pages may still collect/sort all matches; unpaginated APIs intentionally retain full results. Equal sort keys use ascending node ID, including descending primary sorts, to keep page boundaries deterministic. Filtering still scans the cache to count matches; this is not SQL pagination or a persistent result cache.
+
+Search checks names and links before decoding unlock summaries, and cheap AND filters precede JSON work. Country/group/source statistics use existing cache index counts, so updates/deletions remain immediately visible. Smart-group previews share one candidate evaluation and freshness cutoff.
+
+The node page subscribes to stable task-completion actions rather than live progress state. It merges completion bursts over 250 ms, cancels superseded list requests, retains response-sequence guards, and moves resize preview lines without rerendering table rows on each pointer frame. Cancellation limits client-side work; it does not promise to cancel all server-side computation.
+
+Reproduce synthetic backend measurements without production data:
+
+```bash
+APP_ENV=test go test ./models -run '^$' -bench 'Benchmark(NodeLargeList|SmartGroupCandidateEvaluation)' -benchmem -benchtime=200ms -count=3
+```
+
+`BenchmarkNodeLargeList` covers 10,000/50,000 synthetic nodes, shallow pages, name sorting/search, narrow unlock filtering and index statistics. Compare the same machine and workload; these measurements exclude real network latency and browser rendering.
+
+---
+
 ## 💡 Development Advice
 
 1. Tasks should be idempotent when possible.

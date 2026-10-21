@@ -10,6 +10,8 @@ Selecting a country/flag never selects a protocol. Exact flags (for example `ðŸ‡
 
 The existing OR relationship between stored country, name-country clues and an explicitly entered keyword is retained. A keyword such as `trojan` deliberately matches node names containing it; it is not a protocol-field filter. A genuine Turkish node can use any protocol. Already-saved `LinkCountry` values remain authoritative country alternatives and are not automatically corrected: if an earlier name-based fill incorrectly saved `TR`, verify the landing country and correct that node's metadata. New matching does not rewrite node data.
 
+Candidate previews reuse one node candidate snapshot and one freshness cutoff per request, avoiding duplicate scans while keeping counts, membership and exclusion reasons consistent. Pagination and subscription eligibility rules are unchanged.
+
 ## Use
 
 1. In **Subscriptions â†’ Smart Groups**, create a group, choose countries from the full searchable region catalog (including PH), optionally specify an alternative node-name keyword and a restricting set of source groups, and set a maximum latency, minimum speed, and freshness window (default: 72 hours). Leave source groups empty to search across all original groups; new groups default to no latency ceiling. Zero for a numeric threshold means no upper/lower threshold; zero freshness disables expiry.

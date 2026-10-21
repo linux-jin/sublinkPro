@@ -1223,8 +1223,16 @@ func matchNodeQualityStatus(n Node, qualityStatus string) bool {
 	}
 }
 
-// ListWithFilters 根据过滤条件获取节点列表
+// ListWithFilters 根据过滤条件获取节点列表。
 func (node *Node) ListWithFilters(filter NodeFilter) ([]Node, error) {
+	nodes := nodeCache.Filter(nodeFilterPredicate(filter))
+	less := nodeSortLess(filter)
+	sort.Slice(nodes, func(i, j int) bool { return less(&nodes[i], &nodes[j]) })
+	return nodes, nil
+}
+
+// nodeFilterPredicate 每次请求仅规范化一次过滤配置。
+func nodeFilterPredicate(filter NodeFilter) func(Node) bool {
 	// 预处理搜索关键词
 	searchLower := strings.ToLower(filter.Search)
 
@@ -1250,30 +1258,14 @@ func (node *Node) ListWithFilters(filter NodeFilter) ([]Node, error) {
 	if len(unlockRules) == 0 && (filter.UnlockProvider != "" || filter.UnlockStatus != "" || filter.UnlockKeyword != "") {
 		unlockRules = []UnlockFilterRule{{Provider: filter.UnlockProvider, Status: filter.UnlockStatus, Keyword: filter.UnlockKeyword}}
 	}
+	unlockRules = NormalizeUnlockFilterRules(unlockRules)
 	unlockRuleMode := NormalizeUnlockRuleMode(filter.UnlockRuleMode)
-	needsUnlockSummary := searchLower != "" || len(unlockRules) > 0
 
-	// 使用缓存的 Filter 方法
-	nodes := nodeCache.Filter(func(n Node) bool {
+	// 先执行廉价 AND 条件，避免为不会入选的节点解析解锁 JSON。
+	return func(n Node) bool {
 		if excludeMap[n.ID] {
 			return false
 		}
-		var unlockSummary UnlockSummary
-		if needsUnlockSummary {
-			unlockSummary = ParseUnlockSummary(n.UnlockSummary)
-		}
-
-		// 搜索过滤
-		if searchLower != "" {
-			nameLower := strings.ToLower(n.EffectiveName())
-			remarkLower := strings.ToLower(n.Name)
-			linkNameLower := strings.ToLower(n.LinkName)
-			linkLower := strings.ToLower(n.Link)
-			if !strings.Contains(nameLower, searchLower) && !strings.Contains(remarkLower, searchLower) && !strings.Contains(linkNameLower, searchLower) && !strings.Contains(linkLower, searchLower) && !MatchUnlockSummary(unlockSummary, "", "", searchLower) {
-				return false
-			}
-		}
-
 		// 分组过滤
 		if filter.Group != "" {
 			if filter.Group == "未分组" {
@@ -1371,12 +1363,6 @@ func (node *Node) ListWithFilters(filter NodeFilter) ([]Node, error) {
 			return false
 		}
 
-		if len(unlockRules) > 0 {
-			if !MatchUnlockSummaryRulesWithMode(unlockSummary, unlockRules, unlockRuleMode) {
-				return false
-			}
-		}
-
 		// 住宅属性过滤
 		if !matchNodeResidentialType(n, filter.ResidentialType) {
 			return false
@@ -1387,145 +1373,104 @@ func (node *Node) ListWithFilters(filter NodeFilter) ([]Node, error) {
 			return false
 		}
 
-		return true
-	})
-
-	// 排序
-	if filter.SortBy != "" {
-		sort.Slice(nodes, func(i, j int) bool {
-			switch filter.SortBy {
-			case "delay":
-				aValid := nodes[i].DelayTime > 0
-				bValid := nodes[j].DelayTime > 0
-				if !aValid && !bValid {
-					return nodes[i].ID < nodes[j].ID
-				}
-				if !aValid {
-					return false
-				}
-				if !bValid {
-					return true
-				}
-				if filter.SortOrder == "desc" {
-					return nodes[i].DelayTime > nodes[j].DelayTime
-				}
-				return nodes[i].DelayTime < nodes[j].DelayTime
-			case "speed":
-				aValid := nodes[i].Speed > 0
-				bValid := nodes[j].Speed > 0
-				if !aValid && !bValid {
-					return nodes[i].ID < nodes[j].ID
-				}
-				if !aValid {
-					return false
-				}
-				if !bValid {
-					return true
-				}
-				if filter.SortOrder == "desc" {
-					return nodes[i].Speed > nodes[j].Speed
-				}
-				return nodes[i].Speed < nodes[j].Speed
-			case "name":
-				aName := nodes[i].EffectiveName()
-				bName := nodes[j].EffectiveName()
-				if filter.SortOrder == "desc" {
-					return aName > bName
-				}
-				return aName < bName
-			case "protocol":
-				aProtocol := nodes[i].Protocol
-				bProtocol := nodes[j].Protocol
-				if aProtocol == bProtocol {
-					return nodes[i].ID < nodes[j].ID
-				}
-				if filter.SortOrder == "desc" {
-					return aProtocol > bProtocol
-				}
-				return aProtocol < bProtocol
-			case "group":
-				aEmpty := nodes[i].Group == ""
-				bEmpty := nodes[j].Group == ""
-				if aEmpty && bEmpty {
-					return nodes[i].ID < nodes[j].ID
-				}
-				// 空值根据排序方向决定位置
-				if aEmpty {
-					return filter.SortOrder != "desc"
-				}
-				if bEmpty {
-					return filter.SortOrder == "desc"
-				}
-				if filter.SortOrder == "desc" {
-					return nodes[i].Group > nodes[j].Group
-				}
-				return nodes[i].Group < nodes[j].Group
-			case "source":
-				aSource := nodes[i].Source
-				bSource := nodes[j].Source
-				if aSource == "" {
-					aSource = "manual"
-				}
-				if bSource == "" {
-					bSource = "manual"
-				}
-				if aSource == bSource {
-					return nodes[i].ID < nodes[j].ID
-				}
-				if filter.SortOrder == "desc" {
-					return aSource > bSource
-				}
-				return aSource < bSource
-			case "country":
-				aCountry := nodes[i].LinkCountry
-				bCountry := nodes[j].LinkCountry
-				if aCountry == bCountry {
-					return nodes[i].ID < nodes[j].ID
-				}
-				if filter.SortOrder == "desc" {
-					return aCountry > bCountry
-				}
-				return aCountry < bCountry
-			default:
-				return nodes[i].ID < nodes[j].ID
+		var unlockSummary UnlockSummary
+		parsedUnlock := false
+		// 名称/备注/链接命中时无需解析解锁摘要；仍保留解锁文本搜索能力。
+		if searchLower != "" &&
+			!strings.Contains(strings.ToLower(n.EffectiveName()), searchLower) &&
+			!strings.Contains(strings.ToLower(n.Name), searchLower) &&
+			!strings.Contains(strings.ToLower(n.LinkName), searchLower) &&
+			!strings.Contains(strings.ToLower(n.Link), searchLower) {
+			unlockSummary = ParseUnlockSummary(n.UnlockSummary)
+			parsedUnlock = true
+			if !MatchUnlockSummary(unlockSummary, "", "", searchLower) {
+				return false
 			}
-		})
-	} else {
-		sort.Slice(nodes, func(i, j int) bool {
-			return nodes[i].ID < nodes[j].ID
-		})
+		}
+		if len(unlockRules) > 0 {
+			if !parsedUnlock {
+				unlockSummary = ParseUnlockSummary(n.UnlockSummary)
+			}
+			if !matchNormalizedUnlockSummaryRules(unlockSummary, unlockRules, unlockRuleMode) {
+				return false
+			}
+		}
+		return true
 	}
-
-	return nodes, nil
 }
 
-// ListWithFiltersPaginated 根据过滤条件获取分页节点列表
+// nodeSortLess 提供分页所需的确定全序，同值按 ID 升序，避免翻页时重复或遗漏。
+func nodeSortLess(filter NodeFilter) func(*Node, *Node) bool {
+	return func(a, b *Node) bool {
+		desc := filter.SortOrder == "desc"
+		var aText, bText string
+		switch filter.SortBy {
+		case "delay":
+			aValid, bValid := a.DelayTime > 0, b.DelayTime > 0
+			if aValid != bValid {
+				return aValid
+			}
+			if aValid && a.DelayTime != b.DelayTime {
+				if desc {
+					return a.DelayTime > b.DelayTime
+				}
+				return a.DelayTime < b.DelayTime
+			}
+			return a.ID < b.ID
+		case "speed":
+			aValid, bValid := a.Speed > 0, b.Speed > 0
+			if aValid != bValid {
+				return aValid
+			}
+			if aValid && a.Speed != b.Speed {
+				if desc {
+					return a.Speed > b.Speed
+				}
+				return a.Speed < b.Speed
+			}
+			return a.ID < b.ID
+		case "name":
+			aText, bText = a.EffectiveName(), b.EffectiveName()
+		case "protocol":
+			aText, bText = a.Protocol, b.Protocol
+		case "group":
+			aText, bText = a.Group, b.Group
+		case "source":
+			aText, bText = a.Source, b.Source
+			if aText == "" {
+				aText = "manual"
+			}
+			if bText == "" {
+				bText = "manual"
+			}
+		case "country":
+			aText, bText = a.LinkCountry, b.LinkCountry
+		default:
+			return a.ID < b.ID
+		}
+		if aText == bText {
+			return a.ID < b.ID
+		}
+		if desc {
+			return aText > bText
+		}
+		return aText < bText
+	}
+}
+
+// ListWithFiltersPaginated 精确统计匹配总数，浅分页不再物化并排序全部节点。
 func (node *Node) ListWithFiltersPaginated(filter NodeFilter, page, pageSize int) ([]Node, int64, error) {
-	// 先获取全部过滤结果
-	allNodes, err := node.ListWithFilters(filter)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	total := int64(len(allNodes))
-
-	// 如果不需要分页，返回全部
 	if page <= 0 || pageSize <= 0 {
-		return allNodes, total, nil
+		nodes, err := node.ListWithFilters(filter)
+		return nodes, int64(len(nodes)), err
 	}
-
-	// 计算分页
-	offset := (page - 1) * pageSize
-	if offset >= len(allNodes) {
-		return []Node{}, total, nil
+	maxInt := int(^uint(0) >> 1)
+	offset := maxInt
+	if page-1 <= maxInt/pageSize {
+		offset = (page - 1) * pageSize
 	}
-
-	end := offset + pageSize
-	if end > len(allNodes) {
-		end = len(allNodes)
-	}
-
-	return allNodes[offset:end], total, nil
+	nodes, total := nodeCache.FilterSortedPage(nodeFilterPredicate(filter), nodeSortLess(filter), offset, pageSize)
+	return nodes, int64(total), nil
 }
 
 // GetFilteredNodeIDs 获取符合过滤条件的所有节点ID（用于全选操作）
@@ -2301,13 +2246,11 @@ func GetAllCountries() []string {
 // GetNodeCountryStats 获取按国家统计的节点数量
 func GetNodeCountryStats() map[string]int {
 	stats := make(map[string]int)
-	allNodes := nodeCache.GetAll()
-	for _, n := range allNodes {
-		country := n.LinkCountry
-		if country == "" {
-			country = "未知"
+	for value, count := range nodeCache.IndexValueCounts("country") {
+		if value == "" {
+			value = "未知"
 		}
-		stats[country]++
+		stats[value] += count
 	}
 	return stats
 }
@@ -2728,13 +2671,11 @@ func GetDashboardQualityStats() DashboardQualityStats {
 // GetNodeGroupStats 获取按分组统计的节点数量
 func GetNodeGroupStats() map[string]int {
 	stats := make(map[string]int)
-	allNodes := nodeCache.GetAll()
-	for _, n := range allNodes {
-		group := n.Group
-		if group == "" {
-			group = "未分组"
+	for value, count := range nodeCache.IndexValueCounts("group") {
+		if value == "" {
+			value = "未分组"
 		}
-		stats[group]++
+		stats[value] += count
 	}
 	return stats
 }
@@ -2742,13 +2683,11 @@ func GetNodeGroupStats() map[string]int {
 // GetNodeSourceStats 获取按来源统计的节点数量
 func GetNodeSourceStats() map[string]int {
 	stats := make(map[string]int)
-	allNodes := nodeCache.GetAll()
-	for _, n := range allNodes {
-		source := n.Source
-		if source == "" || source == "manual" {
-			source = "手动添加"
+	for value, count := range nodeCache.IndexValueCounts("source") {
+		if value == "" || value == "manual" {
+			value = "手动添加"
 		}
-		stats[source]++
+		stats[value] += count
 	}
 	return stats
 }
