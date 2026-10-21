@@ -6,6 +6,8 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+## [1.14.1] - 2026-10-21
+
 ### Large-node performance
 
 - Use bounded top-K selection for shallow node pages instead of copying and sorting every matching node. Totals remain exact; equal sort values now use ascending ID for deterministic pagination. Unpaginated consumers remain supported.

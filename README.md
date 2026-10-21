@@ -113,13 +113,13 @@ The fork follows this maintenance model:
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.14.0`
+**Latest stable release:** `v1.14.1`
 
-**v1.14.0 smart-group automation and matching update:**
+**v1.14.1 large-node performance and compatibility update:**
 
-- Added scheduled smart-group candidate checks and optional checks after airport updates, with saved check profiles, timezone hints and run status.
-- Fixed country abbreviations accidentally matching protocol names (such as `TR` matching `trojan`); exact flags and standalone country codes work independently of protocol.
-- Synced upstream through `fc37921`, including Hysteria2/TUIC compatibility fixes, WebDAV redirect hardening, SOCKS5 restore preservation and dependency updates.
+- Reduced shallow-page allocations with bounded selection, lazy unlock parsing and indexed statistics; exact totals are preserved and equal sort values use stable ID order.
+- Isolated node lists from task-progress rerenders, cancelled superseded list requests, coalesced completion refreshes and streamlined column resizing. Smart-group previews now reuse one candidate snapshot.
+- Synced upstream through `f361753`: VMess/VLESS WebSocket header preservation, Gemini detection fixes and dependency updates; retained compatibility with object-shaped VMess headers.
 
 See the [smart-group guide](docs/features/smart-groups.md) for matching and test requirements.
 
