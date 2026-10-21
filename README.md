@@ -113,13 +113,13 @@ The fork follows this maintenance model:
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.13.2`
+**Latest stable release:** `v1.14.0`
 
-**v1.13.2 maintenance update:**
+**v1.14.0 smart-group automation and matching update:**
 
-- Synced upstream Go dependencies, including mihomo 1.19.31 and networking/database libraries.
-- Updated frontend dependencies, including React 19.3.0, React Router 7.18.4, Monaco Editor 0.57.0, and Vite 8.3.1.
-- No application feature changes; the smart-group improvements from v1.13.1 remain available.
+- Added scheduled smart-group candidate checks and optional checks after airport updates, with saved check profiles, timezone hints and run status.
+- Fixed country abbreviations accidentally matching protocol names (such as `TR` matching `trojan`); exact flags and standalone country codes work independently of protocol.
+- Synced upstream through `fc37921`, including Hysteria2/TUIC compatibility fixes, WebDAV redirect hardening, SOCKS5 restore preservation and dependency updates.
 
 See the [smart-group guide](docs/features/smart-groups.md) for matching and test requirements.
 

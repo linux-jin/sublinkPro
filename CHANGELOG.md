@@ -6,6 +6,8 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-10-21
+
 ### Country-matching fixes
 
 - Fixed smart-group country abbreviations matching protocol names (`TR` → `trojan`, `ES` → `vmess`/`vless`, `RO` → `trojan`), including existing default rules and name-inferred country display.
