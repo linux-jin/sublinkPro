@@ -6,6 +6,8 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-10-22
+
 ### Detection center
 
 - Split detection plans, independent automatic jobs, run history and latest node results into separate tabs. Plans expose latency, optional download speed, exit IP/location, IP quality and metadata-driven AI/streaming modules, while retaining detailed request and traffic options.

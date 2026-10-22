@@ -114,15 +114,15 @@ The fork follows this maintenance model:
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.14.1`
+**Latest stable release:** `v1.15.0`
 
-**v1.14.1 large-node performance and compatibility update:**
+**v1.15.0 detection-center update:**
 
-- Reduced shallow-page allocations with bounded selection, lazy unlock parsing and indexed statistics; exact totals are preserved and equal sort values use stable ID order.
-- Isolated node lists from task-progress rerenders, cancelled superseded list requests, coalesced completion refreshes and streamlined column resizing. Smart-group previews now reuse one candidate snapshot.
-- Synced upstream through `f361753`: VMess/VLESS WebSocket header preservation, Gemini detection fixes and dependency updates; retained compatibility with object-shaped VMess headers.
+- Separate reusable detection plans, scoped automatic jobs, run history and paginated latest node results; preserve single-node testing and existing plan references.
+- Schedule checks or trigger after airport updates, optionally wait for selected airports to update first, prevent per-job overlap and coalesce queued airport events. Existing schedules appear as compatibility jobs without duplicate execution.
+- Inspect original airports, provider evidence, check times and smart-group membership reasons. Latest results are not historical snapshots; AI probes do not prove account/model availability or automatically add AI eligibility rules.
 
-See the [smart-group guide](docs/features/smart-groups.md) for matching and test requirements.
+See the [detection-center guide](docs/features/unlock-check.md#detection-center-plans-jobs-history-and-results) and [smart-group guide](docs/features/smart-groups.md) for configuration and membership rules.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 
