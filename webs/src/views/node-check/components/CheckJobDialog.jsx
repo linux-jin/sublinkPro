@@ -83,7 +83,6 @@ export default function CheckJobDialog({ job, profiles, options, timezone, onClo
       <DialogContent sx={{ px: 2.5 }}>
         <Stack spacing={2} sx={{ mt: 2 }}>
           {error && <Alert severity="error">{error}</Alert>}
-          {job.legacy && <Alert severity="info">{t('detectionCenter.legacyHelp')}</Alert>}
           <TextField
             label={t('detectionCenter.jobName')}
             disabled={job.legacy}
@@ -128,7 +127,6 @@ export default function CheckJobDialog({ job, profiles, options, timezone, onClo
               onChange={(value) => update('cronExpr', value)}
               label={t('detectionCenter.cron')}
               error={form.cronExpr.trim().split(/\s+/).length !== 5}
-              helperText={t('detectionCenter.cronHelp')}
             />
           )}
           <Typography variant="caption" color="text.secondary">
@@ -184,9 +182,7 @@ export default function CheckJobDialog({ job, profiles, options, timezone, onClo
                       value.map((a) => a.ID || a.id)
                     )
                   }
-                  renderInput={(params) => (
-                    <TextField {...params} label={t('detectionCenter.airports')} helperText={t('detectionCenter.scopeAnd')} />
-                  )}
+                  renderInput={(params) => <TextField {...params} label={t('detectionCenter.airports')} />}
                 />
               )}
               {stringSelect('groups', options.groups)}
@@ -202,10 +198,6 @@ export default function CheckJobDialog({ job, profiles, options, timezone, onClo
               label={t('detectionCenter.updateFirst')}
             />
           )}
-          <Alert severity="info">{t('detectionCenter.dynamicMembership')}</Alert>
-          <Typography variant="caption" color="text.secondary">
-            {t('detectionCenter.openClashHelp')}
-          </Typography>
         </Stack>
       </DialogContent>
       <DialogActions>

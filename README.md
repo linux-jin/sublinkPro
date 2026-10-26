@@ -116,6 +116,8 @@ The fork follows this maintenance model:
 
 **Latest stable release:** `v1.15.0`
 
+**Development image `dev`:** Concise detection-center copy and form labels, with plans, automatic jobs, run history and node results preserved.
+
 **v1.15.0 detection-center update:**
 
 - Separate reusable detection plans, scoped automatic jobs, run history and paginated latest node results; preserve single-node testing and existing plan references.

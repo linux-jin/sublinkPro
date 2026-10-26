@@ -146,9 +146,6 @@ export default function DetectionDataPanel({ kind, revision, onRun }) {
   const unlock = resultNode ? getNodeUnlockSummaryDisplay(resultNode, { limit: 100 }) : null;
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
-        {t(history ? 'detectionCenter.historyHelp' : 'detectionCenter.resultsHelp')}
-      </Typography>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
         {!history && (
           <TextField size="small" label={t('detectionCenter.search')} value={search} onChange={filter(setSearch)} sx={{ flex: 1 }} />
@@ -312,12 +309,10 @@ export default function DetectionDataPanel({ kind, revision, onRun }) {
                 <Typography variant="caption" color="text.secondary">
                   {time(selected.startedAt)} → {time(selected.completedAt)}
                 </Typography>
-                <Alert severity="info">{t('detectionCenter.notSnapshot')}</Alert>
               </>
             )}
             {!history && resultNode && (
               <>
-                <Alert severity="warning">{t('detectionCenter.probeWarning')}</Alert>
                 <Typography>{t('detectionCenter.checkedAt', { time: time(resultNode.UnlockCheckAt) })}</Typography>
                 {unlock?.items.map((u) => (
                   <Box key={u.provider}>
@@ -338,7 +333,6 @@ export default function DetectionDataPanel({ kind, revision, onRun }) {
                   </Typography>
                 ))}
                 {!selected.smartGroups.length && <Typography color="text.secondary">{t('detectionCenter.noCandidate')}</Typography>}
-                <Alert severity="info">{t('detectionCenter.membershipNotSubscription')}</Alert>
               </>
             )}
           </Stack>

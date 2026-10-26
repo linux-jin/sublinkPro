@@ -6,6 +6,12 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### Detection-center UI cleanup
+
+- Remove repetitive banners and internal architecture, migration and client-orchestration explanations from plans, automatic jobs and result details. Keep field labels, detection evidence, timezone and real errors.
+- Use concise bilingual labels for plan names, schedules, node scopes and airport pre-updates. Advanced request, concurrency and traffic settings remain expandable.
+- Preserve all four tabs, node results and run history, single/selected-node checks, smart-group candidate scopes and existing automatic jobs. Do not import the upstream PR's feature removal.
+
 ### Detection-center fixes
 
 - Do not interpret the context cancellation performed by a successful subscription task completion as a failed update. Usage persistence, automatic tagging and post-update/pre-update checks continue; loader-reported failures and cancellations still stop checks.

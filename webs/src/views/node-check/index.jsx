@@ -11,7 +11,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControlLabel,
   IconButton,
   MenuItem,
@@ -196,9 +195,6 @@ export default function NodeCheckList() {
         </Stack>
       }
     >
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('detectionCenter.description')}
-      </Typography>
       <Tabs
         value={tab}
         onChange={(_, value) => setTab(value)}
@@ -232,16 +228,9 @@ export default function NodeCheckList() {
             {tab === 'plans' && (
               <>
                 <Paper variant="outlined" sx={{ overflow: 'hidden', bgcolor: 'background.paper' }}>
-                  <Box sx={{ p: 2 }}>
-                    <Typography variant="h4">{t('detectionCenter.tabs.plans')}</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      {t('detectionCenter.planHelp')}
-                    </Typography>
-                  </Box>
-                  <Divider />
                   {!profiles.length && (
                     <Typography color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>
-                      {t('nodes.nodeCheckProfiles.empty')}
+                      {t('detectionCenter.emptyPlans')}
                     </Typography>
                   )}
                   {profiles.map((p) => (
@@ -289,14 +278,10 @@ export default function NodeCheckList() {
                     </Box>
                   ))}
                 </Paper>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-                  {t('detectionCenter.planScheduleHint')}
-                </Typography>
               </>
             )}
             {tab === 'jobs' && (
               <Stack spacing={2}>
-                <Alert severity="info">{t('detectionCenter.flow')}</Alert>
                 {jobs.length === 0 && (
                   <Typography sx={{ p: 4, textAlign: 'center' }} color="text.secondary">
                     {t('detectionCenter.noJobs')}
@@ -379,9 +364,6 @@ export default function NodeCheckList() {
                     </Stack>
                   </Paper>
                 ))}
-                <Typography variant="caption" color="text.secondary">
-                  {t('detectionCenter.openClashHelp')}
-                </Typography>
               </Stack>
             )}
             {tab === 'runs' && <TaskProgressPanel />}
@@ -450,7 +432,6 @@ export default function NodeCheckList() {
                 ))}
               </>
             )}
-            <Alert severity="info">{t('detectionCenter.dynamicMembership')}</Alert>
           </Stack>
         </DialogContent>
         <DialogActions>
