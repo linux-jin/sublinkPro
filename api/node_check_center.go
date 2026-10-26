@@ -133,15 +133,19 @@ func saveLegacyCheckJob(c *gin.Context, id int, job models.NodeCheckJob) {
 		return
 	}
 	// 兼容任务始终绑定原方案；更换方案或事件编排请新建独立任务。
-	if job.ProfileID != p.ID || job.Trigger != "scheduled" || job.Scope == "smart_group" || len(job.AirportIDs) > 0 || job.UpdateBeforeCheck {
+	if job.ProfileID != p.ID || job.Trigger != "scheduled" || (job.Scope != "all" && job.Scope != "filtered") || len(job.AirportIDs) > 0 || job.UpdateBeforeCheck {
 		utils.FailWithMsg(c, "兼容任务仅支持原方案的定时与分组/标签范围，请新建独立任务以使用高级编排")
 		return
 	}
-	if job.Enabled || job.CronExpr != "" {
-		if err := job.Validate(); err != nil {
-			utils.FailWithMsg(c, err.Error())
-			return
-		}
+	// 暂停并清空 Cron 仅免除调度校验，不能绕过范围校验而把空 filtered 扩成全库。
+	validation := job
+	validation.Name = p.Name
+	if !job.Enabled && strings.TrimSpace(job.CronExpr) == "" {
+		validation.Trigger = "airport_update"
+	}
+	if err := validation.Validate(); err != nil {
+		utils.FailWithMsg(c, err.Error())
+		return
 	}
 	old := *p
 	p.Enabled = job.Enabled
@@ -225,6 +229,28 @@ func RunNodeCheckJob(c *gin.Context) {
 	utils.OkWithMsg(c, "节点检测任务已启动")
 }
 
+// nodeCheckResultNode 复用节点选择器字段，仅返回检测数据，不附带原始代理凭据。
+type nodeCheckResultNode struct {
+	models.NodeSelectorItem
+	LandingIP      string
+	DelayTime      int
+	Speed          float64
+	DelayStatus    string
+	SpeedStatus    string
+	LatencyCheckAt string
+	SpeedCheckAt   string
+	FraudScore     int
+	QualityStatus  string
+	QualityFamily  string
+}
+
+func buildNodeCheckResultNode(n models.Node) nodeCheckResultNode {
+	return nodeCheckResultNode{NodeSelectorItem: models.BuildNodeSelectorItem(n), LandingIP: n.LandingIP,
+		DelayTime: n.DelayTime, Speed: n.Speed, DelayStatus: n.DelayStatus, SpeedStatus: n.SpeedStatus,
+		LatencyCheckAt: n.LatencyCheckAt, SpeedCheckAt: n.SpeedCheckAt, FraudScore: n.FraudScore,
+		QualityStatus: n.QualityStatus, QualityFamily: n.QualityFamily}
+}
+
 // NodeCheckResults 只富化当前页；不把当前节点状态冒充某次任务历史快照。
 func NodeCheckResults(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -272,7 +298,7 @@ func NodeCheckResults(c *gin.Context) {
 			reason := g.CandidateExclusionReason(n, cutoffs[i])
 			membership = append(membership, gin.H{"id": g.ID, "name": g.Name, "included": reason == "", "reason": reason, "matchSource": source})
 		}
-		items = append(items, gin.H{"node": models.BuildNodeListItem(n), "airportId": n.SourceID, "airportName": airportNames[n.SourceID], "smartGroups": membership})
+		items = append(items, gin.H{"node": buildNodeCheckResultNode(n), "airportId": n.SourceID, "airportName": airportNames[n.SourceID], "smartGroups": membership})
 	}
 	utils.OkDetailed(c, "获取成功", gin.H{"items": items, "total": total, "page": page, "pageSize": size})
 }

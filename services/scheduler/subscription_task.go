@@ -94,9 +94,8 @@ func executeSubscriptionTask(id int, url string, subName string, trigger models.
 		return err
 	}
 
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+	// 加载器已返回真实失败/取消错误；成功 ReportComplete 也会主动取消任务 context，
+	// 此处不能再据 ctx.Err() 否定成功，否则用量、标签及后续检测都会被跳过。
 
 	// 更新用量信息（如果开启了获取用量信息且成功获取到）
 	if fetchUsageInfo && usageInfo != nil && airport != nil {

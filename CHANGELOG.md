@@ -6,6 +6,13 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### Detection-center fixes
+
+- Do not interpret the context cancellation performed by a successful subscription task completion as a failed update. Usage persistence, automatic tagging and post-update/pre-update checks continue; loader-reported failures and cancellations still stop checks.
+- Validate compatibility-job node scope even when paused with an empty Cron. Empty filtered ranges cannot overwrite the old scope and expand manual checks to all nodes; reject unsupported compatibility scopes.
+- Let server-side five-field Cron validation accept named months/weekdays and single-value steps without being blocked by the numeric browser preview; explain the preview limitation in both languages.
+- Return only selector/detection fields from latest-result responses, omitting raw proxy links while preserving source airports and smart-group membership evidence. Add completion/cancellation, paused-scope and projection regressions.
+
 ## [1.15.0] - 2026-10-22
 
 ### Detection center

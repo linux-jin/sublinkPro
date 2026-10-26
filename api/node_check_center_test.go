@@ -171,6 +171,9 @@ func TestNodeCheckCenterResultsArePagedAndRespectSourceGroupMembership(t *testin
 	r := gin.New()
 	r.GET("/results", NodeCheckResults)
 	response := checkCenterRequest(t, r, http.MethodGet, "/results?page=1&pageSize=1", nil)
+	if bytes.Contains(response["data"], []byte(`"Link":`)) {
+		t.Fatal("results exposed raw proxy link")
+	}
 	var data struct {
 		Total int `json:"total"`
 		Items []struct {
@@ -214,5 +217,29 @@ func TestDeleteSmartGroupRejectsPausedDetectionJobReference(t *testing.T) {
 	}
 	if _, err := models.GetSmartGroup(group.ID); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNodeCheckCenterPausedLegacyJobStillValidatesScope(t *testing.T) {
+	setupPreviewAPITestDB(t)
+	p := models.NodeCheckProfile{Name: "paused-legacy", Mode: "tcp", Groups: "keep"}
+	if err := p.Add(); err != nil {
+		t.Fatal(err)
+	}
+	r := gin.New()
+	r.PUT("/jobs/:id", SaveNodeCheckJob)
+	payload := map[string]any{"name": p.Name, "profileId": p.ID, "enabled": false, "trigger": "scheduled", "cronExpr": "", "scope": "filtered", "groups": []string{}, "tags": []string{}}
+	response := checkCenterRequest(t, r, http.MethodPut, "/jobs/"+strconv.Itoa(-p.ID), payload)
+	if string(response["code"]) == "200" {
+		t.Fatal("paused empty filtered scope accepted")
+	}
+	saved, err := models.GetNodeCheckProfileByID(p.ID)
+	if err != nil || saved.Groups != "keep" {
+		t.Fatalf("scope expanded: %+v,%v", saved, err)
+	}
+	payload["groups"] = []string{"keep"}
+	response = checkCenterRequest(t, r, http.MethodPut, "/jobs/"+strconv.Itoa(-p.ID), payload)
+	if string(response["code"]) != "200" {
+		t.Fatalf("valid paused empty cron rejected: %s", response)
 	}
 }

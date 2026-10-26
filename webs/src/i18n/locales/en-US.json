@@ -4474,6 +4474,7 @@
       "airport_update": "After airport update"
     },
     "cron": "Cron expression",
+    "cronHelp": "Five fields, validated by the server. The browser preview supports numeric expressions only; named months/weekdays and single-value steps may have no preview.",
     "timezone": "Scheduler timezone: {{timezone}} (server timezone)",
     "scope": "Node scope",
     "scopes": {

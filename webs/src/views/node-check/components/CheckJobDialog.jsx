@@ -18,7 +18,6 @@ import {
   useTheme
 } from '@mui/material';
 import CronExpressionGenerator from 'components/CronExpressionGenerator';
-import { validateCronExpression } from 'utils/cronValidation';
 import { saveNodeCheckJob } from 'api/nodeCheck';
 
 // 任务配置只保存编排参数，不复制方案的检测配置。已删除的分组/标签保留为可编辑值。
@@ -43,10 +42,11 @@ export default function CheckJobDialog({ job, profiles, options, timezone, onClo
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  // 五字段结构以外的 Cron 语法交由服务端校验；数字预览器不能阻止保存命名星期或单值步进。
   const invalid =
     !form.name.trim() ||
     !form.profileId ||
-    (form.trigger === 'scheduled' && !validateCronExpression(form.cronExpr)) ||
+    (form.trigger === 'scheduled' && form.cronExpr.trim().split(/\s+/).length !== 5) ||
     (form.scope === 'smart_group' && !form.smartGroupId) ||
     (form.scope === 'filtered' && !form.airportIds.length && !form.groups.length && !form.tags.length) ||
     (form.updateBeforeCheck && !form.airportIds.length);
@@ -127,7 +127,8 @@ export default function CheckJobDialog({ job, profiles, options, timezone, onClo
               value={form.cronExpr}
               onChange={(value) => update('cronExpr', value)}
               label={t('detectionCenter.cron')}
-              error={!validateCronExpression(form.cronExpr)}
+              error={form.cronExpr.trim().split(/\s+/).length !== 5}
+              helperText={t('detectionCenter.cronHelp')}
             />
           )}
           <Typography variant="caption" color="text.secondary">
