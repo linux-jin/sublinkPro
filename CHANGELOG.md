@@ -6,6 +6,14 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### HTTP and Mixed proxy gateway listeners
+
+- Add per-listener SOCKS5, HTTP and Mixed inbound modes while retaining existing API paths and default SOCKS5 behavior. Old listener updates preserve omitted protocol values.
+- Share independent-account/legacy profile authentication, routing, health, retries and sticky sessions; support plain HTTP forwarding and HTTPS CONNECT without decryption or an extra proxy process.
+- Authenticate and route each keep-alive request separately, strip proxy credentials/hop headers, preserve pre-read tunnel bytes, and restrict retries to dialing before application data is sent. Stream uploads/responses concurrently and release incomplete uploads when an origin rejects, disconnects, or returns invalid headers.
+- Include HTTP/CONNECT in connection limits, timeout/disconnect controls, payload statistics and protocol-aware monitoring. Reject unauthenticated non-loopback listeners and unsupported upgrades.
+- Rename the UI to Proxy gateway, add protocol selectors and username compatibility hints, and update bilingual guides/API examples and regression tests.
+
 ### Detection-center and smart-group UI cleanup
 
 - Align the center with the upstream PR: keep Plans and Automatic Jobs only, removing its added history/results layer, dedicated endpoint, component, test and unused translations. Existing node/task pages are unchanged.
