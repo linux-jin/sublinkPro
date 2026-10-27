@@ -114,16 +114,17 @@
 
 ## 🆕 版本状态
 
-**最新稳定版：** `v1.15.0`
+**最新稳定版：** `v1.16.0`
 
-**开发分支 `dev`：** 检测中心与上游 PR 保持一致，仅保留检测方案、自动任务。节点管理和任务中心继续提供结果、记录及单节点检测。
+- **代理网关：** 每个监听入口可选择 SOCKS5、HTTP 或 Mixed；HTTP 支持普通代理请求和 HTTPS CONNECT，Mixed 在同一端口兼容两种协议。旧入口仍保持 SOCKS5，需要手动切换。
+- **检测中心：** 与上游 PR 保持一致，仅保留检测方案和自动任务；结果、运行详情及单节点检测继续在原节点管理、任务中心使用。
+- **智能分组：** 用“已入组 / 未入组”明确当前成员状态，精简表单和说明，保留候选范围、定时检测及机场更新联动。
+- **可靠性修复：** 订阅成功完成后继续保存用量、自动标签和后续检测；校验暂停任务的节点范围；由服务端验证支持的五段 Cron 表达式。
 
-- 保留智能分组候选范围、定时检测及机场更新后检测。
-- 精简智能分组页面和表单说明，用“已入组 / 未入组”明确当前分组状态。
-
-配置与入组规则详见[检测中心指南](docs/features/unlock-check.zh-CN.md#检测中心)及[智能分组指南](docs/features/smart-groups.zh-CN.md)。
+配置、兼容行为与入组规则详见[代理网关指南](docs/features/socks5.zh-CN.md)、[检测中心指南](docs/features/unlock-check.zh-CN.md#检测中心)及[智能分组指南](docs/features/smart-groups.zh-CN.md)。
 
 完整版本历史请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)，正式发布包参见 [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases)。
+
 
 ---
 

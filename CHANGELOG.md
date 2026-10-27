@@ -6,6 +6,8 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-10-27
+
 ### HTTP and Mixed proxy gateway listeners
 
 - Add per-listener SOCKS5, HTTP and Mixed inbound modes while retaining existing API paths and default SOCKS5 behavior. Old listener updates preserve omitted protocol values.

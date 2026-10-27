@@ -114,16 +114,17 @@ The fork follows this maintenance model:
 
 ## 🆕 Release Status
 
-**Latest stable release:** `v1.15.0`
+**Latest stable release:** `v1.16.0`
 
-**Development branch `dev`:** The detection center matches the upstream PR's Plans and Automatic Jobs scope. Existing node/task pages retain results, history and single-node checks.
+- **Proxy gateway:** choose SOCKS5, HTTP or Mixed for each listener. HTTP supports ordinary proxy requests and HTTPS CONNECT; Mixed accepts both protocols on one port. Existing listeners stay SOCKS5 until explicitly changed.
+- **Detection center:** keep Plans and Automatic Jobs aligned with the upstream PR. Results, run details and single-node checks remain available on the existing node/task pages.
+- **Smart groups:** clearer Included / Excluded membership labels and simpler forms, while preserving candidate scopes, scheduled checks and airport-update linkage.
+- **Reliability fixes:** preserve post-update processing after successful subscription completion, validate paused schedule scopes, and let the server validate supported five-field Cron expressions.
 
-- Preserve smart-group candidate scopes, scheduled checks and airport-update checks.
-- Simplify smart-group page/form copy and label current group membership as Included / Excluded.
-
-See the [detection-center guide](docs/features/unlock-check.md#detection-center) and [smart-group guide](docs/features/smart-groups.md) for configuration and membership rules.
+See the [proxy-gateway guide](docs/features/socks5.md), [detection-center guide](docs/features/unlock-check.md#detection-center) and [smart-group guide](docs/features/smart-groups.md) for configuration, compatibility and membership rules.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
+
 
 ---
 
