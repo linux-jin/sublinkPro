@@ -6,6 +6,10 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### Updates page
+
+- Remove the promotional/support card (Star, sponsorship links and affiliate recommendations) from the fork's Updates page. Keep the release log and its refresh control unchanged.
+
 ## [1.16.0] - 2026-10-27
 
 ### HTTP and Mixed proxy gateway listeners
