@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTaskProgress } from 'contexts/TaskProgressContext';
+import { useTaskCompletion } from 'contexts/TaskProgressContext';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -66,7 +66,7 @@ export default function SmartGroupsPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { registerOnComplete, unregisterOnComplete } = useTaskProgress();
+  const { registerOnComplete, unregisterOnComplete } = useTaskCompletion();
   const [groups, setGroups] = useState([]);
   const [countries, setCountries] = useState([]);
   const [sourceGroups, setSourceGroups] = useState([]);
@@ -238,7 +238,6 @@ export default function SmartGroupsPage() {
   return (
     <MainCard title={t('smartGroups.title')}>
       <Stack spacing={2}>
-        <Typography variant="body2">{t('smartGroups.description')}</Typography>
         {message && (
           <Alert severity="info" onClose={() => setMessage('')}>
             {message}
@@ -328,9 +327,9 @@ export default function SmartGroupsPage() {
         fullScreen={isMobile}
         PaperProps={{ sx: { bgcolor: 'background.paper', maxHeight: isMobile ? '100dvh' : '90dvh' } }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
+        <DialogTitle component="div" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h3" noWrap>
+            <Typography component="h2" variant="h3" noWrap>
               {view?.name}
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -366,9 +365,6 @@ export default function SmartGroupsPage() {
                     {t('smartGroups.loadingCandidates')}
                   </Typography>
                 )}
-                <Typography variant="caption" color="text.secondary">
-                  {t('smartGroups.subscriptionStatusHint')}
-                </Typography>
               </Stack>
             </Paper>
             {checkMessage && (
@@ -597,7 +593,6 @@ export default function SmartGroupsPage() {
               label={t('smartGroups.defaultProfile')}
               value={form.checkProfileId || 0}
               onChange={(event) => setForm({ ...form, checkProfileId: Number(event.target.value) })}
-              helperText={t('smartGroups.autoProfileHint')}
               error={autoProfileMissing || autoProfileMismatch}
             >
               <MenuItem value={0}>{t('smartGroups.noDefaultProfile')}</MenuItem>
@@ -644,10 +639,6 @@ export default function SmartGroupsPage() {
               }
               label={t('smartGroups.afterAirportUpdate')}
             />
-            <Typography variant="caption" color="text.secondary">
-              {t('smartGroups.afterAirportUpdateHint')}
-            </Typography>
-            <Alert severity="info">{t('smartGroups.autoCheckHint')}</Alert>
           </Stack>
         </DialogContent>
         <DialogActions>

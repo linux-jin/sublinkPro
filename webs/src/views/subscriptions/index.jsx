@@ -447,7 +447,7 @@ export default function SubscriptionList() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   // 初始加载
   useEffect(() => {

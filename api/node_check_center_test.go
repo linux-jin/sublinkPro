@@ -152,53 +152,6 @@ func TestNodeCheckCenterEmptyExplicitNodesNeverLaunchAll(t *testing.T) {
 	}
 }
 
-func TestNodeCheckCenterResultsArePagedAndRespectSourceGroupMembership(t *testing.T) {
-	setupPreviewAPITestDB(t)
-	airport := models.Airport{Name: "original-airport", URL: "https://example.invalid/sub"}
-	if err := airport.Add(); err != nil {
-		t.Fatal(err)
-	}
-	group := models.SmartGroup{Name: "GB-filtered", Countries: "GB", SourceGroups: []string{"allowed"}, MaxAgeHours: 0}
-	if err := database.DB.Create(&group).Error; err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"allowed", "other"} {
-		n := models.Node{Name: name, LinkName: name, Link: "ss://" + name, SourceID: airport.ID, Group: name, LinkCountry: "GB", DelayStatus: "success", DelayTime: 100}
-		if err := n.Add(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	r := gin.New()
-	r.GET("/results", NodeCheckResults)
-	response := checkCenterRequest(t, r, http.MethodGet, "/results?page=1&pageSize=1", nil)
-	if bytes.Contains(response["data"], []byte(`"Link":`)) {
-		t.Fatal("results exposed raw proxy link")
-	}
-	var data struct {
-		Total int `json:"total"`
-		Items []struct {
-			AirportID   int    `json:"airportId"`
-			AirportName string `json:"airportName"`
-			Groups      []struct {
-				Included bool `json:"included"`
-			} `json:"smartGroups"`
-		} `json:"items"`
-	}
-	if err := json.Unmarshal(response["data"], &data); err != nil {
-		t.Fatal(err)
-	}
-	if data.Total != 2 || len(data.Items) != 1 || data.Items[0].AirportID != airport.ID || data.Items[0].AirportName != airport.Name || len(data.Items[0].Groups) != 1 || !data.Items[0].Groups[0].Included {
-		t.Fatalf("first page=%+v", data)
-	}
-	response = checkCenterRequest(t, r, http.MethodGet, "/results?page=2&pageSize=1", nil)
-	if err := json.Unmarshal(response["data"], &data); err != nil {
-		t.Fatal(err)
-	}
-	if len(data.Items) != 1 || len(data.Items[0].Groups) != 0 {
-		t.Fatalf("non-candidate labeled included: %+v", data)
-	}
-}
-
 func TestDeleteSmartGroupRejectsPausedDetectionJobReference(t *testing.T) {
 	setupPreviewAPITestDB(t)
 	group := models.SmartGroup{Name: "job-referenced", Countries: "GB"}

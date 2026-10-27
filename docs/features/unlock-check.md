@@ -313,21 +313,15 @@ The first version's goal is:
 
 ---
 
-## Detection center: plans, jobs, history and results
+## Detection center
 
-The **Detection center** keeps four separate responsibilities:
+The center has two tabs: **Detection plans** and **Automatic jobs**.
 
-- **Detection plans** define connectivity/latency, optional download speed, exit IP/country, IP quality, AI services and streaming checks. AI/streaming choices come from registered provider metadata. Request URLs, timeout, concurrency, peak sampling and traffic settings remain available under detailed settings. Latency is the baseline; enabling download speed uses the existing Mihomo full-test mode. Single-node and selected-node checks from the node list still use the plan picker and target only the selected IDs.
-- **Automatic jobs** reuse a plan while independently defining scope and trigger. Choose all nodes, an airport/group/tag intersection, or a smart group's candidates (including unhealthy nodes). Optional airport, group and tag constraints further restrict candidates. Scheduled jobs use five-field Cron in the server/container timezone; the browser Cron preview uses browser time and a numeric syntax subset. Server-valid named months/weekdays and single-value steps can still be saved even without a preview. Airport-update jobs run only after a successful update and only for matching nodes of that airport.
-- **Run history** uses the existing `speed_test` task records, progress and stop actions. Legacy task names are not reliable plan IDs. This is an execution summary, not a per-node historical snapshot.
-- **Node results** show paginated **latest** module states with original airport, provider status/reason/detail, check times, and current smart-group membership/exclusion reasons. No candidate means no membership; a successful latency alone does not imply a node passed a group with speed/freshness constraints. Membership is not proof the group is selected by a subscription.
+1. Choose latency, download speed, exit IP, IP quality, AI service or streaming checks in **Detection plans**. Request URLs, timeout, concurrency and traffic options remain under Advanced settings.
+2. Create an **Automatic job** and select a plan. Target all nodes, selected airports/source groups/tags, or a smart group's candidates. Multiple scope constraints intersect.
+3. Run on a schedule or after airport updates. Five-field Cron uses the server/container timezone; the browser preview uses browser time and a numeric syntax subset. Server-supported named months/weekdays and single-value steps can still be saved.
+4. For a scheduled job, select airports and enable **Update selected airports before checking** when fresh nodes are needed first. Checks start only after every selected airport updates successfully. Empty scopes never expand to all nodes.
 
-For a scheduled filtered/candidate job, select airports and enable **Update selected airports before checking** to wait for all those updates before resolving the current nodes and running detection. A failed/cancelled pre-update aborts that check. Pre-updates suppress the old post-update check hooks, avoiding self-trigger loops and duplicate checks from that same orchestration. Subscription-update auto-tag rules finish before the current check scope is resolved, so newly tagged nodes can participate in the same chain.
+Use **Node management** for detection results and single/selected-node checks, and **Task center** for run history. Smart-group candidate dialogs retain source airports, membership status and exclusion reasons. The center no longer has separate history/results pages; its dedicated `/api/v1/node-check/results` endpoint is removed too.
 
-A job cannot overlap itself. Repeated manual starts fail, scheduled overlap skips, and airport events received while running are coalesced into one follow-up batch; the follow-up rereads current enabled state and scope. This is **per-job** protection, not a global node lock. Other jobs, smart-group automation and existing airport post-update checks remain independent; avoid configuring duplicate paths for the same nodes. Empty scopes/candidates never fall back to the profile's old range or all nodes.
-
-Existing profile IDs, airport links and smart-group references remain unchanged. Existing profile schedules appear as **Existing schedules** with negative IDs; they are not copied or registered twice. Edit their Cron, source groups and tags there. Create a positive-ID independent job for a different plan, pre-update or candidate scope. Deleting a compatibility job only clears its old schedule; it does not delete its plan. The legacy profile APIs and Telegram schedule toggles continue to operate on that same original schedule. Independent jobs and their candidate-group IDs are included in database restore; old backups with no job table do not retain stale target jobs.
-
-Saving detection results makes them available to dynamic smart-group/subscription evaluation without moving nodes or starting another check. Smart-group membership still uses the group's existing country/name, latency, speed and freshness rules; selecting an AI module **does not add an AI eligibility rule to a smart group**. Service states such as reachable, available, partial, restricted, unknown and error remain distinct. Network probes do not establish account login or paid-model access, and third-party IP risk is not an official platform score.
-
-OpenClash stays independent. For example, run your job well before its subscription refresh, with a buffer based on node count and timeouts. There is no guarantee that a fixed interval completes every check, and subscription fetches do not wait for running jobs.
+Existing schedules, plan references and smart-group automation remain. Editing a plan alone does not clear its schedule. Avoid duplicate automatic jobs for the same nodes; subscription requests do not wait for unfinished checks.

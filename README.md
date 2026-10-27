@@ -86,7 +86,7 @@ The fork follows this maintenance model:
 | 🧦 **SOCKS5 gateway and routing profiles** | Health-aware TCP CONNECT gateway with independent accounts, multiple listeners, P2C and round-robin routing, sticky sessions, routing profiles, node filters, retries, cooldown, connection governance, and live load monitoring | [📖](docs/features/socks5.md) |
 | 💾 **WebDAV backup and scheduling** | Encrypt WebDAV credentials, upload backups manually or by cron, browse remote ZIP files, restore from the page, and handle collection redirects used by services such as TeraCLOUD | [📖](docs/features/backup.md) |
 | 🔐 **OpenVPN YAML round-trip** | Import and export Mihomo/Clash `type: openvpn` proxy entries while preserving certificates, keys, transport options, and other supported fields | [📖](#-multi-protocol-support) |
-| 🧪 **Detection center** | Reusable check plans, independent scheduled/airport-update jobs, optional airport pre-updates, paginated run history and latest results with source airports and smart-group membership reasons; single-node checks remain available | [📖](docs/features/unlock-check.md) |
+| 🧪 **Detection center** | Separate plans and automatic jobs, scheduled/airport-update checks, smart-group candidate scopes and optional airport pre-updates; use existing node/task pages for results and history | [📖](docs/features/unlock-check.md) |
 | 🚀 **Large node-list optimization** | Compact server projections, reduced rendering overhead, server-side pagination, search and filtering, plus improved grouped node selection for large installations | — |
 | 📦 **Multi-architecture GHCR images** | Automated `amd64`, `arm64`, `arm/v7`, and `386` images; use `latest` for stable releases and `dev` for development builds | [📖](docs/installation.md) |
 
@@ -116,15 +116,12 @@ The fork follows this maintenance model:
 
 **Latest stable release:** `v1.15.0`
 
-**Development image `dev`:** Concise detection-center copy and form labels, with plans, automatic jobs, run history and node results preserved.
+**Development branch `dev`:** The detection center matches the upstream PR's Plans and Automatic Jobs scope. Existing node/task pages retain results, history and single-node checks.
 
-**v1.15.0 detection-center update:**
+- Preserve smart-group candidate scopes, scheduled checks and airport-update checks.
+- Simplify smart-group page/form copy and label current group membership as Included / Excluded.
 
-- Separate reusable detection plans, scoped automatic jobs, run history and paginated latest node results; preserve single-node testing and existing plan references.
-- Schedule checks or trigger after airport updates, optionally wait for selected airports to update first, prevent per-job overlap and coalesce queued airport events. Existing schedules appear as compatibility jobs without duplicate execution.
-- Inspect original airports, provider evidence, check times and smart-group membership reasons. Latest results are not historical snapshots; AI probes do not prove account/model availability or automatically add AI eligibility rules.
-
-See the [detection-center guide](docs/features/unlock-check.md#detection-center-plans-jobs-history-and-results) and [smart-group guide](docs/features/smart-groups.md) for configuration and membership rules.
+See the [detection-center guide](docs/features/unlock-check.md#detection-center) and [smart-group guide](docs/features/smart-groups.md) for configuration and membership rules.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history, or browse [GitHub Releases](https://github.com/linux-jin/sublinkPro/releases).
 

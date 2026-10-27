@@ -686,7 +686,7 @@ Base: `/api/v1/node-check`
 - **POST** `/node-check/profiles/{id}/run` — run a profile (demo-restricted)
 - **POST** `/node-check/run` — **JSON** `{"profileId":1, "nodeIds":[...]}` (positive existing profile ID required) — general run entry (demo-restricted)
 
-### Detection-center jobs and latest results
+### Detection-center jobs
 
 All endpoints use the same authenticated node-check route group; job writes/runs are demo-restricted.
 
@@ -694,7 +694,6 @@ All endpoints use the same authenticated node-check route group; job writes/runs
 - **POST** `/node-check/jobs` and **PUT** `/node-check/jobs/{id}` — JSON configuration below. PUT replaces all job configuration; runtime columns are not writable. `name` is at most 191 bytes, references must exist, and Cron is five-field server-local time. An invalid replacement does not remove the old schedule.
 - **DELETE** `/node-check/jobs/{id}` — independent running jobs must finish first. Deleting a negative-ID compatibility job clears the original profile schedule only, not the plan.
 - **POST** `/node-check/jobs/{id}/run` — manual execution can run paused jobs, but rejects overlapping independent job executions. Airport events arriving during a run are coalesced for a follow-up, using fresh configuration.
-- **GET** `/node-check/results?page=1&pageSize=30` — latest states, not per-run snapshots. Page size is bounded to 100. Supports existing node query filters, including `search`, `unlockProvider` and `unlockStatus`. Returns `{items:[{node,airportId,airportName,smartGroups:[{id,name,included,reason,matchSource}]}],total,page,pageSize}`. The node projection contains selector/detection fields, not raw proxy links. Only candidate groups appear, evaluated against current rules. Nonzero airport ID with empty name means a deleted airport; zero means a manual node. Membership does not imply a subscription selects the group.
 
 Example independent job:
 

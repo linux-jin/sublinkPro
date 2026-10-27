@@ -6,18 +6,18 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
-### Detection-center UI cleanup
+### Detection-center and smart-group UI cleanup
 
-- Remove repetitive banners and internal architecture, migration and client-orchestration explanations from plans, automatic jobs and result details. Keep field labels, detection evidence, timezone and real errors.
-- Use concise bilingual labels for plan names, schedules, node scopes and airport pre-updates. Advanced request, concurrency and traffic settings remain expandable.
-- Preserve all four tabs, node results and run history, single/selected-node checks, smart-group candidate scopes and existing automatic jobs. Do not import the upstream PR's feature removal.
+- Align the center with the upstream PR: keep Plans and Automatic Jobs only, removing its added history/results layer, dedicated endpoint, component, test and unused translations. Existing node/task pages are unchanged.
+- Preserve smart-group candidate job scopes, single/selected-node checks, schedules, plan-reference protection and subscription membership rules.
+- Remove internal-mechanism explanations, repeated banners and verbose copy from smart-group pages/forms. Use Included / Excluded for group membership; retain source airports, exclusion reasons, field constraints, timezone and real errors.
+- Unify bilingual detection-plan labels, fix nested candidate-dialog headings and the subscription smart-group loader's Hook dependency warning. Subscribe the smart-group page to task completions only rather than every progress update.
 
 ### Detection-center fixes
 
-- Do not interpret the context cancellation performed by a successful subscription task completion as a failed update. Usage persistence, automatic tagging and post-update/pre-update checks continue; loader-reported failures and cancellations still stop checks.
-- Validate compatibility-job node scope even when paused with an empty Cron. Empty filtered ranges cannot overwrite the old scope and expand manual checks to all nodes; reject unsupported compatibility scopes.
-- Let server-side five-field Cron validation accept named months/weekdays and single-value steps without being blocked by the numeric browser preview; explain the preview limitation in both languages.
-- Return only selector/detection fields from latest-result responses, omitting raw proxy links while preserving source airports and smart-group membership evidence. Add completion/cancellation, paused-scope and projection regressions.
+- Do not treat context cancellation after a successful subscription completion as failure; preserve usage, automatic tags and subsequent checks. Real loader failures still stop checks.
+- Validate scope for paused original schedules with empty Cron so an empty filter cannot expand to all nodes.
+- Automatic-job five-field Cron is validated by the server; named months/weekdays and single-value steps are not blocked by the browser's numeric preview.
 
 ## [1.15.0] - 2026-10-22
 
