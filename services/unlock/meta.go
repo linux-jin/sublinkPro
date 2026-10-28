@@ -131,6 +131,7 @@ func buildUnlockRenameVariable(provider string) models.UnlockRenameVariableMeta 
 }
 
 func init() {
+	models.RegisterUnlockProviderListResolver(ListRegisteredUnlockProviders)
 	models.RegisterUnlockStatusMetaResolver(ListUnlockStatusMetas)
 	models.RegisterUnlockProviderMetaResolver(GetUnlockProviderMeta)
 	models.RegisterUnlockRenameVariableResolver(BuildUnlockRenameVariables)

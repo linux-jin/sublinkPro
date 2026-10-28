@@ -21,6 +21,8 @@ type SmartGroup struct {
 	Countries               string     `gorm:"size:191;not null" json:"countries"` // comma-separated ISO 3166-1 alpha-2 codes
 	Keyword                 string     `gorm:"size:191" json:"keyword"`
 	SourceGroups            []string   `gorm:"serializer:json;type:text" json:"sourceGroups"`
+	CandidateConditions     string     `gorm:"type:text" json:"candidateConditions"`
+	MemberConditions        string     `gorm:"type:text" json:"memberConditions"`
 	MaxDelay                int        `json:"maxDelay"`
 	MinSpeed                float64    `json:"minSpeed"`
 	MaxAgeHours             int        `json:"maxAgeHours"` // 0 disables the freshness check
@@ -61,6 +63,12 @@ func (g *SmartGroup) Validate() error {
 	}
 	if g.MaxDelay < 0 || g.MinSpeed < 0 || g.MaxAgeHours < 0 || g.MaxAgeHours > 8760 {
 		return fmt.Errorf("检测阈值不能为负，结果有效期不能超过一年")
+	}
+	if _, err := CompileNodeConditionMatcher(g.CandidateConditions, NodeConditionSmartCandidate); err != nil {
+		return fmt.Errorf("候选附加条件: %w", err)
+	}
+	if _, err := CompileNodeConditionMatcher(g.MemberConditions, NodeConditionSmartMember); err != nil {
+		return fmt.Errorf("入组附加条件: %w", err)
 	}
 	g.Countries = strings.Join(countries, ",")
 	g.Keyword = strings.TrimSpace(g.Keyword)
@@ -122,13 +130,15 @@ func GetSmartGroup(id int) (SmartGroup, error) {
 // SmartGroupMemberStats explains why matching candidates are not usable.
 // Each candidate is assigned to its first failing criterion, so the counts add up.
 type SmartGroupMemberStats struct {
-	CandidateCount int `json:"candidateCount"`
-	DelayUnusable  int `json:"delayUnusable"`
-	DelayOverLimit int `json:"delayOverLimit"`
-	DelayStale     int `json:"delayStale"`
-	SpeedUnusable  int `json:"speedUnusable"`
-	SpeedBelowMin  int `json:"speedBelowMin"`
-	SpeedStale     int `json:"speedStale"`
+	CandidateCount          int `json:"candidateCount"`
+	DelayUnusable           int `json:"delayUnusable"`
+	DelayOverLimit          int `json:"delayOverLimit"`
+	DelayStale              int `json:"delayStale"`
+	SpeedUnusable           int `json:"speedUnusable"`
+	SpeedBelowMin           int `json:"speedBelowMin"`
+	SpeedStale              int `json:"speedStale"`
+	MemberConditionMismatch int `json:"memberConditionMismatch"`
+	MemberConditionsInvalid int `json:"memberConditionsInvalid"`
 }
 
 // inferSmartGroupCountry is used only to label nodes with no stored landing country.
@@ -369,6 +379,18 @@ func (g SmartGroup) MatchSource(node Node) string {
 // CandidateMatcher 为当前页/请求预编译匹配条件，并包含原分组限制。
 // 返回空字符串表示非候选，不能再将健康检查的空排除原因误解为入组。
 func (g SmartGroup) CandidateMatcher() func(Node) string {
+	matcher, err := g.candidateMatcher()
+	if err != nil {
+		return func(Node) string { return "" }
+	}
+	return matcher
+}
+
+func (g SmartGroup) candidateMatcher() (func(Node) string, error) {
+	additional, err := CompileNodeConditionMatcher(g.CandidateConditions, NodeConditionSmartCandidate)
+	if err != nil {
+		return nil, err
+	}
 	countries := make(map[string]bool)
 	for _, part := range strings.Split(g.Countries, ",") {
 		if code := strings.ToUpper(strings.TrimSpace(part)); code != "" {
@@ -382,11 +404,11 @@ func (g SmartGroup) CandidateMatcher() func(Node) string {
 	patterns, rules := smartGroupCountryPatterns(countries), smartGroupSelectedCountryRules(countries)
 	keyword := strings.ToLower(strings.TrimSpace(g.Keyword))
 	return func(node Node) string {
-		if len(countries) == 0 || (len(groups) > 0 && !groups[strings.ToLower(node.Group)]) {
+		if len(countries) == 0 || (len(groups) > 0 && !groups[strings.ToLower(node.Group)]) || !additional(node) {
 			return ""
 		}
 		return smartGroupMatchSource(node, countries, patterns, rules, keyword)
-	}
+	}, nil
 }
 
 // Candidates intentionally ignores current health so failed nodes can be retested.
@@ -396,28 +418,13 @@ func (g SmartGroup) Candidates() ([]Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	countries := make(map[string]bool)
-	for _, code := range strings.Split(g.Countries, ",") {
-		if code = strings.ToUpper(strings.TrimSpace(code)); code != "" {
-			countries[code] = true
-		}
+	matcher, err := g.candidateMatcher()
+	if err != nil {
+		return nil, fmt.Errorf("候选附加条件无效: %w", err)
 	}
-	if len(countries) == 0 {
-		return []Node{}, nil
-	}
-	groups := make(map[string]bool, len(g.SourceGroups))
-	for _, source := range g.SourceGroups {
-		groups[strings.ToLower(source)] = true
-	}
-	keyword := strings.ToLower(strings.TrimSpace(g.Keyword))
-	countryRules := smartGroupSelectedCountryRules(countries)
-	codePatterns := smartGroupCountryPatterns(countries)
 	candidates := make([]Node, 0)
 	for _, node := range nodes {
-		if len(groups) > 0 && !groups[strings.ToLower(node.Group)] {
-			continue
-		}
-		if smartGroupMatchSource(node, countries, codePatterns, countryRules, keyword) != "" {
+		if matcher(node) != "" {
 			candidates = append(candidates, node)
 		}
 	}
@@ -458,8 +465,9 @@ func (g SmartGroup) EvaluateMembers() (candidates, members []Node, stats SmartGr
 	stats.CandidateCount = len(candidates)
 	cutoff = time.Now().Add(-time.Duration(g.MaxAgeHours) * time.Hour)
 	members = make([]Node, 0, len(candidates))
+	exclusionReason := g.MemberExclusionMatcher(cutoff)
 	for _, node := range candidates {
-		switch g.CandidateExclusionReason(node, cutoff) {
+		switch exclusionReason(node) {
 		case "delayUnusable":
 			stats.DelayUnusable++
 		case "delayOverLimit":
@@ -472,8 +480,12 @@ func (g SmartGroup) EvaluateMembers() (candidates, members []Node, stats SmartGr
 			stats.SpeedBelowMin++
 		case "speedStale":
 			stats.SpeedStale++
-		default:
+		case "memberConditionsInvalid":
+			stats.MemberConditionsInvalid++
+		case "":
 			members = append(members, node)
+		default:
+			stats.MemberConditionMismatch++
 		}
 	}
 	return
@@ -482,6 +494,28 @@ func (g SmartGroup) EvaluateMembers() (candidates, members []Node, stats SmartGr
 // CandidateExclusionReason returns an empty string for a usable node.
 // The caller supplies one cutoff for a consistent snapshot of the current result window.
 func (g SmartGroup) CandidateExclusionReason(node Node, cutoff time.Time) string {
+	return g.MemberExclusionMatcher(cutoff)(node)
+}
+
+// MemberExclusionMatcher compiles optional membership predicates once per read.
+// It never changes Candidates(), so failed/untested nodes remain eligible for retesting.
+func (g SmartGroup) MemberExclusionMatcher(cutoff time.Time) func(Node) string {
+	additional, err := CompileNodeConditionMatcher(g.MemberConditions, NodeConditionSmartMember)
+	return func(node Node) string {
+		if reason := g.baseExclusionReason(node, cutoff); reason != "" {
+			return reason
+		}
+		if err != nil {
+			return "memberConditionsInvalid"
+		}
+		if !additional(node) {
+			return "memberConditionMismatch"
+		}
+		return ""
+	}
+}
+
+func (g SmartGroup) baseExclusionReason(node Node, cutoff time.Time) string {
 	if node.DelayStatus != "success" || node.DelayTime <= 0 {
 		return "delayUnusable"
 	}

@@ -28,7 +28,7 @@ import {
 } from '@mui/material';
 import MainCard from 'ui-component/cards/MainCard';
 import { getNodeCountries, getNodeGroups } from 'api/nodes';
-import { getNodeCheckProfiles } from 'api/nodeCheck';
+import { getNodeCheckMeta, getNodeCheckProfiles } from 'api/nodeCheck';
 import {
   checkSmartGroup,
   createSmartGroup,
@@ -41,10 +41,15 @@ import { formatCountry } from 'utils/countryDisplay';
 import CloseIcon from '@mui/icons-material/Close';
 import CronExpressionGenerator, { validateCronExpression } from 'components/CronExpressionGenerator';
 import { formatDateTime } from 'i18n/locales';
+import NodeConditionEditor from 'components/NodeConditionEditor';
+import { createNodeConditionValue, serializeNodeConditionValue } from 'utils/nodeConditionEditor';
+import { setUnlockMeta } from 'views/nodes/utils';
 
 const emptyForm = {
   name: '',
   countries: '',
+  candidateConditions: '',
+  memberConditions: '',
   keyword: '',
   sourceGroups: [],
   maxDelay: 0,
@@ -59,7 +64,16 @@ const parseCountries = (value) => (value || '').split(',').filter(Boolean);
 // Intl's region names provide a full locale-aware country/territory catalog rather than only countries already found on nodes.
 const regionCodes = Array.from({ length: 26 * 26 }, (_, index) => String.fromCharCode(65 + Math.floor(index / 26), 65 + (index % 26)));
 const nonCountryRegions = new Set(['EU', 'UN', 'EZ', 'QO', 'ZZ']);
-const exclusionKeys = ['delayUnusable', 'delayOverLimit', 'delayStale', 'speedUnusable', 'speedBelowMin', 'speedStale'];
+const exclusionKeys = [
+  'delayUnusable',
+  'delayOverLimit',
+  'delayStale',
+  'speedUnusable',
+  'speedBelowMin',
+  'speedStale',
+  'memberConditionMismatch',
+  'memberConditionsInvalid'
+];
 
 export default function SmartGroupsPage() {
   const { t, i18n } = useTranslation();
@@ -74,6 +88,19 @@ export default function SmartGroupsPage() {
   const [profileId, setProfileId] = useState('');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [candidateRules, setCandidateRules] = useState(() => createNodeConditionValue());
+  const [memberRules, setMemberRules] = useState(() => createNodeConditionValue('', 'quality_status'));
+  const [candidateRulesEnabled, setCandidateRulesEnabled] = useState(false);
+  const [memberRulesEnabled, setMemberRulesEnabled] = useState(false);
+  const [, setConditionMetaReady] = useState(false);
+  const openEditor = (group) => {
+    setForm({ ...emptyForm, ...group, sourceGroups: group.sourceGroups || [], cronExpr: group.cronExpr || emptyForm.cronExpr });
+    setCandidateRules(createNodeConditionValue(group.candidateConditions));
+    setMemberRules(createNodeConditionValue(group.memberConditions, 'quality_status'));
+    setCandidateRulesEnabled(Boolean(group.candidateConditions));
+    setMemberRulesEnabled(Boolean(group.memberConditions));
+    setEditing(group);
+  };
   const [view, setView] = useState(null);
   const memberRequest = useRef(0);
   const closeMembers = () => {
@@ -115,6 +142,12 @@ export default function SmartGroupsPage() {
 
   useEffect(() => {
     void refresh();
+    void getNodeCheckMeta()
+      .then((response) => {
+        setUnlockMeta(response.data || {});
+        setConditionMetaReady(true);
+      })
+      .catch(() => {});
     void getNodeCountries()
       .then((response) => setCountries(response.data || []))
       .catch(() => {});
@@ -151,8 +184,13 @@ export default function SmartGroupsPage() {
   const save = async () => {
     setBusy(true);
     try {
-      if (editing?.id) await updateSmartGroup(editing.id, form);
-      else await createSmartGroup(form);
+      const payload = {
+        ...form,
+        candidateConditions: candidateRulesEnabled ? serializeNodeConditionValue(candidateRules) : '',
+        memberConditions: memberRulesEnabled ? serializeNodeConditionValue(memberRules) : ''
+      };
+      if (editing?.id) await updateSmartGroup(editing.id, payload);
+      else await createSmartGroup(payload);
       setEditing(null);
       await refresh();
     } catch (error) {
@@ -247,8 +285,7 @@ export default function SmartGroupsPage() {
           <Button
             variant="contained"
             onClick={() => {
-              setForm({ ...emptyForm });
-              setEditing({});
+              openEditor({});
             }}
           >
             {t('smartGroups.add')}
@@ -269,6 +306,8 @@ export default function SmartGroupsPage() {
                   {group.sourceGroups?.length > 0 && ` · ${t('smartGroups.sourceGroups')}: ${group.sourceGroups.join(' / ')}`}
                 </Typography>
                 <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+                  {group.candidateConditions && <Chip size="small" variant="outlined" label={t('smartGroups.candidateConditions')} />}
+                  {group.memberConditions && <Chip size="small" variant="outlined" label={t('smartGroups.memberConditions')} />}
                   {group.scheduleEnabled && (
                     <Chip size="small" variant="outlined" label={t('smartGroups.scheduleSummary', { cron: group.cronExpr })} />
                   )}
@@ -300,13 +339,7 @@ export default function SmartGroupsPage() {
                 <Button
                   disabled={busy}
                   onClick={() => {
-                    setForm({
-                      ...emptyForm,
-                      ...group,
-                      sourceGroups: group.sourceGroups || [],
-                      cronExpr: group.cronExpr || emptyForm.cronExpr
-                    });
-                    setEditing(group);
+                    openEditor(group);
                   }}
                 >
                   {t('smartGroups.edit')}
@@ -528,7 +561,7 @@ export default function SmartGroupsPage() {
           </Stack>
         </DialogActions>
       </Dialog>
-      <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
+      <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="md" fullScreen={isMobile}>
         <DialogTitle>{editing?.id ? t('smartGroups.edit') : t('smartGroups.add')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -564,6 +597,29 @@ export default function SmartGroupsPage() {
                 <TextField {...params} label={t('smartGroups.sourceGroups')} helperText={t('smartGroups.sourceGroupsHint')} />
               )}
             />
+            <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'background.default' }}>
+              <FormControlLabel
+                control={<Switch checked={candidateRulesEnabled} onChange={(event) => setCandidateRulesEnabled(event.target.checked)} />}
+                label={t('smartGroups.candidateConditions')}
+              />
+              <Typography variant="body2" color="text.secondary">
+                {t('smartGroups.candidateConditionsHint')}
+              </Typography>
+              <Collapse in={candidateRulesEnabled} unmountOnExit>
+                <Box sx={{ mt: 2 }}>
+                  <NodeConditionEditor
+                    logic={candidateRules.logic}
+                    conditions={candidateRules.conditions}
+                    onChange={setCandidateRules}
+                    surface="smart-group-candidate"
+                    defaultField="protocol"
+                    title={t('smartGroups.candidateConditions')}
+                    helperText={t('smartGroups.candidateConditionsExample')}
+                    maxConditions={32}
+                  />
+                </Box>
+              </Collapse>
+            </Paper>
             <TextField
               label={t('smartGroups.maxDelay')}
               type="number"
@@ -585,6 +641,32 @@ export default function SmartGroupsPage() {
               onChange={(event) => setForm({ ...form, maxAgeHours: Number(event.target.value) })}
               helperText={t('smartGroups.zeroUnlimited')}
             />
+            <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'background.default' }}>
+              <FormControlLabel
+                control={<Switch checked={memberRulesEnabled} onChange={(event) => setMemberRulesEnabled(event.target.checked)} />}
+                label={t('smartGroups.memberConditions')}
+              />
+              <Typography variant="body2" color="text.secondary">
+                {t('smartGroups.memberConditionsHint')}
+              </Typography>
+              <Collapse in={memberRulesEnabled} unmountOnExit>
+                <Box sx={{ mt: 2 }}>
+                  <NodeConditionEditor
+                    logic={memberRules.logic}
+                    conditions={memberRules.conditions}
+                    onChange={setMemberRules}
+                    surface="smart-group-member"
+                    defaultField="quality_status"
+                    title={t('smartGroups.memberConditions')}
+                    helperText={t('smartGroups.memberConditionsExample')}
+                    maxConditions={32}
+                  />
+                </Box>
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  {t('smartGroups.memberConditionsCheckHint')}
+                </Alert>
+              </Collapse>
+            </Paper>
             <Divider />
             <Typography variant="h5">{t('smartGroups.automaticChecks')}</Typography>
             <TextField

@@ -82,6 +82,7 @@
 
 | 功能 | 说明 | 详情 |
 |:---|:---|:---:|
+| 🗂️ **节点分类** | 统一管理标签、自动标签规则与智能分组，分设页签，保留已有配置与订阅行为 | [📖](docs/features/tags.zh-CN.md#管理入口) |
 | 🌙 **Loon 原生完整配置输出** | 管理并选择 `.lcf` 模板，注入本地生成节点、展开 Loon Remote Filter，保留规则/插件/脚本/MITM；仅在未配置原生模板时使用 Sub-Store 兼容转换 | [📖](#-多协议支持) |
 | 🧦 **代理网关与路由配置** | 健康感知 SOCKS5/HTTP/Mixed 代理网关，支持独立账号、多监听入口、P2C/轮询选路、粘性会话、路由 Profile、节点过滤、重试、冷却、连接治理和实时负载监控 | [📖](docs/features/socks5.zh-CN.md) |
 | 💾 **WebDAV 备份与定时任务** | 加密保存 WebDAV 凭据，支持手动或 Cron 定时上传、浏览远程 ZIP、页面恢复，并兼容 TeraCLOUD 等服务的集合重定向 | [📖](docs/features/backup.zh-CN.md) |

@@ -371,3 +371,26 @@ func TestSmartGroupBatchReleasesReservationOnEmptyOrPanic(t *testing.T) {
 		t.Fatal("panic leaked reservation")
 	}
 }
+
+func TestSmartGroupAdditionalMemberConditionsDoNotRemoveFailedCheckTargets(t *testing.T) {
+	profile := setupSmartGroupCheckTest(t)
+	group := saveSmartCheckGroup(t, profile, "additional-conditions")
+	selected := addSmartCheckNode(t, "selected-static", "GB", "selected", 1)
+	addSmartCheckNode(t, "outside-static", "GB", "other", 1)
+	group.CandidateConditions = `{"logic":"and","conditions":[{"field":"group","operator":"equals","value":"selected"}]}`
+	group.MemberConditions = `{"logic":"and","conditions":[{"field":"unlock_provider","operator":"equals","value":"openai"},{"field":"unlock_status","operator":"equals","value":"available"}]}`
+	if err := database.DB.Save(&group).Error; err != nil {
+		t.Fatal(err)
+	}
+	calls := make(chan smartCheckCall, 1)
+	executeSmartGroupNodes = func(p int, ids []int, trigger models.TaskTrigger, name string) {
+		calls <- smartCheckCall{p, ids, trigger, name}
+	}
+	count, err := StartSmartGroupCheck(group.ID, profile.ID, 0, models.TaskTriggerManual)
+	if err != nil || count != 1 {
+		t.Fatalf("start count=%d err=%v", count, err)
+	}
+	if got := awaitSmartCheck(t, calls); !reflect.DeepEqual(got.ids, []int{selected.ID}) {
+		t.Fatalf("wrong check targets: %+v", got)
+	}
+}

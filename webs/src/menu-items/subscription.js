@@ -50,12 +50,12 @@ const subscription = {
       breadcrumbs: true
     },
     {
-      id: 'smart-groups',
-      title: 'Smart Groups',
-      titleKey: 'navigation.items.smartGroups',
+      id: 'node-classification',
+      title: 'Node Classification',
+      titleKey: 'navigation.items.nodeClassification',
       type: 'item',
-      url: '/subscription/smart-groups',
-      icon: IconListCheck,
+      url: '/subscription/classification',
+      icon: IconTags,
       breadcrumbs: true
     },
     {
@@ -74,15 +74,6 @@ const subscription = {
       type: 'item',
       url: '/subscription/templates',
       icon: IconTemplate,
-      breadcrumbs: true
-    },
-    {
-      id: 'tags',
-      title: 'Tags',
-      titleKey: 'navigation.items.tags',
-      type: 'item',
-      url: '/subscription/tags',
-      icon: IconTags,
       breadcrumbs: true
     }
   ]

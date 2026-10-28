@@ -7,7 +7,9 @@ import {
 import { QUALITY_STATUS_OPTIONS } from './fraudScore';
 
 export const NODE_CONDITION_FIELDS = [
-  { value: 'name', label: 'Remark', labelKey: 'nodeConditions.fields.name' },
+  { value: 'name', label: 'Node name', labelKey: 'nodeConditions.fields.name' },
+  { value: 'effective_name', label: 'Effective name', labelKey: 'nodeConditions.fields.effectiveName' },
+  { value: 'tags', label: 'Tag text', labelKey: 'nodeConditions.fields.tags' },
   { value: 'link_name', label: 'Original name', labelKey: 'nodeConditions.fields.linkName' },
   { value: 'link_country', label: 'Country code', labelKey: 'nodeConditions.fields.linkCountry' },
   { value: 'protocol', label: 'Protocol type', labelKey: 'nodeConditions.fields.protocol' },
@@ -27,7 +29,7 @@ export const NODE_CONDITION_FIELDS = [
   { value: 'speed_status', label: 'Speed status', labelKey: 'nodeConditions.fields.speedStatus' },
   { value: 'delay_status', label: 'Delay status', labelKey: 'nodeConditions.fields.delayStatus' },
   { value: 'link_address', label: 'Address', labelKey: 'nodeConditions.fields.linkAddress' },
-  { value: 'link_host', label: 'Host' },
+  { value: 'link_host', label: 'Host', labelKey: 'nodeConditions.fields.linkHost' },
   { value: 'link_port', label: 'Port', labelKey: 'nodeConditions.fields.linkPort' },
   { value: 'dialer_proxy_name', label: 'Dialer proxy', labelKey: 'nodeConditions.fields.dialerProxyName' },
   { value: 'link', label: 'Node link', labelKey: 'nodeConditions.fields.link' }
@@ -110,12 +112,13 @@ const resolveFallbackFieldMeta = (field) => {
 
 export const getNodeConditionFieldMeta = (field) => {
   const dynamicMeta = getNodeConditionFieldMetas().find((item) => item?.value === field);
-  return dynamicMeta || resolveFallbackFieldMeta(field);
+  return dynamicMeta ? { ...STATIC_FIELD_META_MAP[field], ...dynamicMeta } : resolveFallbackFieldMeta(field);
 };
 
 export const getNodeConditionFields = () => {
   const dynamicFields = getNodeConditionFieldMetas();
-  const baseFields = dynamicFields.length > 0 ? dynamicFields : NODE_CONDITION_FIELDS;
+  const baseFields =
+    dynamicFields.length > 0 ? dynamicFields.map((field) => ({ ...STATIC_FIELD_META_MAP[field.value], ...field })) : NODE_CONDITION_FIELDS;
 
   // 确保包含 unlock_condition 虚拟字段，并过滤掉被标记为 hidden 的独立解锁字段
   const hasUnlockCondition = baseFields.some((f) => f.value === 'unlock_condition');
@@ -175,3 +178,27 @@ export const isNodeConditionSelectField = (field) => {
   }
   return Boolean(getNodeConditionValueOptions(field));
 };
+
+const SMART_CANDIDATE_FIELDS = new Set([
+  'name',
+  'effective_name',
+  'link_name',
+  'link_country',
+  'protocol',
+  'group',
+  'source',
+  'link_address',
+  'link_host',
+  'link_port',
+  'dialer_proxy_name',
+  'link'
+]);
+
+export const getNodeConditionFieldsForSurface = (surface = 'tag') =>
+  getNodeConditionFields().filter((field) => {
+    if (!surface.startsWith('smart-group-')) return true;
+    if (field.value === 'unlock_condition') return surface === 'smart-group-member';
+    if (Array.isArray(field.surfaces) && field.surfaces.some((value) => value.startsWith('smart-group-')))
+      return field.surfaces.includes(surface);
+    return surface === 'smart-group-member' || SMART_CANDIDATE_FIELDS.has(field.value);
+  });

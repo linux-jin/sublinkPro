@@ -102,6 +102,12 @@ func GetNodeConditionFields() []NodeConditionFieldMeta {
 		newTextConditionField("link", "节点链接", "按节点完整链接匹配"),
 	}
 
+	for index := range fields {
+		fields[index].Surfaces = append(fields[index].Surfaces, NodeConditionSmartMember)
+		if isSmartCandidateField(fields[index].Value) {
+			fields[index].Surfaces = append(fields[index].Surfaces, NodeConditionSmartCandidate)
+		}
+	}
 	return fields
 }
 

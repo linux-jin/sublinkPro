@@ -59,6 +59,9 @@ func CreateSmartGroup(c *gin.Context) {
 		c.JSON(400, gin.H{"code": 400, "msg": "无效的分组配置"})
 		return
 	}
+	if !validateSmartGroupConditionRequest(c) {
+		return
+	}
 	group.ID = 0
 	group.LastCheckAt = nil
 	group.MaxAgeHours = maxAgeHoursFromRequest(c, group.MaxAgeHours)
@@ -95,7 +98,7 @@ func maxAgeHoursFromRequest(c *gin.Context, current int) int {
 	return current
 }
 
-var smartGroupEditableFields = []string{"Name", "Countries", "Keyword", "SourceGroups", "MaxDelay", "MinSpeed", "MaxAgeHours", "CheckProfileID", "ScheduleEnabled", "CronExpr", "CheckAfterAirportUpdate"}
+var smartGroupEditableFields = []string{"Name", "Countries", "Keyword", "SourceGroups", "CandidateConditions", "MemberConditions", "MaxDelay", "MinSpeed", "MaxAgeHours", "CheckProfileID", "ScheduleEnabled", "CronExpr", "CheckAfterAirportUpdate"}
 
 func UpdateSmartGroup(c *gin.Context) {
 	smartGroupConfigMu.Lock()
@@ -109,10 +112,19 @@ func UpdateSmartGroup(c *gin.Context) {
 		c.JSON(400, gin.H{"code": 400, "msg": "无效的分组配置"})
 		return
 	}
+	if !validateSmartGroupConditionRequest(c) {
+		return
+	}
 	group.ID = existing.ID
 	// Legacy clients omit the new fields; preserve their saved automation settings.
 	var fields map[string]any
 	if err := c.ShouldBindBodyWith(&fields, binding.JSON); err == nil {
+		if _, ok := fields["candidateConditions"]; !ok {
+			group.CandidateConditions = existing.CandidateConditions
+		}
+		if _, ok := fields["memberConditions"]; !ok {
+			group.MemberConditions = existing.MemberConditions
+		}
 		if _, ok := fields["checkProfileId"]; !ok {
 			group.CheckProfileID = existing.CheckProfileID
 		}
@@ -228,13 +240,14 @@ func SmartGroupMembers(c *gin.Context) {
 	for _, airport := range airports {
 		airportNames[airport.ID] = airport.Name
 	}
+	exclusionReason := group.MemberExclusionMatcher(cutoff)
 	candidateNodes := make([]gin.H, 0, pageSize)
 	if page <= (len(candidates)+pageSize-1)/pageSize {
 		start := (page - 1) * pageSize
 		end := min(start+pageSize, len(candidates))
 		for _, node := range candidates[start:end] {
 			country, countrySource := models.SmartGroupCountryForDisplay(node)
-			reason := group.CandidateExclusionReason(node, cutoff)
+			reason := exclusionReason(node)
 			candidateNodes = append(candidateNodes, gin.H{
 				"id": node.ID, "name": node.EffectiveName(), "group": node.Group,
 				"airportId": node.SourceID, "airportName": airportNames[node.SourceID],
@@ -280,4 +293,18 @@ func CheckSmartGroupCandidates(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"code": 200, "data": gin.H{"count": count}})
+}
+
+func validateSmartGroupConditionRequest(c *gin.Context) bool {
+	var fields map[string]any
+	if err := c.ShouldBindBodyWith(&fields, binding.JSON); err != nil {
+		return false
+	}
+	for _, name := range []string{"candidateConditions", "memberConditions"} {
+		if value, exists := fields[name]; exists && value == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": 400, "msg": "附加条件不能为null，请用空字符串清除"})
+			return false
+		}
+	}
+	return true
 }

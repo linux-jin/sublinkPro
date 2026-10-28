@@ -384,12 +384,33 @@ export default function TagManagement() {
     <MainCard title={t('tags.title')}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
-            <Tab icon={<LocalOfferIcon sx={{ mr: isMobile ? 0 : 1 }} />} iconPosition="start" label={isMobile ? '' : t('tags.tabs.tags')} />
-            <Tab icon={<RuleIcon sx={{ mr: isMobile ? 0 : 1 }} />} iconPosition="start" label={isMobile ? '' : t('tags.tabs.rules')} />
+          <Tabs
+            value={tabValue}
+            onChange={(e, v) => setTabValue(v)}
+            aria-label={t('tags.title')}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ minWidth: 0 }}
+          >
+            <Tab
+              id="tag-management-tab-tags"
+              aria-controls="tag-management-panel-tags"
+              icon={<LocalOfferIcon fontSize="small" />}
+              iconPosition="start"
+              label={t('tags.tabs.tags')}
+              sx={{ minWidth: 0 }}
+            />
+            <Tab
+              id="tag-management-tab-rules"
+              aria-controls="tag-management-panel-rules"
+              icon={<RuleIcon fontSize="small" />}
+              iconPosition="start"
+              label={t('tags.tabs.rules')}
+              sx={{ minWidth: 0 }}
+            />
           </Tabs>
           <Tooltip title={t('tags.actions.refresh')}>
-            <IconButton onClick={handleRefresh} disabled={refreshing} color="primary">
+            <IconButton aria-label={t('tags.actions.refresh')} onClick={handleRefresh} disabled={refreshing} color="primary">
               {refreshing ? <CircularProgress size={20} /> : <RefreshIcon />}
             </IconButton>
           </Tooltip>
@@ -398,7 +419,7 @@ export default function TagManagement() {
 
       {/* 标签列表 */}
       {tabValue === 0 && (
-        <Box>
+        <Box role="tabpanel" id="tag-management-panel-tags" aria-labelledby="tag-management-tab-tags">
           {/* 搜索和添加按钮 */}
           <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
             <TextField
@@ -514,7 +535,7 @@ export default function TagManagement() {
 
       {/* 自动规则 */}
       {tabValue === 1 && (
-        <Box>
+        <Box role="tabpanel" id="tag-management-panel-rules" aria-labelledby="tag-management-tab-rules">
           {/* 搜索、筛选和添加按钮 */}
           <Box sx={{ mb: 2 }}>
             <Stack

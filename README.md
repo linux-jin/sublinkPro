@@ -82,6 +82,7 @@ The fork follows this maintenance model:
 
 | Feature | Description | Details |
 |:---|:---|:---:|
+| 🗂️ **Node classification** | Manage tags, automatic tag rules and smart groups from one entry with separate tabs; existing settings and subscription behavior are preserved | [📖](docs/features/tags.md#management-entry) |
 | 🌙 **Native Loon full-profile output** | Store and select `.lcf` templates, inject locally generated nodes, expand Loon Remote Filters, preserve rules/plugins/scripts/MITM, and fall back to Sub-Store only when no native template is configured | [📖](#-multi-protocol-support) |
 | 🧦 **Proxy gateway and routing profiles** | Health-aware SOCKS5/HTTP/Mixed proxy gateway with independent accounts, multiple listeners, P2C and round-robin routing, sticky sessions, routing profiles, node filters, retries, cooldown, connection governance, and live load monitoring | [📖](docs/features/socks5.md) |
 | 💾 **WebDAV backup and scheduling** | Encrypt WebDAV credentials, upload backups manually or by cron, browse remote ZIP files, restore from the page, and handle collection redirects used by services such as TeraCLOUD | [📖](docs/features/backup.md) |

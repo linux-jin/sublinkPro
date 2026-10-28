@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	unlockProviderListResolver     = defaultUnlockProviderValues
 	unlockStatusMetaResolver       = defaultUnlockStatusMetaResolver
 	unlockProviderMetaResolver     = defaultUnlockProviderMetaResolver
 	unlockRenameVariableResolver   = defaultUnlockRenameVariableResolver
@@ -533,3 +534,19 @@ func BuildNodeRenameInfo(node Node, processedLinkName string, protocol string, i
 		UnlockRegion:    primaryUnlockRegion,
 	}
 }
+
+// RegisterUnlockProviderListResolver keeps condition validation aligned with
+// runtime checker registration without importing services from models.
+func RegisterUnlockProviderListResolver(resolver func() []string) {
+	if resolver == nil {
+		unlockProviderListResolver = defaultUnlockProviderValues
+		return
+	}
+	unlockProviderListResolver = resolver
+}
+
+func defaultUnlockProviderValues() []string {
+	return []string{UnlockProviderNetflix, UnlockProviderDisney, UnlockProviderYouTube, UnlockProviderOpenAI, UnlockProviderGemini, UnlockProviderClaude, UnlockProviderBahamut}
+}
+
+func GetUnlockProviderValues() []string { return unlockProviderListResolver() }

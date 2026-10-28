@@ -1,5 +1,23 @@
 {
+  "nodeClassification": {
+    "title": "Node Classification",
+    "tabs": {
+      "tags": "Tags",
+      "smartGroups": "Smart Groups"
+    },
+    "descriptions": {
+      "tags": "Label nodes manually or classify them with automatic rules.",
+      "smartGroups": "Filter and check candidate nodes to provide currently usable nodes for subscriptions."
+    }
+  },
   "smartGroups": {
+    "candidateConditions": "Additional candidate conditions",
+    "candidateConditionsHint": "Further restrict which nodes to check within the existing country, name and source-group scope.",
+    "candidateConditionsExample": "For example: protocol equals vless. Check results are excluded here so failed and untested candidates can be checked again.",
+    "memberConditions": "Additional membership conditions",
+    "memberConditionsHint": "Apply these after latency, speed and freshness checks. They do not reduce the candidate check scope.",
+    "memberConditionsExample": "For example: a residential IP or a matching unlock status for a specific service.",
+    "memberConditionsCheckHint": "Conditions read saved results and do not enable quality or unlock checks. Enable required modules in the detection plan. Freshness still applies only to latency and download-speed checks.",
     "title": "Smart Groups",
     "add": "Add group",
     "edit": "Edit",
@@ -38,6 +56,8 @@
     "noCandidatesHint": "No matching nodes. Check country, name keyword and source-group filters.",
     "nameInferred": "Country inferred from name",
     "exclusions": {
+      "memberConditionMismatch": "Additional membership conditions not met {{count}}",
+      "memberConditionsInvalid": "Invalid membership conditions; edit the group to fix them {{count}}",
       "delayUnusable": "Latency not successful {{count}}",
       "delayOverLimit": "Latency over limit {{count}}",
       "delayStale": "Latency stale/missing time {{count}}",
@@ -52,6 +72,8 @@
     "page": "Page {{page}} / {{total}}",
     "tcpWarning": "This group has a minimum speed. Choose a plan with download-speed testing.",
     "reasons": {
+      "memberConditionMismatch": "Additional membership conditions not met",
+      "memberConditionsInvalid": "Invalid membership conditions; edit the group to fix them",
       "delayUnusable": "Latency not successful",
       "delayOverLimit": "Latency over limit",
       "delayStale": "Latency stale/missing time",
@@ -197,6 +219,7 @@
       "airports": "Airport",
       "nodes": "Node",
       "nodeCheck": "Detection center",
+      "nodeClassification": "Node Classification",
       "smartGroups": "Smart Groups",
       "subscriptions": "Subscriptions",
       "templates": "Templates",
@@ -3643,8 +3666,14 @@
     }
   },
   "nodeConditions": {
+    "editor": {
+      "removeCondition": "Remove condition {{index}}"
+    },
     "fields": {
-      "name": "Remark",
+      "effectiveName": "Effective name",
+      "tags": "Tag text",
+      "linkHost": "Host",
+      "name": "Node name",
       "linkName": "Original name",
       "linkCountry": "Country code",
       "protocol": "Protocol type",

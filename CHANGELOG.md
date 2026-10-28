@@ -6,6 +6,17 @@ All notable SublinkPro releases are documented here. The README only keeps a sho
 
 ## [Unreleased]
 
+### Node classification
+
+- Extract a shared node-condition editor and evaluator for tag automation and smart groups, preserving legacy tag JSON, event triggers, exclusivity and tag add/remove behavior.
+- Add optional candidate and membership conditions to smart groups, keeping check scope separate from passing membership and preserving legacy country/name matching, scheduling and subscription references.
+- Strictly validate new fields/operators/values and reject check-dependent candidate fields. Report additional membership exclusions, preserve omitted fields on legacy PUT, support explicit clearing and restore backups without the new columns.
+
+- Consolidate tag management and smart groups under **Node Classification**, with separate Tags and Smart Groups tabs. Keep tag lists and automation rules inside Tags.
+- Persist the selected top-level tab in the URL for refresh, deep links and browser history. Redirect both old management URLs while preserving unrelated query parameters and fragments.
+- Keep tag sub-tab labels visible on mobile and add accessible tab/panel associations. Only mount the active top-level page to avoid polling by an inactive smart-group page.
+- Preserve all existing APIs, tag/group settings, automatic checks and subscription references; this change adds neither automatic member tagging nor tag-based candidate filtering.
+
 ### Updates page
 
 - Remove the promotional/support card (Star, sponsorship links and affiliate recommendations) from the fork's Updates page. Keep the release log and its refresh control unchanged.

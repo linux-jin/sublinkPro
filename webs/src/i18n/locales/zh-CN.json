@@ -1,5 +1,23 @@
 {
+  "nodeClassification": {
+    "title": "节点分类",
+    "tabs": {
+      "tags": "标签",
+      "smartGroups": "智能分组"
+    },
+    "descriptions": {
+      "tags": "给节点添加标签，或用规则自动分类。",
+      "smartGroups": "筛选并检测候选节点，为订阅提供当前可用的节点。"
+    }
+  },
   "smartGroups": {
+    "candidateConditions": "候选附加条件",
+    "candidateConditionsHint": "在现有国家、名称和原分组范围内，再限定需要检测的节点。",
+    "candidateConditionsExample": "例如：协议等于 vless。这里不按检测结果筛选，未测和失败节点仍可重测。",
+    "memberConditions": "入组附加条件",
+    "memberConditionsHint": "通过延迟、速度和有效期检查后，还需满足这些条件。不会缩小待测候选范围。",
+    "memberConditionsExample": "例如：住宅属性等于住宅 IP，或指定服务的解锁状态满足要求。",
+    "memberConditionsCheckHint": "附加条件读取已保存的结果，不会自动启用质量或解锁检测。请在检测方案中勾选所需项目；结果有效期仍只检查延迟和下载测速。",
     "title": "智能分组",
     "add": "新增分组",
     "edit": "编辑",
@@ -38,6 +56,8 @@
     "noCandidatesHint": "没有匹配节点，请检查国家、名称关键词和原分组条件。",
     "nameInferred": "国家按名称推断",
     "exclusions": {
+      "memberConditionMismatch": "不满足附加入组条件 {{count}}",
+      "memberConditionsInvalid": "附加入组条件无效，请编辑修正 {{count}}",
       "delayUnusable": "延迟未成功 {{count}}",
       "delayOverLimit": "延迟超过上限 {{count}}",
       "delayStale": "延迟结果过期/无时间 {{count}}",
@@ -52,6 +72,8 @@
     "page": "第 {{page}} / {{total}} 页",
     "tcpWarning": "此分组设置了最低速度，请选择含下载测速的检测方案。",
     "reasons": {
+      "memberConditionMismatch": "不满足附加入组条件",
+      "memberConditionsInvalid": "附加入组条件无效，请编辑修正",
       "delayUnusable": "延迟未成功",
       "delayOverLimit": "延迟超过上限",
       "delayStale": "延迟结果过期/无时间",
@@ -197,6 +219,7 @@
       "airports": "机场管理",
       "nodes": "节点管理",
       "nodeCheck": "检测中心",
+      "nodeClassification": "节点分类",
       "smartGroups": "智能分组",
       "subscriptions": "订阅列表",
       "templates": "模板管理",
@@ -3643,8 +3666,14 @@
     }
   },
   "nodeConditions": {
+    "editor": {
+      "removeCondition": "移除条件 {{index}}"
+    },
     "fields": {
-      "name": "备注",
+      "effectiveName": "实际名称",
+      "tags": "标签文本",
+      "linkHost": "主机名",
+      "name": "节点名称",
       "linkName": "原始名称",
       "linkCountry": "国家代码",
       "protocol": "协议类型",

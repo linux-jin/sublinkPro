@@ -6,6 +6,14 @@ SublinkPro's automatic tag system is one of its most powerful features. It upgra
 
 ---
 
+## Management entry
+
+Open **Subscription Management → Node Classification → Tags** to manage tags and automation rules. The **Smart Groups** tab on the same page manages dynamic healthy-node pools that subscriptions can select. Old tag-management and smart-group URLs redirect to their respective tabs; saved settings and subscription references remain unchanged.
+
+Tag exclusivity groups and smart groups remain separate concepts: the former constrain tags on a node, while the latter allow a node to belong to multiple dynamic pools. Group membership does not automatically write tags. Tag rules and smart-group additional conditions share an editor and condition evaluator, while their execution and outputs remain separate. See [Smart Groups](smart-groups.md).
+
+---
+
 ## 💡 Core Benefits
 
 | Benefit | Description |
@@ -60,7 +68,7 @@ Exclusive groups ensure that only one tag from the same group remains on a node.
 
 ## Tag Rule Configuration
 
-On the “Tag Management” page, each tag can have automatic matching rules.
+Under “Node Classification → Tags → Automation Rules”, each tag can have automatic matching rules.
 
 ### Supported condition fields
 

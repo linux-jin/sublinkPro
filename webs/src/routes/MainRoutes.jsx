@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import MainLayout from 'layout/MainLayout';
 import Loadable from 'ui-component/Loadable';
 import AuthGuard from 'auth/AuthGuard';
+import LegacyClassificationRedirect from 'views/node-classification/LegacyClassificationRedirect';
 
 // dashboard routing
 const DashboardDefault = Loadable(lazy(() => import('views/dashboard/Default')));
@@ -19,14 +20,13 @@ const AccessKeyList = Loadable(lazy(() => import('views/accesskeys')));
 const UserSettings = Loadable(lazy(() => import('views/settings')));
 const SystemMonitor = Loadable(lazy(() => import('views/monitor')));
 const SystemUpdates = Loadable(lazy(() => import('views/system-updates')));
-const TagList = Loadable(lazy(() => import('views/tags')));
+const NodeClassificationPage = Loadable(lazy(() => import('views/node-classification')));
 const TaskList = Loadable(lazy(() => import('views/tasks')));
 const HostList = Loadable(lazy(() => import('views/hosts')));
 const CountryRulesPage = Loadable(lazy(() => import('views/country-rules')));
 const WebhookList = Loadable(lazy(() => import('views/webhooks')));
 const AirportList = Loadable(lazy(() => import('views/airports')));
 const NodeCheckList = Loadable(lazy(() => import('views/node-check')));
-const SmartGroupsPage = Loadable(lazy(() => import('views/smart-groups')));
 const Socks5GatewayPage = Loadable(lazy(() => import('views/socks5')));
 // ==============================|| MAIN ROUTING ||==============================  //
 
@@ -71,8 +71,12 @@ const MainRoutes = {
           element: <NodeCheckList />
         },
         {
+          path: 'classification',
+          element: <NodeClassificationPage />
+        },
+        {
           path: 'smart-groups',
-          element: <SmartGroupsPage />
+          element: <LegacyClassificationRedirect tab="smart-groups" />
         },
         {
           path: 'subs',
@@ -84,7 +88,7 @@ const MainRoutes = {
         },
         {
           path: 'tags',
-          element: <TagList />
+          element: <LegacyClassificationRedirect tab="tags" />
         },
         {
           path: 'airports',
